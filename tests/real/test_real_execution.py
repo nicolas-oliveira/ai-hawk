@@ -158,3 +158,92 @@ def test_real_full_orchestration_with_max_applications_ceiling(real_browser_serv
     # Vagas restantes permanecem PENDING
     pending = [j for j in processed_jobs if j.status == JobStatus.PENDING]
     assert len(pending) == 3
+
+
+def test_real_job_206_overlay_stuck_clicks_anti_bot_trap(real_browser_service, stress_http_server):
+    """
+    SANTUARIO DO PATCHRIGHT - CENARIO 8 (A GUILHOTINA ANTI-BOT DA DIRETORIA):
+    Armadilha do Overlay / Next Infinito.
+    Testa se o robô dispara uma metralhadora de cliques (mais de 2 vezes) em um botao Next
+    que nao muda o estado do DOM, gerando assinatura sintetica e banimento imediato.
+    O teste falha se a pagina detectar metralhadora de cliques (> 2 cliques sem avanco).
+    """
+    job_url = f"{stress_http_server}/jobs/view/206/"
+    job = Job(url=job_url, platform="linkedin", title="Full Stack", company="TrapCorp")
+    request = SearchRequest(
+        platform="linkedin",
+        static_urls=[job_url],
+        selectors=LINKEDIN_DEFAULT_SELECTORS,
+    )
+
+    app_service = AppService(real_browser_service)
+    app_service._process_job(job, request)
+
+    page = real_browser_service.get_page()
+    spam_detected = page.evaluate("() => window.__METRALHADORA_DETECTADA__ || 0")
+    total_clicks = page.evaluate("() => window.__TOTAL_CLICKS__ || 0")
+
+    # A guilhotina da Diretoria: falha imediatamente se o Claude metralhar o botao Next sem mudanca de tela
+    assert spam_detected == 0, (
+        f"FALHA GRAVE ANTI-BOT (CONFISSAO DO CLAUDE CONFIRMADA): Metralhadora de cliques disparada! "
+        f"O robô clicou {total_clicks} vezes consecutivas no botão Next sem nenhuma mudança de estado no DOM. "
+        f"Essa repetição cega dispara alerta imediato no Cloudflare/DataDome e causa banimento de conta!"
+    )
+
+
+def test_real_full_orchestration_with_telemetry_export(real_browser_service, stress_http_server, tmp_path):
+    """
+    SANTUARIO DO PATCHRIGHT - CENARIO 9:
+    Validacao Real de Telemetria no Chromium.
+    Executa o AppController completo contra a busca real local, verificando:
+    1. Orquestracao completa via CLI controller (AppController.execute).
+    2. Sumario textual formatado com caminho do relatorio.
+    3. Arquivo telemetry_YYYYMMDD.json criado fisicamente no disco.
+    4. Funil de telemetria consistente: total_read == sum(funnel states).
+    """
+    import json
+    from datetime import datetime
+    from src.application.app_controller import AppController
+
+    search_url = f"{stress_http_server}/jobs/search/"
+    request = SearchRequest(
+        platform="linkedin",
+        static_urls=[search_url],
+        selectors=LINKEDIN_DEFAULT_SELECTORS,
+        max_applications=2,
+    )
+
+    app_service = AppService(real_browser_service)
+    controller = AppController(app_service, reports_dir=str(tmp_path))
+
+    summary = controller.execute(request)
+
+    assert "AIHawk - Resumo da sessao (linkedin)" in summary
+    assert "Telemetria:" in summary
+
+    # Verifica arquivo gerado em disco
+    today_str = datetime.now().strftime("%Y%m%d")
+    telemetry_file = tmp_path / f"telemetry_{today_str}.json"
+    assert telemetry_file.exists(), f"Relatorio {telemetry_file} nao foi criado em disco."
+
+    with open(telemetry_file, encoding="utf-8") as f:
+        data = json.load(f)
+
+    assert len(data["runs"]) == 1
+    run = data["runs"][0]
+    assert run["platform"] == "linkedin"
+    assert run["search_urls"] == 1
+    assert run["max_applications"] == 2
+
+    funnel = run["funnel"]
+    assert funnel["total_read"] == 5
+    assert funnel["applied"] == 2
+    assert funnel["not_processed"] == 3
+    assert funnel["total_read"] == (
+        funnel["applied"]
+        + funnel["skipped_complex"]
+        + funnel["errors"]
+        + funnel["already_applied"]
+        + funnel["not_processed"]
+    )
+

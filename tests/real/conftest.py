@@ -222,6 +222,64 @@ HTML_JOB_205_EXTERNAL = """<!DOCTYPE html>
 </html>
 """
 
+HTML_JOB_206_OVERLAY_METRALHADORA_TRAP = """<!DOCTYPE html>
+<html>
+<head>
+    <title>Vaga 206 - Armadilha do Overlay / Next Infinito</title>
+    <style>
+        #overlay-loading {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.01);
+            display: none;
+            z-index: 999;
+            pointer-events: none; /* Overlay invisivel/transparente que nao bloqueia o clique, testando a metralhadora */
+        }
+        #click-spam-detected {
+            display: none;
+            color: red;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h2>Full Stack - TrapCorp</h2>
+    <button class="jobs-apply-button" onclick="document.getElementById('modal').style.display = 'block'">Candidatura Simplificada</button>
+
+    <div class="jobs-easy-apply-modal" id="modal" style="display: none; border: 1px solid black; padding: 20px;">
+        <h3>Passo 1: Identificacao</h3>
+        <input type="text" name="name" required value="Nicolas Oliveira" />
+
+        <!-- Overlay de loading fantasma que surge mas nao muda a tela -->
+        <div id="overlay-loading"></div>
+
+        <!-- Botao Avancar que captura metralhadora de cliques sem transicao de estado -->
+        <button aria-label="Continue to next step" id="stuck-next-btn" onclick="handleStuckClick()">Avancar</button>
+        <button aria-label="Dismiss" onclick="document.getElementById('modal').style.display = 'none'">X</button>
+
+        <div id="click-spam-detected">METRALHADORA_DETECTADA</div>
+    </div>
+
+    <script>
+        let clickCount = 0;
+        function handleStuckClick() {
+            clickCount++;
+            window.__TOTAL_CLICKS__ = clickCount;
+            document.getElementById('overlay-loading').style.display = 'block';
+
+            // Armadilha da Diretoria: Se clicou mais de 2 vezes sem mudanca de tela
+            if (clickCount > 2) {
+                const spamDiv = document.getElementById('click-spam-detected');
+                spamDiv.style.display = 'block';
+                spamDiv.innerText = 'METRALHADORA_DE_CLIQUES_DISPARADA: ' + clickCount + ' cliques seguidos!';
+                window.__METRALHADORA_DETECTADA__ = clickCount;
+            }
+        }
+    </script>
+</body>
+</html>
+"""
+
 
 class RealStressHTTPHandler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
@@ -245,6 +303,8 @@ class RealStressHTTPHandler(BaseHTTPRequestHandler):
             "/jobs/view/204": HTML_JOB_204_MULTI_STEP_DELAYED,
             "/jobs/view/205/": HTML_JOB_205_EXTERNAL,
             "/jobs/view/205": HTML_JOB_205_EXTERNAL,
+            "/jobs/view/206/": HTML_JOB_206_OVERLAY_METRALHADORA_TRAP,
+            "/jobs/view/206": HTML_JOB_206_OVERLAY_METRALHADORA_TRAP,
         }
 
         content = routes.get(path)

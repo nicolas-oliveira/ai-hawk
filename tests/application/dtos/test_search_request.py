@@ -105,3 +105,66 @@ def test_search_request_dto_linkedin_default_selectors_has_all_keys():
         "modal_container",
     }
     assert expected_keys.issubset(LINKEDIN_DEFAULT_SELECTORS.keys())
+
+
+def test_build_linkedin_search_url_minimal():
+    """Valida geracao de URL canonica com apenas palavras-chave e default de Easy Apply."""
+    from src.application.dtos.search_request import build_linkedin_search_url
+
+    url = build_linkedin_search_url("python developer")
+    assert url == "https://www.linkedin.com/jobs/search/?keywords=python%20developer&f_AL=true"
+
+
+def test_build_linkedin_search_url_full_filters():
+    """Valida geracao de URL canonica com todos os filtros pre-codificados."""
+    from src.application.dtos.search_request import build_linkedin_search_url
+
+    url = build_linkedin_search_url(
+        "python developer",
+        location="Sao Paulo, Brazil",
+        workplace="remote",
+        posted_within="24h",
+        easy_apply=True,
+    )
+    expected = (
+        "https://www.linkedin.com/jobs/search/?"
+        "keywords=python%20developer&location=Sao%20Paulo%2C%20Brazil&f_AL=true&f_WT=2&f_TPR=r86400"
+    )
+    assert url == expected
+
+
+def test_build_linkedin_search_url_without_easy_apply():
+    """Valida omissao do parametro f_AL quando easy_apply=False."""
+    from src.application.dtos.search_request import build_linkedin_search_url
+
+    url = build_linkedin_search_url("rust engineer", easy_apply=False)
+    assert "f_AL=true" not in url
+    assert url == "https://www.linkedin.com/jobs/search/?keywords=rust%20engineer"
+
+
+def test_build_linkedin_search_url_empty_keywords_raises():
+    """Valida que keywords vazio ou espacos lanca ValueError."""
+    from src.application.dtos.search_request import build_linkedin_search_url
+
+    with pytest.raises(ValueError, match="keywords nao pode ser vazio"):
+        build_linkedin_search_url("")
+
+    with pytest.raises(ValueError, match="keywords nao pode ser vazio"):
+        build_linkedin_search_url("   ")
+
+
+def test_build_linkedin_search_url_invalid_workplace_raises():
+    """Valida que workplace invalido lanca ValueError."""
+    from src.application.dtos.search_request import build_linkedin_search_url
+
+    with pytest.raises(ValueError, match="workplace invalido"):
+        build_linkedin_search_url("python", workplace="mars_office")
+
+
+def test_build_linkedin_search_url_invalid_posted_within_raises():
+    """Valida que posted_within invalido lanca ValueError."""
+    from src.application.dtos.search_request import build_linkedin_search_url
+
+    with pytest.raises(ValueError, match="posted_within invalido"):
+        build_linkedin_search_url("python", posted_within="last_century")
+

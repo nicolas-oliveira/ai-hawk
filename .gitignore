@@ -26,6 +26,10 @@ test-results/
 playwright-report/
 blob-report/
 
+# Relatorios de telemetria e execucao
+reports/
+*.corrupt-*
+
 # Python
 __pycache__/
 *.py[cod]

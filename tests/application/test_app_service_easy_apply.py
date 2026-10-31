@@ -248,7 +248,7 @@ def test_app_controller_run_delegates_to_service_and_returns_summary(mock_browse
 
     request = SearchRequest(**valid_search_request_payload)
     app_service = AppService(mock_browser_service)
-    app_controller = AppController(app_service)
+    app_controller = AppController(app_service, reports_dir=None)
 
     job1 = Job(url="https://www.linkedin.com/jobs/view/201/", platform="linkedin", title="Dev 1", company="Co", status=JobStatus.APPLIED)
     job2 = Job(url="https://www.linkedin.com/jobs/view/202/", platform="linkedin", title="Dev 2", company="Co", status=JobStatus.SKIPPED_COMPLEX)
