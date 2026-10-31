@@ -35,9 +35,19 @@ class BrowserPort(Protocol):
         """Rola o container (overflow-y) ate o fim, repetidamente, ate o lazy
         loading parar de trazer itens novos."""
 
-    def extract_job_cards(self, card_selector: str) -> List[Dict[str, str]]:
+    def extract_job_cards(
+        self,
+        card_selector: str,
+        title_selector: Optional[str] = None,
+        company_selector: Optional[str] = None,
+    ) -> List[Dict[str, str]]:
         """Retorna um dict por card encontrado, com as chaves `url` (absoluta),
-        `title` e `company`. Cards sem URL podem ser omitidos."""
+        `title` e `company`. Cards sem URL podem ser omitidos.
+
+        `title_selector` e `company_selector` (chaves opcionais `job_card_title`
+        e `job_card_company` do SearchRequest) dizem onde achar cada campo
+        DENTRO do card; None = padrao da infraestrutura. O AppService passara
+        os dois assim que o BrowserService aceitar os parametros."""
 
     def element_exists(self, selector: str) -> bool:
         """True se o seletor casa com ao menos um elemento visivel."""

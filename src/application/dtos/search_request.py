@@ -14,6 +14,10 @@ REQUIRED_SELECTOR_KEYS = (
     "modal_container",
 )
 
+# Chaves OPCIONAIS (nao validadas em __post_init__; a infraestrutura usa um padrao
+# proprio quando faltam): `review_button`, `job_card_title`, `job_card_company`.
+OPTIONAL_SELECTOR_KEYS = ("review_button", "job_card_title", "job_card_company")
+
 # Perfil de seletores do LinkedIn (Easy Apply). As chaves sao genericas e
 # compartilhadas por todas as plataformas; so os valores mudam por site.
 # ATENCAO: valores nao validados contra o DOM real do LinkedIn. A validacao
@@ -23,6 +27,10 @@ LINKEDIN_DEFAULT_SELECTORS: Dict[str, str] = {
     # Mapeado aqui para o motor da v0.3.
     "jobs_list_container": ".jobs-search-results-list",
     "job_card": ".job-card-container",
+    # Opcionais: onde achar titulo e empresa DENTRO de cada card. Valores copiados
+    # do que estava chumbado no browser_service.py (inclui reservas genericas).
+    "job_card_title": ".job-card-list__title, .base-search-card__title, h3, h4, .title",
+    "job_card_company": ".job-card-container__primary-description, .base-search-card__subtitle, .company",
     "apply_button": "button.jobs-apply-button",
     "next_button": "button[aria-label='Continue to next step']",
     "submit_button": "button[aria-label='Submit application']",
