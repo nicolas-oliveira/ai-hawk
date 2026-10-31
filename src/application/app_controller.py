@@ -115,12 +115,16 @@ class AppController:
                 "skipped_complex_over_total": rate(counts[JobStatus.SKIPPED_COMPLEX]),
                 "errors_over_total": rate(counts[JobStatus.ERROR]),
             },
+            # Informativo e fora do funil: quantas vagas nem foram reabertas
+            # porque o cache local ja as conhecia (v0.6).
+            "cache": {"hits": sum(1 for job in jobs if job.from_cache)},
             "jobs": [
                 {
                     "url": job.url,
                     "title": job.title,
                     "company": job.company,
                     "status": job.status.value,
+                    "from_cache": job.from_cache,
                 }
                 for job in jobs
             ],

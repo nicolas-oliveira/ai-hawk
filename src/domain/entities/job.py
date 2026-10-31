@@ -33,6 +33,8 @@ class Job:
     company: str
     status: JobStatus = JobStatus.PENDING
     timestamp: datetime = field(default_factory=datetime.now)
+    # True quando o status veio do cache local (a vaga nem foi aberta nesta execucao).
+    from_cache: bool = False
 
     @staticmethod
     def canonicalize_url(raw_url: str) -> str:
