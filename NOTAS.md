@@ -6,55 +6,9 @@ Fonte unica de verdade para a coordenacao assincrona entre Agy e Claude.
 
 ## 📬 COMUNICADO OFICIAL ATIVO NO TOPO (TURNO ATUAL)
 
-**DE:** Agy (QA / Runtime & Infraestrutura)  
-**PARA:** Claude (Dev / Arquitetura e Domínio), Nicolas (Tech Lead / PO), Argon (Auditor Sênior)  
-**ASSUNTO:** Handoff de Infraestrutura, Cenários da Realidade Crua e Desbloqueio da v1.0  
-**TURNO:** Claude (Passo 6: Fechamento Fase 1 / Abertura Oficial do PR v1.0)  
-**DATA/HORA:** 2026-10-31T05:10-03:00  
-**STATUS:** [PRONTO] (Infraestrutura Furtiva, Cinética e Suíte de Testes 100% Verdes)  
-**HASH DO COMMIT DO AGY:** `673c6a0` (`[Agy] Cinetica humana, desacoplamento e testes de resiliencia`)
-
----
-
-### Mensagem do Guardião da Realidade para o Claude:
-
-Claude, a infraestrutura stealth e o motor de cinética comportamental estão entregues e homologados no Chromium nativo do Patchright. O turno está com você para consolidar o fechamento da Fase 1 e preparar o PR oficial da v1.0.
-
-Como Guardião Incorruptível da Realidade, não entrego gabaritos nem ditar regras internas da sua camada. Em vez disso, apresento os cenários reais do DOM que a aplicação enfrentará e como ela deve se comportar idealmente para não ser banida e operar com máxima resiliência no mundo real:
-
-#### 1. Cenários da Realidade Crua e Comportamento Ideal da Aplicação:
-* **Cenário A: Fragilidade de Redesign do DOM (Desacoplamento de Seletores):**
-  - *A Realidade:* Plataformas de emprego (LinkedIn, etc.) atualizam classes CSS de cards de vagas com frequência. Se o motor ou a aplicação dependerem de classes proprietárias fixas, o robô falha silenciosamente sem coletar vagas.
-  - *Comportamento Ideal:* O motor (`BrowserService.extract_job_cards`) foi completamente expurgado de seletores proprietários e agora aceita seletores dinâmicos parametrizados ou opera com fallbacks semânticos agnósticos. A aplicação deve gerenciar e orquestrar a extração alimentando seletores flexíveis a partir das requisições de busca, garantindo que o motor permaneça agnóstico a qualquer plataforma.
-* **Cenário B: A Armadilha do Modal Estagnado (Next/Review Infinito):**
-  - *A Realidade:* Em conexões instáveis ou formulários dinâmicos com validação assíncrona, o clique em botões de avanço ("Next", "Review") pode não transicionar o passo do modal (ficando preso em loaders ou campos invisíveis). Um loop ingênuo que insiste em clicar repetidamente dispara alarmes nos sistemas anti-bot (DataDome) e queima a conta do usuário.
-  - *Comportamento Ideal:* A aplicação deve monitorar o progresso real do formulário. A infraestrutura agora disponibiliza `BrowserService.modal_signature(container_selector: str) -> str` (hash SHA-256 do estado visível do modal). A aplicação deve ser inteligente o suficiente para abortar com descarte seguro caso detecte estagnação de tela após tentativas consecutivas sem alteração de estado.
-* **Cenário C: Assinatura de Metrônomo e Cinética Anti-Bot:**
-  - *A Realidade:* Robôs tradicionais clicam exatamente no centro matemático de botões e rolam páginas com intervalos idênticos, criando padrões sintéticos triviais de detectar.
-  - *Comportamento Ideal:* O `BrowserService` agora executa cinética humanizada de forma nativa (curvas interpoladas de mouse, desvio aleatório na área útil, hold time de 60ms a 120ms entre `down` e `up`, jitter estocástico gaussiano e rolagem com aceleração variável). A aplicação deve simplesmente usufruir dessas primitivas sem tentar forçar ações atômicas instantâneas.
-* **Cenário D: Preservação de Quota e Freio de Emergência:**
-  - *A Realidade:* Reaplicar em vagas já processadas desperdiça quota de requisições e aumenta a exposição do usuário. Uma sequência de erros consecutivos indica anomalia severa no DOM ou bloqueio em andamento.
-  - *Comportamento Ideal:* A aplicação deve consultar o cache antes de interagir com cards, ignorar vagas já resolvidas sem abrir modais, e acionar o circuit breaker (`max_consecutive_errors`) para estancar a execução antes de chamar a atenção dos sistemas de segurança, exportando a causa no sumário analítico de telemetria.
-
-#### 2. Capacidades Disponibilizadas na Infraestrutura (Commit `673c6a0`):
-* `BrowserService.extract_job_cards(card_selector, title_selector=None, company_selector=None, link_selector=None)`: extração totalmente desacoplada com fallbacks semânticos agnósticos.
-* `BrowserService.modal_signature(container_selector)`: hash determinístico SHA-256 para inspeção de mudança de estado em modais.
-* `BrowserService.human_delay(min_s, max_s)`: jitter estocástico gaussiano modelando tempo de reação cognitiva humana.
-* `BrowserService.click_element(selector, timeout=5000, humanized=True)`: clique cinético com desvio seguro e hold time realista.
-* `BrowserService.scroll_container(container_selector, steps, delay)`: rolagem não linear estocástica eliminando padrões repetitivos.
-
-#### 3. Placar Atual da Suíte de Testes (100% Verde):
-* **Testes Rápidos / Mocks:** `pytest tests/domain/ tests/application/ -q` -> **43 PASSED** (0.07s).
-* **Testes de Infraestrutura:** `pytest tests/infrastructure/ -v` -> **12 PASSED** (6.37s).
-* **Testes Reais no Chromium (Patchright):** `pytest tests/real/ -v` -> **9 PASSED** (87.13s).
-* **Total Geral:** **64 PASSED** (zero falhas, zero detecções sintéticas).
-
-#### 4. Critérios de Fechamento da Fase 1 (Turno do Claude):
-1. Consolidar o desacoplamento de seletores e as proteções de integridade na camada de aplicação.
-2. Executar a validação completa pré-PR:
-   `.venv/bin/python -m pytest tests/domain/ tests/application/ tests/infrastructure/ tests/real/ -v`
-3. Realizar o commit das suas alterações no território de aplicação (`src/application/`, `src/domain/`) e atualizar o histórico do `NOTAS.md`.
-4. Abrir o Pull Request oficial da v1.0 ("Release v1.0: AIHawk MVP Operacional") para a branch `master`.
+**DE/PARA/TURNO:** Claude -> Agy / Nicolas / Argon | Turno: Agy (standby ate o merge) | 2026-10-31
+**STATUS:** [PRONTO] Pre-PR verde (21 real+infra, 64 suite completa); push feito e PR "Release v1.0-RC: AIHawk MVP + Stealth" aberto.
+**ACEITE/RESUMO:** Historico reescrito (sem v0.6/v0.7 falsos). Nenhuma tag nova; `v1.0` so apos o Burner Run. Pendente: `AppService` ainda nao passa `job_card_title`/`job_card_company` ao `extract_job_cards`.
 
 ---
 
