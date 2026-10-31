@@ -1,19 +1,12 @@
 import pytest
 import os
-import shutil
+import subprocess
+import sys
 from src.infrastructure.browser_service import BrowserService
 
 
-@pytest.fixture
-def temp_session_dir():
-    test_dir = os.path.abspath("./tests_scratch/session_test")
-    os.makedirs(test_dir, exist_ok=True)
-    yield test_dir
-    if os.path.exists(test_dir):
-        shutil.rmtree(test_dir, ignore_errors=True)
-
-
 def test_browser_service_initialization(temp_session_dir):
+    """Valida configuracoes padrao de inicializacao do BrowserService."""
     service = BrowserService(
         platform="linkedin",
         headless=True,
@@ -27,7 +20,8 @@ def test_browser_service_initialization(temp_session_dir):
 
 
 def test_browser_service_session_persistence(temp_session_dir):
-    service = BrowserService(
+    """Valida persistencia sincrona real entre sessoes consecutivas."""
+    service1 = BrowserService(
         platform="linkedin",
         headless=True,
         channel="chromium",
@@ -35,11 +29,11 @@ def test_browser_service_session_persistence(temp_session_dir):
     )
 
     # Sessao 1: Gravar dado no localStorage
-    context = service.start_session()
-    page = service.get_page()
-    page.goto("https://example.com", wait_until="domcontentloaded")
-    page.evaluate("localStorage.setItem('session_marker', 'agy_v0.1_persistent')")
-    service.close()
+    service1.start_session()
+    page1 = service1.get_page()
+    page1.goto("https://example.com", wait_until="domcontentloaded")
+    page1.evaluate("localStorage.setItem('session_marker', 'agy_v0.1_shift_left')")
+    service1.close()
 
     # Sessao 2: Ler dado no mesmo perfil
     service2 = BrowserService(
@@ -48,19 +42,38 @@ def test_browser_service_session_persistence(temp_session_dir):
         channel="chromium",
         session_root_dir=temp_session_dir,
     )
-    context2 = service2.start_session()
+    service2.start_session()
     page2 = service2.get_page()
     page2.goto("https://example.com", wait_until="domcontentloaded")
     val = page2.evaluate("localStorage.getItem('session_marker')")
     service2.close()
 
-    assert val == "agy_v0.1_persistent"
+    assert val == "agy_v0.1_shift_left"
 
 
 def test_browser_service_platform_isolation(temp_session_dir):
+    """Valida isolamento de diretorios por plataforma (Decisao 2)."""
     service_a = BrowserService(platform="platform_a", session_root_dir=temp_session_dir)
     service_b = BrowserService(platform="platform_b", session_root_dir=temp_session_dir)
 
     assert service_a.user_data_dir != service_b.user_data_dir
     assert service_a.user_data_dir.endswith("platform_a")
     assert service_b.user_data_dir.endswith("platform_b")
+
+
+def test_main_cli_execution():
+    """Valida teste de fumaca do CLI sincrono python -m src.main."""
+    result = subprocess.run(
+        [sys.executable, "-m", "src.main"],
+        capture_output=True,
+        text=True,
+        env={
+            **os.environ,
+            "HEADLESS": "true",
+            "BROWSER_CHANNEL": "chromium",
+            "SESSION_ROOT_DIR": "./tests_scratch/cli_sessions",
+        },
+    )
+    assert result.returncode == 0
+    assert "AIHawk v0.1 - Inicializando Infraestrutura Stealth (Sync)" in result.stdout
+    assert "Sessao encerrada com sucesso." in result.stdout

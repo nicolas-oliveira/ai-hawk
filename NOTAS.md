@@ -20,7 +20,7 @@ Formato: `[AAAA-MM-DD] [autor] [arquivo] - evento`. Uma linha por evento, mais r
 
 * Versao em andamento: v0.1 (Fundacao, Engine Stealth e Contratos Iniciais) - Handoff para o Claude (Passo 2 da esteira).
 * Branch ativa: `feat/v0.1-stealth-engine`.
-* Suite de testes: pytest configurado e estruturado em `tests/unit/` e `tests/integration/`.
+* Suite de testes: pytest + pytest-mock configurados e estruturados com espelho exato de pastas (`tests/domain/`, `tests/application/`, `tests/infrastructure/`) e fixtures centrais em `tests/conftest.py`.
 
 ## Pedidos pendentes
 
@@ -28,14 +28,18 @@ Formato: `[AAAA-MM-DD] [autor] [arquivo] - evento`. Uma linha por evento, mais r
 
 ## Historico
 
-* [2026-10-31] [Agy] tests/, requirements.txt, NOTAS.md - Handoff Passo 1 -> Passo 2 (v0.1): Instalado pytest>=9.0.0. Criada suite de testes reais:
-  1) `tests/integration/` (4 testes passando 100%): persistencia de sessao, isolamento por plataforma, ciclo de vida e execucao da CLI.
-  2) `tests/unit/` (7 testes prontos, falhando conforme TDD): validacao dos contratos `Job` (`src/domain/entities/job.py`) e `SearchRequest` (`src/application/dtos/search_request.py`).
-  Comandos para execucao:
-  - Unitarios (dominio/contratos): `.venv/bin/python -m pytest tests/unit/`
-  - Integracao (Patchright/infra): `.venv/bin/python -m pytest tests/integration/`
-  - Todos: `.venv/bin/python -m pytest`
-  Bastao passado para o Claude implementar `job.py` e `search_request.py` no Passo 2!
+* [2026-10-31] [Agy] tests/, requirements.txt, GEMINI.md, NOTAS.md - Aplicada a Diretriz Global de Shift-Left Testing (ordem de Gemini Argon):
+  1) `tests/conftest.py` criado como fonte unica de fixtures, com `mock_browser_service` usando pytest-mock para que testes de aplicacao rodem em milissegundos sem acionar o Chromium.
+  2) Estrutura espelhada:
+     - `tests/infrastructure/test_browser_service.py` (4 testes passando 100% no Ubuntu).
+     - `tests/domain/test_job.py` (5 testes em Red Phase planejada).
+     - `tests/application/dtos/test_search_request.py` (3 testes em Red Phase planejada).
+  3) Comandos de execucao para o Claude:
+     - Dominio puro: `.venv/bin/python -m pytest tests/domain/ -v`
+     - Aplicacao / DTOs: `.venv/bin/python -m pytest tests/application/ -v`
+     - Infraestrutura real: `.venv/bin/python -m pytest tests/infrastructure/ -v`
+     - Suite completa: `.venv/bin/python -m pytest`
+  Bastao passado formalmente para o Claude (Green Phase em `src/domain/entities/job.py` e `src/application/dtos/search_request.py`).
 
 * [2026-10-31] [Claude] fluxo - Nicolas definiu: TODA versao e QA + Dev, inclusive a v0.1; Claude desenvolve na branch atual (`feat/v0.1-stealth-engine`) e, aprovada, ela recebe a tag v0.1. Sequencia: Agy (QA) -> Claude -> Nicolas e Argon -> Claude (PR/tag). Se houver teste errado ou falha: Agy (QA) -> Claude -> Agy (QA) -> Claude, em loop. Isso substitui a excecao "na v0.1 o codigo e do Agy" do Passo 2 (AGENTS.md/CLAUDE.md/GEMINI.md ainda trazem a excecao; correcao aguarda ordem do Nicolas). Nota: li que o Agy migrou o `BrowserService` para API sincrona (Decisao 4); o `app_service.py` da v0.2 deve chamar metodos sincronos.
 * [2026-10-31] [Agy] src/infrastructure/browser_service.py, src/main.py - Refatoracao completa para API 100% sincrona do Patchright (Decisao 4). Remocao de asyncio/await, adocao de sync_playwright() e metodos lineares. Teste de fumaca e persistencia de storage reexecutados e validados 100% no Ubuntu.
