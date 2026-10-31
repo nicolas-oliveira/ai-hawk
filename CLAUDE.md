@@ -87,3 +87,25 @@ Voce trabalha em conjunto com o agente **Antigravity** (responsavel por Infraest
 * **v0.5:** Loop completo do modal (abertura, avanco linear, submissao ou descarte seguro via Fechar -> Descartar).
 * **v0.6:** Implementacao do filtro e persistencia em cache local de links ja aplicados ou descartados.
 * **v1.0:** Consolidacao do MVP, blindagem de `try/except` por card e relatorio final de execucao.
+
+
+## 7. Protocolo Definitivo de Git, Branches e Esteira de Trabalho (Agy + Claude)
+
+Fonte canonica: Secao 7 do `AGENTS.md`. Em caso de divergencia, vale o `AGENTS.md`.
+
+1. **Branch compartilhada unica por versao:** `feat/v0.1-stealth-engine`, `feat/v0.2-contracts`, etc.
+   * NEVER create `claude/*` or `agy/*` branches. Apenas o Agy executa `git checkout -b feat/v0.x-...` a partir da `master`. O Claude trabalha direto na branch ativa.
+2. **`git add` restrito:**
+   * Claude so pode executar `git add` em: `src/domain/`, `src/application/` e `NOTAS.md`.
+   * Agy so pode executar `git add` em: `.gitignore`, `.env.example` (nunca `.env`), `requirements.txt`, `src/main.py`, `src/infrastructure/` e `NOTAS.md`.
+   * NEVER use `git add .` or `git commit -a`. ALWAYS run `git status` before committing.
+   * Prefixo obrigatorio de commit: `[Claude] v0.x: <descricao>` (Agy usa `[Agy] v0.x: <descricao>`).
+3. **Esteira TDD/QA-First (QA -> Dev -> QA -> PR), sequencial e sem concorrencia simultanea:**
+   * **Passo 1 (Agy):** recebe a demanda da versao primeiro, cria a branch a partir da `master` e registra o plano de testes no `NOTAS.md` ou em scripts de infraestrutura.
+   * **Passo 2 (Claude):** WHEN the test plan exists -> READ it and write the first version of `domain/` and `application/` strictly to make the tests pass. Registrar o handoff no `NOTAS.md`. Na v0.1 (infra pura), o codigo e do Agy.
+   * **Passo 3 (Agy):** executa o codigo no ambiente real (Ubuntu/Patchright).
+   * **Passo 4 (Loop QA vs Dev):** o Agy relata o traceback no `NOTAS.md`. Se o erro esta no design do teste ou na infraestrutura, o Agy corrige. Se o teste esta correto e o erro e de logica de negocio, o Claude corrige. O Agy retesta ate 100%.
+   * **Passo 5 (Revisao humana):** Nicolas e Argon verificam os arquivos e fazem testes manuais.
+   * **Passo 6 (Entrega final - Claude):** SOMENTE APOS a aprovacao de Nicolas e Argon, o Claude cria o Pull Request para a `master` (via `gh pr create` ou instrucoes passo a passo), aguarda o merge manual do Nicolas, executa `git checkout master && git pull` e cria `git tag -a v0.x -m "Release v0.x"`. NEVER open the PR or tag before the human approval.
+4. **Decisao de infraestrutura v0.1:** Chromium stealth nativo do Patchright (`BROWSER_CHANNEL=chromium`, fallback `chrome`), conforme diagnostico do Agy no Ubuntu 24.04.
+5. **Governanca:** `AGENTS.md` e `CLAUDE.md` so sao editados por ordem explicita do Nicolas (ou comunicado do Argon repassado por ele). Duvidas e furos de regra vao para o `NOTAS.md`.

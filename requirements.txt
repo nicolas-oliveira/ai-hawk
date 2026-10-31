@@ -1,0 +1,4 @@
+patchright>=1.63.0
+python-dotenv>=1.0.0
+pytest>=9.0.0
+pytest-mock>=3.14.0
