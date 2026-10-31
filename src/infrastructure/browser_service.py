@@ -137,6 +137,7 @@ class BrowserService:
                     (el) => {
                         const delta = el.clientHeight || 500;
                         el.scrollTop += delta;
+                        el.dispatchEvent(new Event('scroll', { bubbles: true }));
                     }
                     """
                 )
