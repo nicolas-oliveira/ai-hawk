@@ -31,7 +31,7 @@ def valid_job_payload() -> Dict[str, Any]:
 
 @pytest.fixture
 def valid_search_request_payload() -> Dict[str, Any]:
-    """Payload de exemplo valido para criacao de DTO SearchRequest."""
+    """Payload de exemplo valido para criacao de DTO SearchRequest com todos os seletores v0.5."""
     return {
         "platform": "linkedin",
         "static_urls": [
@@ -39,6 +39,7 @@ def valid_search_request_payload() -> Dict[str, Any]:
         ],
         "max_applications": 20,
         "selectors": {
+            "jobs_list_container": ".jobs-search-results-list",
             "job_card": ".job-card-container",
             "apply_button": "button.jobs-apply-button",
             "next_button": "button[aria-label='Continue to next step']",
@@ -53,7 +54,8 @@ def valid_search_request_payload() -> Dict[str, Any]:
 @pytest.fixture
 def mock_browser_service(mocker):
     """
-    Mock 100% desacoplado do BrowserService para os testes da aplicacao (Claude).
+    Mock 100% desacoplado do BrowserService para os testes de aplicacao (Claude).
+    Reflete fielmente a assinatura e comportamento sincrono da infraestrutura.
     Permite testar controllers e services em milissegundos sem abrir o Chromium.
     """
     mock = mocker.MagicMock()
@@ -67,8 +69,30 @@ def mock_browser_service(mocker):
     mock_page.evaluate.return_value = "mock_val"
     mock_page.goto.return_value = None
 
+    # Metodos essenciais de infraestrutura síncrona
     mock.get_page.return_value = mock_page
     mock.start_session.return_value = mocker.MagicMock()
     mock.close.return_value = None
+
+    # Metodos utilitarios agnosticos v0.5
+    mock.navigate.return_value = True
+    mock.scroll_container.return_value = True
+    mock.scroll_container_to_end.return_value = None
+    mock.extract_links.return_value = [
+        "https://www.linkedin.com/jobs/view/100000001/",
+        "https://www.linkedin.com/jobs/view/100000002/",
+    ]
+    mock.extract_job_cards.return_value = [
+        {"url": "https://www.linkedin.com/jobs/view/100000001/", "title": "Senior Python", "company": "Tech Corp"},
+        {"url": "https://www.linkedin.com/jobs/view/100000002/", "title": "Backend Dev", "company": "Global Inc"},
+    ]
+    mock.has_empty_required_inputs.return_value = False
+    mock.click_element.return_value = True
+    mock.is_visible.return_value = True
+
+    # Aliases de compatibilidade para BrowserPort
+    mock.open_url = mock.navigate
+    mock.element_exists = mock.is_visible
+    mock.click = mock.click_element
 
     return mock

@@ -16,6 +16,20 @@ def test_job_creation_valid(valid_job_payload):
     assert job.timestamp == valid_job_payload["timestamp"]
 
 
+def test_job_default_values():
+    """Valida defaults: status PENDING e timestamp datetime automatico."""
+    from src.domain.entities.job import Job
+
+    job = Job(
+        url="https://example.com/job/default-test",
+        platform="linkedin",
+        title="Developer",
+        company="Tech Corp",
+    )
+    assert job.status == "PENDING"
+    assert isinstance(job.timestamp, datetime)
+
+
 def test_job_valid_status_transitions():
     """Valida que todos os status previstos no contrato sao aceitos."""
     from src.domain.entities.job import Job
@@ -34,7 +48,7 @@ def test_job_valid_status_transitions():
 
 
 def test_job_invalid_status_raises_error():
-    """Valida que status fora da maquina de estados lanca ValueError."""
+    """Valida que status fora da maquina de estados lanca ValueError na criacao."""
     from src.domain.entities.job import Job
 
     with pytest.raises(ValueError):
@@ -48,6 +62,23 @@ def test_job_invalid_status_raises_error():
         )
 
 
+def test_job_status_late_assignment_validation():
+    """Valida que reatribuicao posterior de status tambem valida contra a maquina de estados."""
+    from src.domain.entities.job import Job
+
+    job = Job(
+        url="https://example.com/job/test",
+        platform="linkedin",
+        title="Dev",
+        company="Co",
+    )
+    job.status = "APPLIED"
+    assert job.status == "APPLIED"
+
+    with pytest.raises(ValueError):
+        job.status = "STATUS_PROIBIDO"
+
+
 def test_job_empty_required_fields_raises_error():
     """Valida que url ou platform vazios nao sao permitidos."""
     from src.domain.entities.job import Job
@@ -57,6 +88,29 @@ def test_job_empty_required_fields_raises_error():
 
     with pytest.raises(ValueError):
         Job(url="https://example.com", platform="", title="Dev", company="Co", status="PENDING", timestamp=datetime.now())
+
+
+def test_job_canonicalize_url_removes_tracking_and_query_params():
+    """
+    Step A: Higienizacao de URLs de vagas.
+    Valida que Job.canonicalize_url remove query strings (?refId=...&trackingId=...),
+    fragmentos (#...) e normaliza com barra trailing.
+    """
+    from src.domain.entities.job import Job
+
+    assert hasattr(Job, "canonicalize_url"), "Job deve implementar o metodo estatico/classmethod canonicalize_url"
+
+    raw_url1 = "https://www.linkedin.com/jobs/view/123456789/?refId=abc1234&trackingId=xyz5678&position=1&pageNum=0"
+    canonical1 = Job.canonicalize_url(raw_url1)
+    assert canonical1 == "https://www.linkedin.com/jobs/view/123456789/"
+
+    raw_url2 = "https://www.linkedin.com/jobs/view/987654321?utm_source=share#detail"
+    canonical2 = Job.canonicalize_url(raw_url2)
+    assert canonical2 == "https://www.linkedin.com/jobs/view/987654321/"
+
+    # Preserva caminhos limpos
+    raw_url3 = "https://www.linkedin.com/jobs/view/1122334455/"
+    assert Job.canonicalize_url(raw_url3) == "https://www.linkedin.com/jobs/view/1122334455/"
 
 
 def test_job_equality_and_identity_by_url_and_platform():
@@ -82,3 +136,4 @@ def test_job_equality_and_identity_by_url_and_platform():
     )
 
     assert job_a == job_b
+    assert hash(job_a) == hash(job_b)

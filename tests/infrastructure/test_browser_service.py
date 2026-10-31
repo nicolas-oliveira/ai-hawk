@@ -32,7 +32,7 @@ def test_browser_service_session_persistence(temp_session_dir):
     service1.start_session()
     page1 = service1.get_page()
     page1.goto("https://example.com", wait_until="domcontentloaded")
-    page1.evaluate("localStorage.setItem('session_marker', 'agy_v0.1_shift_left')")
+    page1.evaluate("localStorage.setItem('session_marker', 'agy_v0.5_shift_left')")
     service1.close()
 
     # Sessao 2: Ler dado no mesmo perfil
@@ -48,7 +48,7 @@ def test_browser_service_session_persistence(temp_session_dir):
     val = page2.evaluate("localStorage.getItem('session_marker')")
     service2.close()
 
-    assert val == "agy_v0.1_shift_left"
+    assert val == "agy_v0.5_shift_left"
 
 
 def test_browser_service_platform_isolation(temp_session_dir):
@@ -61,8 +61,247 @@ def test_browser_service_platform_isolation(temp_session_dir):
     assert service_b.user_data_dir.endswith("platform_b")
 
 
+def test_browser_service_navigation_real_dom(temp_session_dir):
+    """Valida navegacao sincrona real com sucesso e com timeout/falha."""
+    service = BrowserService(
+        platform="test_nav",
+        headless=True,
+        channel="chromium",
+        session_root_dir=temp_session_dir,
+    )
+    service.start_session()
+    try:
+        success = service.navigate("https://example.com")
+        assert success is True
+
+        # Falha esperada para porta fechada/invalida com timeout curto
+        fail = service.navigate("http://127.0.0.1:54321/inexistente", timeout=1000)
+        assert fail is False
+    finally:
+        service.close()
+
+
+def test_browser_service_scroll_container_real_dom(temp_session_dir):
+    """Valida o scroll incremental real de um container com overflow (lazy loading)."""
+    service = BrowserService(
+        platform="test_scroll",
+        headless=True,
+        channel="chromium",
+        session_root_dir=temp_session_dir,
+    )
+    service.start_session()
+    try:
+        page = service.get_page()
+        # Monta pagina com container de overflow e itens altos
+        html = """
+        <html>
+            <body>
+                <div id="scrollable" style="height: 200px; overflow-y: scroll; border: 1px solid black;">
+                    <div style="height: 300px;">Item 1</div>
+                    <div style="height: 300px;">Item 2</div>
+                    <div style="height: 300px;">Item 3</div>
+                </div>
+            </body>
+        </html>
+        """
+        page.set_content(html)
+
+        # Container inexistente
+        assert service.scroll_container("#nao_existe") is False
+
+        # Container existente
+        scrolled = service.scroll_container("#scrollable", steps=2, delay=0.1)
+        assert scrolled is True
+
+        scroll_pos = page.evaluate("() => document.getElementById('scrollable').scrollTop")
+        assert scroll_pos > 0
+    finally:
+        service.close()
+
+
+def test_browser_service_extract_links_real_dom(temp_session_dir):
+    """Valida extracao sincrona e deduplicacao de links de cards no DOM real."""
+    service = BrowserService(
+        platform="test_links",
+        headless=True,
+        channel="chromium",
+        session_root_dir=temp_session_dir,
+    )
+    service.start_session()
+    try:
+        page = service.get_page()
+        html = """
+        <html>
+            <body>
+                <div class="job-card"><a href="https://example.com/job/1">Vaga 1</a></div>
+                <div class="job-card"><a href="https://example.com/job/2">Vaga 2</a></div>
+                <div class="job-card"><a href="https://example.com/job/1">Vaga 1 Duplicada</a></div>
+                <a class="job-card-link" href="https://example.com/job/3">Vaga 3 Direta</a>
+            </body>
+        </html>
+        """
+        page.set_content(html)
+
+        # Extracao de links dentro de cards .job-card
+        links = service.extract_links(".job-card", "a")
+        assert len(links) == 2
+        assert links[0] == "https://example.com/job/1"
+        assert links[1] == "https://example.com/job/2"
+
+        # Extracao quando o proprio card e a tag <a>
+        direct_links = service.extract_links(".job-card-link", "a")
+        assert direct_links == ["https://example.com/job/3"]
+    finally:
+        service.close()
+
+
+def test_browser_service_has_empty_required_inputs_heuristica_3c(temp_session_dir):
+    """
+    Valida a Heuristica 3C completa contra cenarios reais de formularios no Chromium:
+    - Campos obrigatorios vazios visiveis -> True
+    - Campos obrigatorios invisiveis/hidden -> False
+    - Checkbox/Radio/Textarea/Select obrigatórios
+    - Formulario 100% preenchido -> False
+    """
+    service = BrowserService(
+        platform="test_3c",
+        headless=True,
+        channel="chromium",
+        session_root_dir=temp_session_dir,
+    )
+    service.start_session()
+    try:
+        page = service.get_page()
+
+        # Cenario 1: Modal nao existe ou esta invisivel
+        page.set_content("<html><body><div id='outro'>Sem modal</div></body></html>")
+        assert service.has_empty_required_inputs("#modal") is False
+
+        # Cenario 2: Modal com input text obrigatorio vazio visivel -> DEVE RETORNAR True
+        page.set_content("""
+        <div id="modal" style="display: block;">
+            <input id="name" type="text" required value="" />
+        </div>
+        """)
+        assert service.has_empty_required_inputs("#modal") is True
+
+        # Cenario 3: Modal com input text obrigatorio preenchido -> DEVE RETORNAR False
+        page.set_content("""
+        <div id="modal" style="display: block;">
+            <input id="name" type="text" required value="Nicolas Dev" />
+        </div>
+        """)
+        assert service.has_empty_required_inputs("#modal") is False
+
+        # Cenario 4: Input obrigatorio porem INVISIVEL (display: none) -> DEVE RETORNAR False
+        page.set_content("""
+        <div id="modal" style="display: block;">
+            <input id="hidden_req" type="text" required style="display: none;" value="" />
+        </div>
+        """)
+        assert service.has_empty_required_inputs("#modal") is False
+
+        # Cenario 5: Textarea obrigatorio vazio -> DEVE RETORNAR True
+        page.set_content("""
+        <div id="modal" style="display: block;">
+            <textarea required></textarea>
+        </div>
+        """)
+        assert service.has_empty_required_inputs("#modal") is True
+
+        # Cenario 6: Select obrigatorio com option vazia selecionada -> DEVE RETORNAR True
+        page.set_content("""
+        <div id="modal" style="display: block;">
+            <select required>
+                <option value="">Selecione...</option>
+                <option value="1">Opcao 1</option>
+            </select>
+        </div>
+        """)
+        assert service.has_empty_required_inputs("#modal") is True
+
+        # Cenario 7: Select obrigatorio com opcao valida selecionada -> DEVE RETORNAR False
+        page.set_content("""
+        <div id="modal" style="display: block;">
+            <select required>
+                <option value="1" selected>Opcao 1</option>
+            </select>
+        </div>
+        """)
+        assert service.has_empty_required_inputs("#modal") is False
+
+        # Cenario 8: Grupo de radio obrigatorio sem selecao -> DEVE RETORNAR True
+        page.set_content("""
+        <div id="modal" style="display: block;">
+            <input type="radio" name="experience" value="yes" required />
+            <input type="radio" name="experience" value="no" />
+        </div>
+        """)
+        assert service.has_empty_required_inputs("#modal") is True
+
+        # Cenario 9: Grupo de radio obrigatorio com uma opcao selecionada -> DEVE RETORNAR False
+        page.set_content("""
+        <div id="modal" style="display: block;">
+            <input type="radio" name="experience" value="yes" required checked />
+            <input type="radio" name="experience" value="no" />
+        </div>
+        """)
+        assert service.has_empty_required_inputs("#modal") is False
+
+        # Cenario 10: aria-required="true" vazio -> DEVE RETORNAR True
+        page.set_content("""
+        <div id="modal" style="display: block;">
+            <input type="text" aria-required="true" value="" />
+        </div>
+        """)
+        assert service.has_empty_required_inputs("#modal") is True
+
+    finally:
+        service.close()
+
+
+def test_browser_service_click_and_visibility(temp_session_dir):
+    """Valida metodos click_element e is_visible com DOM interativo real."""
+    service = BrowserService(
+        platform="test_click",
+        headless=True,
+        channel="chromium",
+        session_root_dir=temp_session_dir,
+    )
+    service.start_session()
+    try:
+        page = service.get_page()
+        html = """
+        <html>
+            <body>
+                <button id="btn" onclick="document.getElementById('status').innerText = 'Clicado';">Enviar</button>
+                <div id="status">Aguardando</div>
+                <div id="invisivel" style="display: none;">Escondido</div>
+            </body>
+        </html>
+        """
+        page.set_content(html)
+
+        # Checagem de visibilidade
+        assert service.is_visible("#btn") is True
+        assert service.is_visible("#invisivel", timeout=500) is False
+        assert service.is_visible("#inexistente", timeout=500) is False
+
+        # Clique funcional
+        clicked = service.click_element("#btn")
+        assert clicked is True
+
+        status_text = page.locator("#status").inner_text()
+        assert status_text == "Clicado"
+
+        # Clique em elemento inexistente
+        assert service.click_element("#btn_inexistente", timeout=500) is False
+    finally:
+        service.close()
+
+
 def test_main_cli_execution():
-    """Valida teste de fumaca do CLI sincrono python -m src.main."""
+    """Valida execucao e integracao do CLI sincrono python -m src.main."""
     result = subprocess.run(
         [sys.executable, "-m", "src.main"],
         capture_output=True,
@@ -75,5 +314,5 @@ def test_main_cli_execution():
         },
     )
     assert result.returncode == 0
-    assert "AIHawk v0.1 - Inicializando Infraestrutura Stealth (Sync)" in result.stdout
+    assert "AIHawk v0.5 - Motor de Candidaturas Easy Apply Seco" in result.stdout
     assert "Sessao encerrada com sucesso." in result.stdout

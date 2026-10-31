@@ -106,3 +106,266 @@ class BrowserService:
             except Exception:
                 pass
             self.playwright = None
+
+    def navigate(self, url: str, timeout: int = 30000, wait_until: str = "load") -> bool:
+        """
+        Navega de forma sincrona para a URL especificada utilizando a pagina ativa.
+        Retorna True em caso de sucesso ou False em caso de falha/timeout.
+        """
+        try:
+            page = self.get_page()
+            page.goto(url, timeout=timeout, wait_until=wait_until)
+            return True
+        except Exception as e:
+            print(f"[BrowserService.navigate] Falha ao navegar para {url}: {e}")
+            return False
+
+    def scroll_container(self, container_selector: str, steps: int = 5, delay: float = 0.5) -> bool:
+        """
+        Executa scroll incremental dentro de um container com overflow (para lazy loading de vagas).
+        Retorna True se o container existir e for rolado; False caso contrario.
+        """
+        try:
+            page = self.get_page()
+            locator = page.locator(container_selector).first
+            if locator.count() == 0 or not locator.is_visible():
+                return False
+
+            for _ in range(steps):
+                locator.evaluate(
+                    """
+                    (el) => {
+                        const delta = el.clientHeight || 500;
+                        el.scrollTop += delta;
+                    }
+                    """
+                )
+                page.wait_for_timeout(int(delay * 1000))
+            return True
+        except Exception as e:
+            print(f"[BrowserService.scroll_container] Erro ao rolar container {container_selector}: {e}")
+            return False
+
+    def scroll_container_to_end(self, container_selector: str, steps: int = 5, delay: float = 0.5) -> None:
+        """
+        Rola o container ate o final (implementacao exigida pelo BrowserPort do Claude).
+        """
+        self.scroll_container(container_selector, steps=steps, delay=delay)
+
+    def extract_links(self, card_selector: str, link_selector: str = "a") -> List[str]:
+        """
+        Extrai URLs unicas (absolutas) dos cards de vagas presentes no DOM atual.
+        Preserva a ordem de aparicao e remove duplicadas.
+        """
+        try:
+            page = self.get_page()
+            raw_links = page.evaluate(
+                """
+                ({ cardSel, linkSel }) => {
+                    const cards = document.querySelectorAll(cardSel);
+                    const links = [];
+                    cards.forEach(card => {
+                        // Se o proprio card e um link com href
+                        if (card.matches(linkSel) && card.href) {
+                            links.push(card.href);
+                            return;
+                        }
+                        // Busca o elemento de link interno
+                        const linkEl = card.querySelector(linkSel);
+                        if (linkEl && linkEl.href) {
+                            links.push(linkEl.href);
+                        }
+                    });
+                    return links;
+                }
+                """,
+                {"cardSel": card_selector, "linkSel": link_selector},
+            )
+
+            seen = set()
+            unique_links: List[str] = []
+            for link in raw_links:
+                cleaned = str(link).strip()
+                if cleaned and cleaned not in seen:
+                    seen.add(cleaned)
+                    unique_links.append(cleaned)
+
+            return unique_links
+        except Exception as e:
+            print(f"[BrowserService.extract_links] Erro ao extrair links com {card_selector}: {e}")
+            return []
+
+    def extract_job_cards(self, card_selector: str) -> List[Dict[str, str]]:
+        """
+        Extrai cards completos com url, title e company conforme exigido pelo BrowserPort.
+        """
+        try:
+            page = self.get_page()
+            cards_data = page.evaluate(
+                """
+                (cardSel) => {
+                    const cards = document.querySelectorAll(cardSel);
+                    const result = [];
+                    cards.forEach(card => {
+                        const linkEl = card.matches('a') ? card : card.querySelector('a');
+                        const url = linkEl ? linkEl.href : '';
+                        
+                        const titleEl = card.querySelector('.job-card-list__title, .base-search-card__title, h3, h4, .title');
+                        const title = titleEl ? titleEl.innerText.trim() : (linkEl ? linkEl.innerText.trim() : 'Vaga');
+
+                        const companyEl = card.querySelector('.job-card-container__primary-description, .base-search-card__subtitle, .company');
+                        const company = companyEl ? companyEl.innerText.trim() : 'Empresa';
+
+                        if (url) {
+                            result.push({ url, title, company });
+                        }
+                    });
+                    return result;
+                }
+                """,
+                card_selector,
+            )
+            return cards_data or []
+        except Exception as e:
+            print(f"[BrowserService.extract_job_cards] Erro ao extrair cards: {e}")
+            return []
+
+    def has_empty_required_inputs(self, modal_selector: str) -> bool:
+        """
+        Heuristica 3C (Inspetor Previo de Inputs no DOM):
+        Inspeciona no container do modal APENAS elementos visiveis procurando:
+        - input[required] ou [aria-required="true"] vazio (exceto radio/checkbox/submit/button/hidden)
+        - input[type="checkbox"] obrigatorio nao marcado
+        - grupos de input[type="radio"] obrigatorios sem nenhuma opcao :checked
+        - textarea[required] ou [aria-required="true"] vazio
+        - select[required] ou [aria-required="true"] sem opcao valida selecionada
+
+        Retorna True se detectar QUALQUER campo obrigatorio vazio (complexidade alta); False caso contrario.
+        """
+        try:
+            page = self.get_page()
+            modal_locator = page.locator(modal_selector).first
+            if modal_locator.count() == 0 or not modal_locator.is_visible():
+                return False
+
+            has_empty = modal_locator.evaluate(
+                """
+                (modal) => {
+                    const isVisible = (el) => {
+                        if (!el) return false;
+                        if (el.checkVisibility) {
+                            return el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true });
+                        }
+                        const style = window.getComputedStyle(el);
+                        return (
+                            el.offsetParent !== null &&
+                            style.display !== 'none' &&
+                            style.visibility !== 'hidden' &&
+                            style.opacity !== '0'
+                        );
+                    };
+
+                    // 1. Text inputs, email, tel, number, url, search, password
+                    const textInputs = modal.querySelectorAll('input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="radio"]):not([type="checkbox"])');
+                    for (const inp of textInputs) {
+                        const isRequired = inp.hasAttribute('required') || inp.getAttribute('aria-required') === 'true';
+                        if (isRequired && isVisible(inp)) {
+                            if (!inp.value || inp.value.trim() === '') {
+                                return true;
+                            }
+                        }
+                    }
+
+                    // 2. Checkboxes obrigatorios
+                    const checkboxes = modal.querySelectorAll('input[type="checkbox"]');
+                    for (const cb of checkboxes) {
+                        const isRequired = cb.hasAttribute('required') || cb.getAttribute('aria-required') === 'true';
+                        if (isRequired && isVisible(cb) && !cb.checked) {
+                            return true;
+                        }
+                    }
+
+                    // 3. Grupos de Radio obrigatorios
+                    const radios = modal.querySelectorAll('input[type="radio"]');
+                    const radioGroups = new Map();
+                    for (const rd of radios) {
+                        const name = rd.getAttribute('name') || 'unnamed';
+                        if (!radioGroups.has(name)) {
+                            radioGroups.set(name, []);
+                        }
+                        radioGroups.get(name).push(rd);
+                    }
+
+                    for (const [name, group] of radioGroups.entries()) {
+                        const isGroupRequired = group.some(rd => rd.hasAttribute('required') || rd.getAttribute('aria-required') === 'true');
+                        const anyVisible = group.some(rd => isVisible(rd));
+                        if (isGroupRequired && anyVisible) {
+                            const anyChecked = group.some(rd => rd.checked);
+                            if (!anyChecked) {
+                                return true;
+                            }
+                        }
+                    }
+
+                    // 4. Textareas
+                    const textareas = modal.querySelectorAll('textarea');
+                    for (const ta of textareas) {
+                        const isRequired = ta.hasAttribute('required') || ta.getAttribute('aria-required') === 'true';
+                        if (isRequired && isVisible(ta)) {
+                            if (!ta.value || ta.value.trim() === '') {
+                                return true;
+                            }
+                        }
+                    }
+
+                    // 5. Selects
+                    const selects = modal.querySelectorAll('select');
+                    for (const sel of selects) {
+                        const isRequired = sel.hasAttribute('required') || sel.getAttribute('aria-required') === 'true';
+                        if (isRequired && isVisible(sel)) {
+                            if (sel.selectedIndex === -1 || !sel.value || sel.value.trim() === '') {
+                                return true;
+                            }
+                        }
+                    }
+
+                    return false;
+                }
+                """
+            )
+            return bool(has_empty)
+        except Exception as e:
+            print(f"[BrowserService.has_empty_required_inputs] Erro ao inspecionar modal {modal_selector}: {e}")
+            return False
+
+    def click_element(self, selector: str, timeout: int = 5000) -> bool:
+        """
+        Tenta clicar em um elemento de forma segura (espera estar visivel).
+        Retorna True se clicou com sucesso; False em caso de timeout ou erro.
+        """
+        try:
+            page = self.get_page()
+            locator = page.locator(selector).first
+            locator.wait_for(state="visible", timeout=timeout)
+            locator.click(timeout=timeout)
+            return True
+        except Exception as e:
+            print(f"[BrowserService.click_element] Nao foi possivel clicar em {selector}: {e}")
+            return False
+
+    def is_visible(self, selector: str, timeout: int = 3000) -> bool:
+        """
+        Verifica se um seletor esta visivel na pagina dentro do timeout estipulado.
+        """
+        try:
+            page = self.get_page()
+            locator = page.locator(selector).first
+            locator.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
+    # Aliases de conveniencia para maxima interoperabilidade com AppService / BrowserPort
+    open_url = navigate
+    element_exists = is_visible
+    click = click_element
