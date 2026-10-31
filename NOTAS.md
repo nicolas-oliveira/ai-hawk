@@ -6,30 +6,15 @@ Fonte unica de verdade para a coordenacao assincrona entre Agy e Claude.
 
 ## 📬 COMUNICADO OFICIAL ATIVO NO TOPO (TURNO ATUAL)
 
-TURNO: CLAUDE
-**DE:** Agy (QA / Runtime & Infraestrutura)  
-**PARA:** Claude (Dev / Arquitetura e Domínio), Nicolas (PO), Argon (Tech Lead / Auditora)  
-**ASSUNTO:** Suíte Externa Blindada Contra Falsos Positivos, Entrypoint com SELECTOR_PROFILES e Handoff  
-**TURNO:** Claude (Passo 6: Implementação dos perfis no DTO e testes finais pré-PR)  
-**DATA/HORA:** 2026-10-31T08:12-03:00  
-**STATUS:** [PRONTO] Suíte externa hostil 100% verde (2 passed no Patchright real).
-
-### Mecânica Anti-Trapaça e Blindagem Contra Falsos Positivos:
-1. **Asserção Negativa Estrita (Zero Honeypots Acionados):**
-   - O teste E2E (`tests/real/external/test_navigation_hostile.py`) monitora ativamente nós de armadilha no DOM (`[data-testid="honeypot-compromised"]`) e no `sessionStorage`.
-   - Se o motor interagir com botões ou inputs ocultos (`display: none`, `opacity: 0`, `left: -9999px`) ou tentar fazer bypass forçado no Overlay intrusivo `z-[90]`, o teste **falha imediatamente**.
-2. **Asserção de Estado Real:**
-   - O teste só aprova se a tela final de sucesso do modal for montada no DOM (`[data-testid="modal-submission-success"]`) com a mensagem `"Candidatura enviada com sucesso!"`.
-3. **Validação da Regra 3C contra Chaos DOM:**
-   - Testa fluxo com múltiplas vagas: Vaga 1 simples (candidatura submetida com sucesso) e Vaga 2 complexa (textarea obrigatório no passo 2 descartada com segurança como `SKIPPED_COMPLEX` sem preencher campos invisíveis).
-4. **Amarração do Entrypoint (`src/main.py`) e `.env.example`:**
-   - `main.py` agora lê `PLATFORM` via `.env`, busca o perfil no dicionário `SELECTOR_PROFILES` do DTO e levanta `ValueError` explícito se a plataforma não existir.
+**DE/PARA/TURNO:** Claude -> Agy (Nicolas, Argon cientes) | Turno: Agy | 2026-10-31
+**STATUS:** [PEDIDO] Hostil 2 FAILED por falta de 2 metodos de infra: `click_if_present` e `wait_until_gone` (AttributeError no BrowserService).
+**ACEITE/RESUMO:** Entregue: queries booleanas, SELECTOR_PROFILES (linkedin/orangehrm/linkedin_clone), repasse de titulo/empresa, espera dinamica de loader/overlay. Rápida+infra 56 passed; hostil fica verde quando os 2 metodos existirem.
 
 ---
 
 ## 1. Estado Atual da Squad
 
-* **Turno Atual:** Claude (Definição dos perfis em `SELECTOR_PROFILES`, repasse de `job_card_title`/`company` e validação pré-PR).
+* **Turno Atual:** Agy (implementar `click_if_present` e `wait_until_gone` no BrowserService; depois rodar o teste hostil).
 * **Versao Consolidada da Aplicacao:** NENHUMA (`master` = `first commit`; sem tag nem PR). A v0.1/v0.5 so existem apos PR aprovado.
 * **Versoes:** v0.1 = so uma TAG historica local em `b4a33ca` (sem PR, sem branch; nao empurrada). Estaveis intermediarias sem tag: v0.6 `8f32943`, v0.7 `bce92f1`. PR unico previsto: v1.0 ("Release v1.0: AIHawk MVP Operacional").
 * **Versao Alvo da Squad:** `v1.0` (AIHawk MVP Operacional).
@@ -75,6 +60,10 @@ TURNO: CLAUDE
 
 ## 4. Historico de Handoffs
 
+* [2026-10-31] [PEDIDO] [Claude -> Agy] `BrowserService.click_if_present(selector, timeout_ms) -> bool` (clica so se aparecer no prazo; ausencia NAO levanta) e `wait_until_gone(selector, timeout_ms) -> bool` (espera dinamica ate sumir/ocultar; elemento inexistente = True na hora). Sem sleep/wait_for_timeout; auto-waiting, timeouts 2-5 s.
+  Uso (AppService, so se o perfil define as chaves opcionais `overlay_dismiss`/`loading_indicator`): apos `open_url`, `click_if_present(overlay_dismiss, 3000)` e `wait_until_gone(loading_indicator, 5000)`. Log do hostil: overlay `[aria-label="Cookie and Premium Interception"]` permanece aberto e a lista volta 0 vagas.
+  Hipotese NAO validada: `overlay_dismiss` do clone = `[aria-label='Cookie and Premium Interception'] button`. Se o botao tiver outro rotulo, informe o aria-label (contrato, nao codigo). Cobertura de teste das funcoes novas (`AppService` + queries booleanas) e sua.
+* [2026-10-31] [PRONTO] [Claude] src/application - `build_boolean_keywords`/`build_linkedin_boolean_search_url` (OR/AND/NOT, termo com espaco entre aspas, aspas/parenteses rejeitados); `SELECTOR_PROFILES`; `extract_job_cards` recebe titulo/empresa do perfil. `orangehrm` NAO validado em DOM real; `linkedin_clone`: so `jobs_list_container` confirmado.
 * [2026-10-31] [PRONTO] [Agy] tests/real/external/, src/main.py, .env.example, NOTAS.md - Suite externa blindada contra falsos positivos e amarra entrypoint.
   Assercoes negativas anti-trapaca ativas (zero honeypots). Validado E2E real no Chromium (2 passed). Turno: Claude.
 * [2026-10-31] [PRONTO] [Agy] tests/real/linkedin_clone/app/page.js, NOTAS.md - Polimento do clone Next.js com lazy loading, overlays, honeypots e mutacao de wrappers.
