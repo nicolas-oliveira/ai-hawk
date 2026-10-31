@@ -65,7 +65,7 @@ Este projeto e desenvolvido simultaneamente por dois agentes (Antigravity e Clau
 
 ## 6. Roadmap de Versionamento e Criterios de Release (Git Tag)
 
-O Antigravity e o responsavel por validar a execucao no Ubuntu (QA). A tag Git de cada versao e criada pelo Claude (ou Nicolas) na `master`, SOMENTE apos a aprovacao e o merge do PR manual (`git tag -a v0.x -m "Release v0.x"`). O fluxo completo esta na Secao 7. Ninguem altera a `master` diretamente. A validacao exige 100% dos requisitos da respectiva versao passando nos testes:
+O Antigravity e o responsavel por validar a execucao no Ubuntu (QA). A tag Git de cada versao e criada pelo Nicolas na `master`, SOMENTE apos o merge do PR manual (`git tag -a v0.x -m "Release v0.x"`). Fluxo: Antigravity testa na branch de feature e avisa em `NOTAS.md` -> Nicolas faz o PR/merge na `master` -> Nicolas cria a tag. Ninguem altera a `master` diretamente. A validacao exige 100% dos requisitos da respectiva versao passando nos testes:
 
 * **v0.1 (Fundacao e Engine Stealth):** Configurar ambiente virtual, instalar `patchright` e `python-dotenv`, implementar `@src/infrastructure/browser_service.py` abrindo o Google Chrome nativo do Ubuntu com sessao persistente e validar navegacao basica via `@src/main.py`.
 * **v0.2 (Contratos, Dominio e CLI):** Integrar `@src/main.py` com `@src/application/app_controller.py`, `@src/application/dtos/search_request.py` e `@src/domain/entities/job.py` (desenvolvidos pelo Claude).
@@ -75,29 +75,13 @@ O Antigravity e o responsavel por validar a execucao no Ubuntu (QA). A tag Git d
 * **v0.6 (Cache Agnostico):** Persistir e consultar URLs processadas (`APPLIED`, `SKIPPED_COMPLEX`) para impedir reabertura de vagas em execucoes futuras.
 * **v1.0 (MVP Operacional):** Bateria de execucao estavel em lote com multiplas URLs estaticas, tratamento robusto de `TimeoutError` e relatorio final no terminal.
 
-## 7. Protocolo de Comunicacao, Git e Handoff (Definitivo)
+## 7. Protocolo de Comunicacao e Git
 
-1. **Branch Compartilhada Unica por Versao:**
-   * Padrao oficial de nome: `feat/v0.1-stealth-engine` (e `feat/v0.2-contracts`, etc. nas proximas).
-   * PROIBIDO criar branches por agente (`claude/*` ou `agy/*`). Como ambos operam no mesmo diretorio fisico (`/home/nicolas/Projects/github/2026/aihalk`), apenas o Agy executa `git checkout -b feat/v0.x-...` a partir da `master`. O Claude trabalha diretamente nessa mesma branch ativa.
-2. **Proibicao Estrita de `git add .`:**
-   * Agy so pode executar `git add` em: `.gitignore`, `.env.example` (nunca `.env`), `requirements.txt`, `src/main.py`, `src/infrastructure/` e `NOTAS.md`.
-   * Claude so pode executar `git add` em: `src/domain/`, `src/application/` e `NOTAS.md`.
-   * NUNCA use `git add .` ou `git commit -a`. Sempre rode `git status` antes de commitar.
-   * Prefixo obrigatorio de commit: `[Agy] v0.x: <descricao>` ou `[Claude] v0.x: <descricao>`.
-3. **Esteira de Trabalho da Squad (TDD/QA-First: QA -> Dev -> QA -> PR):**
-   * **Passo 1 (Inicio e Planejamento - Agy):** O Agy SEMPRE recebe a demanda da versao primeiro. Ele cria a branch a partir da `master` (`git checkout -b feat/v0.x-...`) e planeja os testes esperados/ideais, registrando o plano de testes no `NOTAS.md` ou nos scripts de infraestrutura.
-   * **Passo 2 (Desenvolvimento - Claude):** O Claude le o plano de testes do Agy e cria a primeira versao do codigo (camadas de `domain/` e `application/`) estritamente para fazer os testes passarem. (Na v0.1, por ser infra pura, o passo de codigo e executado pelo Agy).
-   * **Passo 3 (Execucao de Testes - Agy):** O Agy executa o codigo no ambiente real (Ubuntu/Patchright).
-   * **Passo 4 (Resolucao de Conflitos - Loop QA vs Dev):**
-     - Se houver erro, o Agy relata o traceback no `NOTAS.md`.
-     - O Agy verifica: o erro esta no design do teste ou na infraestrutura? Se sim, o **Agy** corrige.
-     - Se o teste esta correto e o erro e de logica de negocio, o **Claude** corrige o codigo.
-     - O Agy testa novamente ate a aprovacao tecnica de 100%.
-   * **Passo 5 (Revisao Humana):** Nicolas e Argon (Humanos) verificam os arquivos e realizam testes manuais.
-   * **Passo 6 (Entrega Final - Claude):** SOMENTE APOS a aprovacao de Nicolas e Argon, o **Claude** assume o Git para fechamento: cria o Pull Request para a `master` (ex: via `gh pr create` ou instrucoes passo a passo), aguarda o merge manual pelo Nicolas, atualiza a `master` local (`git checkout master && git pull`) e cria a tag estavel (`git tag -a v0.x -m "Release v0.x"`).
-4. **Decisao de Infraestrutura v0.1 Aprovada:**
-   * Fica aprovado o uso do Chromium stealth nativo do Patchright (`patchright install chromium` / `BROWSER_CHANNEL=chromium` com fallback para `chrome`) conforme diagnosticado pelo Agy no Ubuntu 24.04.
+* Toda comunicacao entre agentes passa por `NOTAS.md` (pedidos de contrato, handoffs, tracebacks). Uma entrada por evento, com data, autor e arquivo afetado.
+* Pedido de capacidade nova no navegador: o Claude define a assinatura do metodo e registra o pedido; o Antigravity implementa em `browser_service.py`.
+* Falha de teste em `src/application/` ou `src/domain/`: o Antigravity registra o traceback exato; o Claude corrige.
+* Branches por agente e feature (`claude/<feature>`, `agy/<feature>`). Commits atomicos, com o agente identificado na mensagem.
+* A `master` so recebe merge via PR manual do Nicolas.
 
 ## 8. Ambiente
 
