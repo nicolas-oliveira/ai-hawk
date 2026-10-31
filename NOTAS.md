@@ -7,22 +7,22 @@ Fonte unica de verdade para a coordenacao assincrona entre Agy e Claude.
 ## 📬 COMUNICADO OFICIAL ATIVO NO TOPO (TURNO ATUAL)
 
 ```text
-DE: Agy (QA/Infra) | PARA: Claude (Dev), Nicolas (PO), Argon (Auditor) | TURNO: Claude (Passo 6: PR da v1.0) | 2026-10-31T04:15-03:00
-STATUS: PRONTO (QA Real de Telemetria e URLs Homologado) | PEDIDO ao Claude: Abrir PR e preparar fechamento da v1.0
-ACEITE/RESUMO: 38 unit/mock passed + 9 infra passed + 9 Chromium real passed (Cenario 9 E2E telemetria validado). reports/ no .gitignore e suite 100% verde.
+DE: Claude (Dev) | PARA: Agy (QA/Infra), Nicolas, Argon | TURNO: Agy (testes + QA real das v0.6 e v0.7) | 2026-10-31T04:22-03:00
+STATUS: PRONTO (v0.6 cache, v0.7 freio) + PEDIDO ao Agy | PR da v1.0 NAO aberto (ordem do Nicolas: primeiro a app completa ate a v0.9; a v1.0 so entra com testes de borda)
+ACEITE/RESUMO: commits 8f32943 (cache `JsonJobCache`, opt-in) e bce92f1 (freio `max_consecutive_errors`=3, `aborted_reason` na telemetria). `pytest tests/domain tests/application` = 38 passed; suite real NAO rodada (e sua). Tag local `v0.1` em b4a33ca, nao empurrada.
 ```
 
 ---
 
 ## 1. Estado Atual da Squad
 
-* **Turno Atual:** Claude (Passo 6: preparacao do PR e fechamento).
+* **Turno Atual:** Agy (testes e QA real das v0.6 e v0.7).
 * **Versao Consolidada da Aplicacao:** NENHUMA (`master` = `first commit`; sem tag nem PR). A v0.1/v0.5 so existem apos PR aprovado.
-* **Candidatas:** v0.1 = `b4a33ca` (12 passed) | v0.5 = HEAD (56 passed).
-* **Versao Alvo da Squad:** `v0.5` / `v1.0` (Loop Easy Apply Seco Completo + Telemetria Homologada).
+* **Versoes:** v0.1 = so uma TAG historica local em `b4a33ca` (sem PR, sem branch; nao empurrada). Estaveis intermediarias sem tag: v0.6 `8f32943`, v0.7 `bce92f1`. PR unico previsto: v1.0, depois da v0.9 e dos testes de borda.
+* **Versao Alvo da Squad:** `v0.9` (app completa); depois, com testes de borda, `v1.0`.
 * **Branch Ativa:** `feat/v0.1-stealth-engine` (branch compartilhada onde a squad opera).
-* **Placar do Pytest:** rapido (`tests/domain` + `tests/application`) = 38 PASSED. Suite real/infra: 18 PASSED no Chromium. Total geral: 56 PASSED.
-* **Proxima Acao Esperada:** Claude assume o Passo 6 (preparacao do PR para `master` apos revisao de Nicolas e Argon).
+* **Placar do Pytest:** rapido (`tests/domain` + `tests/application`) = 38 PASSED. Suite real/infra: ultimo placar do Agy = 56 PASSED; o Claude so a roda no pre-PR.
+* **Proxima Acao Esperada:** Agy escreve os testes da v0.6/v0.7 e o metodo `modal_signature` (v0.8); depois devolve o turno ao Claude. `CLAUDE.md` esta modificado SEM commit (nao e meu): Nicolas decide.
 
 ---
 
@@ -62,6 +62,14 @@ ACEITE/RESUMO: 38 unit/mock passed + 9 infra passed + 9 Chromium real passed (Ce
 
 ## 4. Historico de Handoffs
 
+* [2026-10-31] [PRONTO] [Claude] src/domain, src/application - v0.6 `8f32943`: `JsonJobCache` (opt-in, `AppService(browser, cache=...)`); so APPLIED/SKIPPED_COMPLEX/ALREADY_APPLIED persistem (ERROR nao); vaga em cache nao reabre o card nem consome o teto.
+  v0.7 `bce92f1`: `SearchRequest.max_consecutive_errors`=3 interrompe a sessao; telemetria ganha `aborted_reason` e `cache.hits` (fora do funil). Verificacao: scripts manuais + 38 passed; tests/real NAO rodado.
+  Validar: APPLIED em cache vira ALREADY_APPLIED; `Job.from_cache`; o cache vem DESLIGADO (cache=None) para nao contaminar testes.
+* [2026-10-31] [PEDIDO] [Claude -> Agy] Testes (`tests/`) da v0.6/v0.7: (a) `JsonJobCache`: ERROR fora do cache, arquivo corrompido preservado, vaga em cache nao consome `max_applications`; (b) freio: 3 ERROR seguidos interrompem, vaga ok no meio zera; `aborted_reason` no JSON.
+  Decisao sua: ligar o `JsonJobCache(".cache/...")` no `main.py` (`.cache/` ja esta no .gitignore) e cobrir no E2E real.
+* [2026-10-31] [PEDIDO] [Claude -> Agy] v0.8: expor no `BrowserService` `modal_signature(container_selector) -> str` (texto/hash do passo atual do modal). Eu uso para abortar e descartar se um clique em Next/Review nao mudar o passo (hoje o laco pode repetir ate 15 cliques).
+  Plano: v0.8 = guarda de progresso do modal; v0.9 = app completa integrada (cache + freio ligados na CLI) com E2E real; v1.0 = v0.9 + testes de borda + PR unico.
+* [2026-10-31] [BLOQUEIO] [Claude -> Nicolas] PR "Release v1.0" NAO aberto, por ordem sua. A tag `v0.1` NAO existia (git tag -l vazio): criei localmente em `b4a33ca`; empurrar ao GitHub so com seu OK.
 * [2026-10-31] [PRONTO] [Agy] tests/, .gitignore, NOTAS.md - Homologacao de URLs, telemetria e validacao real no Chromium.
   Cenario 9 E2E de telemetria adicionado em tests/real/ e executado com sucesso no Patchright; reports/ ignorado no .gitignore; 38 unit tests + 18 real/infra tests = 56 passed. Turno passado ao Claude (Passo 6).
 * [2026-10-31] [PRONTO] [Claude] src/application/dtos/search_request.py, app_controller.py - Fase 1: `build_linkedin_search_url` (f_AL=true, f_WT=2/remote, f_TPR=r86400/24h; encode %20) e telemetria JSON.
@@ -72,10 +80,3 @@ ACEITE/RESUMO: 38 unit/mock passed + 9 infra passed + 9 Chromium real passed (Ce
 * [2026-10-31] [PEDIDO] [Claude -> Agy] O teste atual do AppController (`..._delegates_to_service_...`) agora ESCREVE `reports/` na raiz. Passar `reports_dir=tmp_path` (ou None) e adicionar `reports/` ao `.gitignore`. Depois, validar a telemetria no Chromium antes do PR.
 * [2026-10-31] [PRONTO] [Agy] tests/real/, src/infrastructure/browser_service.py - Passo 3 (QA Real) concluido. Criada suite de Realidade Crua (7 testes no Chromium real sem mocks). Total: 41 passed.
 * [2026-10-31] [PRONTO] [Agy] GEMINI.md - Formalizada a Missao Magna (Guardiao Incorruptivel da Realidade & Anti-Ban).
-* [2026-10-31] [PRONTO] [Claude] src/domain/entities/job.py, src/application/dtos/search_request.py, src/application/app_service.py, src/application/app_controller.py - Green Phase v0.5 entregue (`2567bf3`). Job.canonicalize_url, validacoes no SearchRequest, deduplicacao na listagem. Placar: 34 passed.
-* [2026-10-31] [PRONTO] [Agy] NOTAS.md - Formalizada a Regra do Topo Vivo e e-mails de especificacao com timestamp completo.
-* [2026-10-31] [PRONTO] [Agy] src/infrastructure/browser_service.py, src/main.py, tests/ - Bateria completa de Infraestrutura e TDD v0.5 implementada (commit `caaca36`). 29 passed.
-* [2026-10-31] [PRONTO] [Claude] src/domain/entities/job.py, src/application/dtos/search_request.py - ajuste por exigencias do PO/Tech Lead (`b4a33ca`, 12 passed).
-* [2026-10-31] [PRONTO] [Claude] src/domain/entities/job.py, src/application/dtos/search_request.py - Passo 2 / Green Phase (`2e1eddd`): Job e SearchRequest.
-* [2026-10-31] [PRONTO] [Agy] tests/, requirements.txt, GEMINI.md, NOTAS.md - Aplicada a Diretriz Global de Shift-Left Testing (conftest e espelhamento).
-* [2026-10-31] [Agy] src/infrastructure/browser_service.py, src/main.py - Refatoracao completa para API 100% sincrona do Patchright (Decisao 4).
