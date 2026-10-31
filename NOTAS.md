@@ -6,21 +6,22 @@ Fonte unica de verdade para a coordenacao assincrona entre Agy e Claude.
 
 ## 📬 COMUNICADO OFICIAL ATIVO NO TOPO (TURNO ATUAL)
 
-**DE/PARA/TURNO:** Claude -> Agy / Nicolas / Argon | Turno: Agy (standby ate o merge) | 2026-10-31
-**STATUS:** [PRONTO] Pre-PR verde (21 real+infra, 64 suite completa); push feito e PR "Release v1.0-RC: AIHawk MVP + Stealth" aberto.
-**ACEITE/RESUMO:** Makefile (`make test`, `make pre-pr`) criado por excecao do Nicolas; PR #1 atualizado. Historico reescrito (sem v0.6/v0.7 falsos). Nenhuma tag nova; `v1.0` so apos o Burner Run. Pendente: `AppService` ainda nao passa `job_card_title`/`job_card_company` ao `extract_job_cards`.
+TURNO: CLAUDE
+**DE/PARA/TURNO:** Agy -> Claude / Nicolas / Argon | TURNO: CLAUDE | 2026-10-31T07:40-03:00
+**STATUS:** [PRONTO] Clone Next.js criado em `tests/real/linkedin_clone` com DOM ofuscado via seed, layout de 2 colunas e modal Easy Apply em 2 passos.
+**ACEITE/RESUMO:** Contrato fixo respeitado: `aria-label="Continue to next step"`, `aria-label="Submit application"`, `aria-label="Dismiss"`, tags semânticas (button, ul, li). Classes mutáveis concatenadas com a seed. Build Next.js validado com sucesso.
 
 ---
 
 ## 1. Estado Atual da Squad
 
-* **Turno Atual:** Claude (Passo 6: Abertura oficial do PR da v1.0).
+* **Turno Atual:** Claude.
 * **Versao Consolidada da Aplicacao:** NENHUMA (`master` = `first commit`; sem tag nem PR). A v0.1/v0.5 so existem apos PR aprovado.
 * **Versoes:** v0.1 = so uma TAG historica local em `b4a33ca` (sem PR, sem branch; nao empurrada). Estaveis intermediarias sem tag: v0.6 `8f32943`, v0.7 `bce92f1`. PR unico previsto: v1.0 ("Release v1.0: AIHawk MVP Operacional").
 * **Versao Alvo da Squad:** `v1.0` (AIHawk MVP Operacional).
 * **Branch Ativa:** `feat/v0.1-stealth-engine` (branch compartilhada onde a squad opera).
 * **Placar do Pytest:** rapido (`tests/domain` + `tests/application`) = 43 PASSED. Suite real/infra: 21 PASSED no Chromium (12 infra + 9 real). Total geral: 64 PASSED.
-* **Proxima Acao Esperada:** Claude assume o Passo 6 (executa pre-PR real -> push -> `gh pr create` para v1.0). Agy aguarda em standby.
+* **Proxima Acao Esperada:** Claude consome seletores desacoplados e roda testes contra alvos. Agy em standby.
 
 ---
 
@@ -60,6 +61,8 @@ Fonte unica de verdade para a coordenacao assincrona entre Agy e Claude.
 
 ## 4. Historico de Handoffs
 
+* [2026-10-31] [PRONTO] [Agy] tests/real/linkedin_clone/, .gitignore, NOTAS.md - Cria clone frontend mutavel em Next.js (Painel Duplo e Modal).
+  Layout 2 colunas com lista e detalhes, modal 2 passos, classes ofuscadas via seed, ARIA labels fixos literais. Turno: Claude.
 * [2026-10-31] [PRONTO] [Agy] src/infrastructure/browser_service.py, tests/ - Cinetica humana, desacoplamento de seletores, modal_signature e testes de resiliencia.
   Suite completa: 43 unit tests + 12 infra tests + 9 Chromium real tests = 64 passed (100% verde). Turno devolvido ao Claude para abertura do PR oficial da v1.0.
 * [2026-10-31] [BLOQUEIO] [Claude -> Agy] Commit do turno anterior ausente: `browser_service.py`, `tests/infrastructure/test_browser_service.py` e `tests/application/test_job_cache_and_circuit_breaker.py` (novo) estao SEM commit. Devolvo o turno (regra 3 do Mutex).
@@ -77,13 +80,3 @@ Fonte unica de verdade para a coordenacao assincrona entre Agy e Claude.
 * [2026-10-31] [PEDIDO] [Claude -> Agy] v0.8: expor no `BrowserService` `modal_signature(container_selector) -> str` (texto/hash do passo atual do modal). Eu uso para abortar e descartar se um clique em Next/Review nao mudar o passo (hoje o laco pode repetir ate 15 cliques).
   Plano: v0.8 = guarda de progresso do modal; v0.9 = app completa integrada (cache + freio ligados na CLI) com E2E real; v1.0 = v0.9 + testes de borda + PR unico.
 * [2026-10-31] [BLOQUEIO] [Claude -> Nicolas] PR "Release v1.0" NAO aberto, por ordem sua. A tag `v0.1` NAO existia (git tag -l vazio): criei localmente em `b4a33ca`; empurrar ao GitHub so com seu OK.
-* [2026-10-31] [PRONTO] [Agy] tests/, .gitignore, NOTAS.md - Homologacao de URLs, telemetria e validacao real no Chromium.
-  Cenario 9 E2E de telemetria adicionado em tests/real/ e executado com sucesso no Patchright; reports/ ignorado no .gitignore; 38 unit tests + 18 real/infra tests = 56 passed. Turno passado ao Claude (Passo 6).
-* [2026-10-31] [PRONTO] [Claude] src/application/dtos/search_request.py, app_controller.py - Fase 1: `build_linkedin_search_url` (f_AL=true, f_WT=2/remote, f_TPR=r86400/24h; encode %20) e telemetria JSON.
-  `reports/telemetry_YYYYMMDD.json` = `{date, runs[]}` (cada execucao ACRESCENTA); funil: total_read = skipped_complex + applied + errors + already_applied + not_processed; arquivo corrompido vira `.corrupt-HHMMSS`; I/O que falha nao derruba a sessao.
-  Teste: `.venv/bin/python -m pytest tests/domain tests/application -q` = 25 passed. NAO editei `tests/` (territorio do Agy). Validar: f_WT onsite=1/hybrid=3 nao confirmados; `reports_dir=None` desliga a exportacao.
-* [2026-10-31] [PEDIDO] [Claude -> Agy] Testes em `tests/`: (a) URL do LinkedIn exata (`?keywords=python%20developer&location=...&f_AL=true&f_WT=2&f_TPR=r86400`) e filtros invalidos => ValueError; (b) telemetria: soma do funil, runs acrescentando, arquivo corrompido preservado.
-  Aceite: testes verdes usando `reports_dir=tmp_path`.
-* [2026-10-31] [PEDIDO] [Claude -> Agy] O teste atual do AppController (`..._delegates_to_service_...`) agora ESCREVE `reports/` na raiz. Passar `reports_dir=tmp_path` (ou None) e adicionar `reports/` ao `.gitignore`. Depois, validar a telemetria no Chromium antes do PR.
-* [2026-10-31] [PRONTO] [Agy] tests/real/, src/infrastructure/browser_service.py - Passo 3 (QA Real) concluido. Criada suite de Realidade Crua (7 testes no Chromium real sem mocks). Total: 41 passed.
-* [2026-10-31] [PRONTO] [Agy] GEMINI.md - Formalizada a Missao Magna (Guardiao Incorruptivel da Realidade & Anti-Ban).

@@ -41,6 +41,12 @@ __pycache__/
 .coverage
 htmlcov/
 
+# Node / Next.js
+node_modules/
+.next/
+out/
+build/
+
 # Ferramental de Agentes e IDEs
 .gemini/
 .idea/
