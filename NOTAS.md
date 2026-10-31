@@ -9,68 +9,40 @@ troca de turnos e especificacao de contratos entre o Antigravity (Agy) e o Claud
 
 ```text
 ================================================================================
-DE:                  Agy (Antigravity - QA, Runtime & Infra)
-PARA:                Claude (DEV - Arquitetura & Contratos)
+DE:                  Claude (DEV - Arquitetura & Contratos)
+PARA:                Agy (Antigravity - QA, Runtime & Infra)
 CC:                  Nicolas (PO/Tech Lead), Argon (Auditor Senior)
 DATA:                31 de Outubro de 2026
-HORARIO:             03:26:00 BRT (UTC-3)
-VERSAO CONSOLIDADA:  v0.1 (Status Atual da Aplicacao - Green Phase entregue)
-VERSAO ALVO (TARGET): v0.5 (Marco Final da Squad - Loop Easy Apply Seco)
-ASSUNTO:             Protocolo Oficial do NOTAS.md e Especificacao Tecnica da v0.5
+HORARIO:             03:30 BRT (UTC-3)
+VERSAO CONSOLIDADA:  v0.1 (so muda quando Nicolas e Argon aprovarem)
+VERSAO ALVO:         v0.5 (Loop Easy Apply Seco)
+ASSUNTO:             Green Phase entregue (34 PASSED) + respostas ao protocolo do Topo Vivo
 ================================================================================
 
-Claude, recebemos ordem direta de Nicolas e Argon para operarmos de forma 100% autonoma
-ate a entrega final da v0.5, sem tags Git intermediarias.
+Agy, seus 3 objetivos estao feitos. `.venv/bin/python -m pytest` = 34 PASSED, 0 FAILED.
+  A) `Job.canonicalize_url` (staticmethod): remove query e fragmento, garante barra final; vazio -> "".
+  B) `SearchRequest` valida `max_applications >= 1` e as 8 chaves em `REQUIRED_SELECTOR_KEYS`.
+     Removi a validacao duplicada do `AppController` (fonte unica: o DTO).
+  C) `AppService._collect_jobs` canoniza a URL antes de criar o `Job` (dedupe por url canonica).
 
-0. REGRA DE OURO DE SHIFT-LEFT TESTING (INNEGOCIAVEL):
-- O Agy trabalha sempre um passo no futuro, construindo a VERSAO ALVO (Target: v0.5).
-- O Claude atua na implementacao real caminhando a partir da VERSAO CONSOLIDADA (v0.1).
-- A versao do Agy e o ALVO do Claude, e NUNCA o status da aplicacao atual!
+RESPOSTAS AS SUAS 4 PERGUNTAS
+1. Topo Vivo: concordo. Um unico e-mail no topo, com data e hora.
+2. Apagar ou mover: prefiro MOVER, resumido em ate 3 linhas, para o Historico. O git nao
+   guarda estados nao commitados, e o historico e a trilha de auditoria que Nicolas e Argon leem.
+3. Alvo x Consolidada: faz sentido. Preciso de uma definicao: Consolidada = ultima versao com
+   100% dos testes, commitada E aprovada por Nicolas e Argon. Hoje o HEAD ja traz o comportamento
+   ate a v0.5 (pendente de aprovacao); por isso a Consolidada continua v0.1 e eu nao me chamo de "v0.1".
+4. Ajustes: (a) incluir no cabecalho o campo AGUARDA (Agy | Claude | Nicolas e Argon), porque o
+   turno tambem passa pelos humanos; (b) manter o Estado Atual so com fatos (versao, placar,
+   branch) e o topo so com pedido, para os dois nao divergirem; (c) data em formato ISO com offset.
 
-1. REGRA DO TOPO VIVO DO NOTAS.MD:
-- O topo contem SEMPRE APENAS 1 E-MAIL: o comunicado ativo do agente que detem o turno.
-- Quando voce concluir sua parte e for passar o bastao de volta para mim:
-  Substitua este e-mail do topo pelo seu novo e-mail fresco de retorno,
-  obrigatoriamente informando no cabecalho: DIA, MES, ANO e HORARIO exato.
-- Se quiser arquivar o texto anterior, mova-o para a secao de historico ao final.
-- O topo NUNCA pode acumular mensagens antigas ou obsoletas.
-
-2. INFRAESTRUTURA V0.5 IMPLEMENTADA (Commit caaca36):
-`src/infrastructure/browser_service.py` e `tests/conftest.py` implementam 100% síncrono:
-- navigate(url, timeout) [alias: open_url]
-- scroll_container(container_selector, steps, delay)
-- scroll_container_to_end(container_selector, steps, delay)
-- extract_links(card_selector, link_selector) -> List[str]
-- extract_job_cards(card_selector) -> List[Dict[str, str]] (url, title, company)
-- has_empty_required_inputs(modal_selector) -> bool (Heuristica 3C com DOM real)
-- click_element(selector, timeout) [alias: click]
-- is_visible(selector, timeout) [alias: element_exists]
-
-3. STATUS DA SUITE PYTEST (.venv/bin/python -m pytest):
-Total: 34 testes coletados | 29 PASSED | 5 FAILED (Red Phase planejada).
-- Infraestrutura real no Chromium do Ubuntu: 9/9 PASSED (100% GREEN).
-- Loop Easy Apply Seco: 7/7 PASSED (100% GREEN).
-
-4. SEUS 3 OBJETIVOS EXCLUSIVOS (Passo 2 - Green Phase) PARA ZERAR AS 5 FALHAS:
-A) Em `src/domain/entities/job.py`:
-   - Implementar `Job.canonicalize_url(raw_url: str) -> str` (metodo estatico/classmethod)
-     removendo query strings (?refId=...&trackingId=...&utm_source=...), fragmentos (#...)
-     e garantindo barra no final (ex: 'https://www.linkedin.com/jobs/view/123/').
-B) Em `src/application/dtos/search_request.py`:
-   - Validar em `__post_init__` que `max_applications >= 1` (ValueError se < 1).
-   - Validar em `selectors` a presenca das 8 chaves obrigatorias:
-     `jobs_list_container`, `job_card`, `apply_button`, `next_button`, `submit_button`,
-     `close_button`, `discard_button`, `modal_container` (ValueError se alguma faltar).
-C) Em `src/application/app_service.py`:
-   - Na coleta de vagas (`_collect_jobs`), aplicar `Job.canonicalize_url(url)` antes
-     de instanciar a entidade `Job`.
-
-5. PROCEDIMENTO DE DEVOLUCAO DE TURNO (HANDOFF PARA O AGY):
-- Rode `.venv/bin/python -m pytest` ate confirmar 34 PASSED.
-- Atualize a Secao 1 (Estado Atual) mudando "Turno Atual" para "Agy".
-- Substitua este e-mail do topo pelo seu e-mail de conclusao (com data/hora atualizados).
-- Comite apenas seus arquivos (src/domain/, src/application/ e NOTAS.md) com o prefixo:
-  `[Claude] v0.5: Implementacao de contratos e canonizacao (Green Phase)`
+SEU TURNO (Passo 3 - QA)
+- Rode no Ubuntu real a integracao `AppService` + `BrowserService` (hoje o `main.py` ainda e o da v0.1).
+- Valide: (i) valores dos seletores LinkedIn, so as chaves sao contrato (`.jobs-search-results-list` e palpite);
+  (ii) minhas 3 decisoes: sem Easy Apply => SKIPPED_COMPLEX; sem botao de avanco => ERROR; 3C tambem antes do Submit.
+- Nao repetir: nao reescreva `AppService`/`SearchRequest`; se um teste exigir mudanca, abra PEDIDO.
+- Tags: li "sem tags intermediarias ate a v0.5". Nicolas, confirme quais sao as duas tags; ate la nao faco push nem tag.
+Commit: `[Claude] v0.5: Implementacao de contratos e canonizacao (Green Phase)` (somente src/domain, src/application, NOTAS.md).
 ================================================================================
 ```
 
@@ -78,12 +50,12 @@ C) Em `src/application/app_service.py`:
 
 ## 1. Estado Atual da Squad
 
-* **Turno Atual:** Claude (Passo 2 da esteira autonoma para v0.5 - Green Phase).
-* **Versao Consolidada da Aplicacao:** `v0.1` (estavel e funcional no codigo de producao).
-* **Versao Alvo da Squad (Target do Claude):** `v0.5` (Loop Easy Apply Seco Completo).
+* **Turno Atual:** Agy (Passo 3 da esteira: QA da integracao no Ubuntu real).
+* **Versao Consolidada da Aplicacao:** `v0.1` (so muda com aprovacao de Nicolas e Argon).
+* **Versao Alvo da Squad:** `v0.5` (Loop Easy Apply Seco Completo).
 * **Branch Ativa:** `feat/v0.1-stealth-engine` (branch compartilhada onde a squad opera).
-* **Placar do Pytest:** 34 testes coletados | **29 PASSED** | **5 FAILED** (Red Phase planejada).
-* **Proxima Acao Esperada:** Claude realizar os 3 ajustes de dominio/aplicacao para zerar os 5 testes e alcancar 100% GREEN.
+* **Placar do Pytest:** 34 testes coletados | **34 PASSED** | **0 FAILED**.
+* **Proxima Acao Esperada:** Agy executa a integracao real e valida seletores; depois, revisao de Nicolas e Argon.
 
 ---
 
@@ -118,6 +90,9 @@ C) Em `src/application/app_service.py`:
 
 ## 4. Historico de Handoffs
 
+* [2026-10-31] [PRONTO] [Claude] src/domain/entities/job.py, src/application/ - Green Phase: `Job.canonicalize_url`, validacao no `SearchRequest` (max_applications e 8 seletores), canonizacao no `_collect_jobs`. Pytest: 34 PASSED.
+  Inclui no mesmo commit o codigo da v0.2-v0.5 (`AppService`, `AppController`) que estava sem commit. Aceite: `.venv/bin/python -m pytest` verde. Nao repetir: nao reimplementar o BrowserPort na aplicacao.
+* [2026-10-31] [RESPOSTA] [Claude] NOTAS.md - Aceito o Topo Vivo; arquivo consumido pelo Claude: comunicado do Agy (03:26) com os objetivos A/B/C e o procedimento de devolucao. Respostas as 4 perguntas estao no e-mail do topo.
 * [2026-10-31] [PRONTO] [Agy] NOTAS.md - Aplicada a Regra do Topo Vivo: comunicado unico com Data/Hora no topo e instrucao de substituicao por turno.
 * [2026-10-31] [PRONTO] [Agy] src/infrastructure/browser_service.py, src/main.py, tests/ - Bateria completa de Infraestrutura e TDD v0.5 implementada (commit `caaca36`).
   - BrowserService com Heuristica 3C, scroll_container, extract_job_cards, extract_links, navigate, click_element e aliases BrowserPort.

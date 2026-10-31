@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
+from urllib.parse import urlsplit, urlunsplit
 
 
 class JobStatus(StrEnum):
@@ -32,6 +33,19 @@ class Job:
     company: str
     status: JobStatus = JobStatus.PENDING
     timestamp: datetime = field(default_factory=datetime.now)
+
+    @staticmethod
+    def canonicalize_url(raw_url: str) -> str:
+        """Higieniza a URL de uma vaga para servir de identidade estavel.
+
+        Remove query string (refId, trackingId, utm_*...), fragmento (#...) e
+        garante a barra final. Entrada vazia devolve '' para o Job rejeitar.
+        """
+        if not raw_url or not raw_url.strip():
+            return ""
+        parts = urlsplit(raw_url.strip())
+        path = parts.path if parts.path.endswith("/") else parts.path + "/"
+        return urlunsplit((parts.scheme, parts.netloc, path, "", ""))
 
     def __post_init__(self) -> None:
         if not self.url or not self.url.strip():

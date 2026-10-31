@@ -1,6 +1,18 @@
 from dataclasses import dataclass
 from typing import Dict, List
 
+# Chaves genericas que a engine exige de QUALQUER plataforma (`review_button` e opcional).
+REQUIRED_SELECTOR_KEYS = (
+    "jobs_list_container",
+    "job_card",
+    "apply_button",
+    "next_button",
+    "submit_button",
+    "close_button",
+    "discard_button",
+    "modal_container",
+)
+
 # Perfil de seletores do LinkedIn (Easy Apply). As chaves sao genericas e
 # compartilhadas por todas as plataformas; so os valores mudam por site.
 # ATENCAO: valores nao validados contra o DOM real do LinkedIn. A validacao
@@ -39,5 +51,12 @@ class SearchRequest:
             raise ValueError("SearchRequest.platform nao pode ser vazio.")
         if not self.static_urls:
             raise ValueError("SearchRequest.static_urls deve conter ao menos uma URL.")
+        if self.max_applications < 1:
+            raise ValueError("SearchRequest.max_applications deve ser >= 1.")
+        missing = [key for key in REQUIRED_SELECTOR_KEYS if not self.selectors.get(key)]
+        if missing:
+            raise ValueError(
+                f"SearchRequest.selectors sem chaves obrigatorias: {', '.join(missing)}."
+            )
         # Copia defensiva: evita mutar o dicionario compartilhado do modulo.
         self.selectors = dict(self.selectors)
