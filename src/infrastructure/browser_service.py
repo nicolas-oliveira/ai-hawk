@@ -230,13 +230,29 @@ class BrowserService:
         Nenhum seletor exclusivo do LinkedIn permanece fixo no motor.
         """
         try:
+            self.wait_for_loader_to_disappear()
             page = self.get_page()
             cards_data = page.evaluate(
                 """
                 ({ cardSel, titleSel, compSel, linkSel }) => {
+                    const isVisible = (el) => {
+                        if (!el) return false;
+                        if (el.checkVisibility) {
+                            return el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true });
+                        }
+                        const style = window.getComputedStyle(el);
+                        return (
+                            el.offsetParent !== null &&
+                            style.display !== 'none' &&
+                            style.visibility !== 'hidden' &&
+                            style.opacity !== '0'
+                        );
+                    };
+
                     const cards = document.querySelectorAll(cardSel);
                     const result = [];
                     cards.forEach(card => {
+                        if (!isVisible(card)) return;
                         const lSel = linkSel || 'a';
                         const linkEl = card.matches(lSel) ? card : card.querySelector(lSel);
                         const url = linkEl ? linkEl.href : '';
@@ -281,6 +297,7 @@ class BrowserService:
         Retorna True se detectar QUALQUER campo obrigatorio vazio (complexidade alta); False caso contrario.
         """
         try:
+            self.wait_for_loader_to_disappear()
             page = self.get_page()
             modal_locator = page.locator(modal_selector).first
             if modal_locator.count() == 0 or not modal_locator.is_visible():
@@ -291,16 +308,20 @@ class BrowserService:
                 (modal) => {
                     const isVisible = (el) => {
                         if (!el) return false;
-                        if (el.checkVisibility) {
-                            return el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true });
+                        if (el.checkVisibility && !el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })) {
+                            return false;
                         }
                         const style = window.getComputedStyle(el);
-                        return (
-                            el.offsetParent !== null &&
-                            style.display !== 'none' &&
-                            style.visibility !== 'hidden' &&
-                            style.opacity !== '0'
-                        );
+                        if (
+                            el.offsetParent === null ||
+                            style.display === 'none' ||
+                            style.visibility === 'hidden' ||
+                            parseFloat(style.opacity) === 0
+                        ) {
+                            return false;
+                        }
+                        const rect = el.getBoundingClientRect();
+                        return rect.width > 0 && rect.height > 0 && rect.right > 0 && rect.bottom > 0;
                     };
 
                     // 1. Text inputs, email, tel, number, url, search, password
@@ -376,10 +397,52 @@ class BrowserService:
             print(f"[BrowserService.has_empty_required_inputs] Erro ao inspecionar modal {modal_selector}: {e}")
             return False
 
+    def _resolve_visible_locator(self, selector: str, timeout: int = 5000):
+        """
+        Resolve o primeiro locator genuinamente visivel para um humano (filtrando honeypots com
+        display:none, visibility:hidden, opacity:0, pointer-events:none ou posicionados off-screen).
+        """
+        self.wait_for_loader_to_disappear()
+        self.dismiss_overlay_if_present()
+        page = self.get_page()
+        group = page.locator(selector)
+        deadline = time.time() + (timeout / 1000.0)
+        while time.time() < deadline:
+            count = group.count()
+            for i in range(count):
+                candidate = group.nth(i)
+                try:
+                    is_human_vis = candidate.evaluate(
+                        """(el) => {
+                            if (!el) return false;
+                            if (el.checkVisibility && !el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })) {
+                                return false;
+                            }
+                            const style = window.getComputedStyle(el);
+                            if (
+                                el.offsetParent === null && style.position !== 'fixed' ||
+                                style.display === 'none' ||
+                                style.visibility === 'hidden' ||
+                                parseFloat(style.opacity) === 0 ||
+                                style.pointerEvents === 'none'
+                            ) {
+                                return false;
+                            }
+                            const rect = el.getBoundingClientRect();
+                            return rect.width > 0 && rect.height > 0 && rect.right > 0 && rect.bottom > 0;
+                        }"""
+                    )
+                    if is_human_vis:
+                        return candidate
+                except Exception:
+                    continue
+            page.wait_for_timeout(100)
+        return None
+
     def click_element(self, selector: str, timeout: int = 5000, humanized: bool = True) -> bool:
         """
         Clica em um elemento aplicando cinematica humana:
-        1. Aguarda que o elemento fique visivel.
+        1. Aguarda que o elemento fique genuinamente visivel (ignorando honeypots).
         2. Aplica atraso estocastico de reacao humana (200ms a 450ms).
         3. Obtem o bounding box e seleciona uma coordenada com desvio estocastico seguro (20% a 80%).
         4. Move o mouse suavemente em multiplos passos (steps) para evitar teletransporte.
@@ -388,8 +451,9 @@ class BrowserService:
         """
         try:
             page = self.get_page()
-            locator = page.locator(selector).first
-            locator.wait_for(state="visible", timeout=timeout)
+            locator = self._resolve_visible_locator(selector, timeout=timeout)
+            if locator is None:
+                return False
 
             if humanized:
                 self.human_delay(0.20, 0.45)
@@ -418,6 +482,7 @@ class BrowserService:
         Permite a camada de aplicacao detectar ausência de transicao de estado no modal.
         """
         try:
+            self.wait_for_loader_to_disappear()
             page = self.get_page()
             locator = page.locator(container_selector).first
             if locator.count() == 0 or not locator.is_visible():
@@ -430,13 +495,51 @@ class BrowserService:
 
     def is_visible(self, selector: str, timeout: int = 3000) -> bool:
         """
-        Verifica se um seletor esta visivel na pagina dentro do timeout estipulado.
+        Verifica se um seletor esta genuinamente visivel na pagina dentro do timeout estipulado.
+        """
+        try:
+            locator = self._resolve_visible_locator(selector, timeout=timeout)
+            return locator is not None
+        except Exception:
+            return False
+
+    def wait_for_loader_to_disappear(
+        self, loader_selector: str = '[role="status"]', timeout: int = 15000
+    ) -> bool:
+        """
+        Espera deterministica por descarte/sumico de loaders e transicoes assincronas.
+        Elimina 'Flaky Tests' causados por variacoes de latencia ou carga de CPU sem usar time.sleep().
+        Retorna True se o loader nao existir ou sumir antes do timeout; False se continuar visivel.
         """
         try:
             page = self.get_page()
-            locator = page.locator(selector).first
-            locator.wait_for(state="visible", timeout=timeout)
+            locator = page.locator(loader_selector).first
+            if locator.count() == 0 or not locator.is_visible():
+                return True
+            locator.wait_for(state="detached", timeout=timeout)
             return True
+        except Exception:
+            # Fallback caso fique hidden em vez de detached
+            try:
+                locator.wait_for(state="hidden", timeout=1000)
+                return True
+            except Exception:
+                return False
+
+    def dismiss_overlay_if_present(
+        self, dismiss_selector: str = '[aria-label="Dismiss overlay"]', timeout: int = 2000
+    ) -> bool:
+        """
+        Detecta e descarta overlays intrusivos de alto z-index (ex: banners de cookies/privacidade)
+        que bloqueiam interacoes no viewport principal.
+        """
+        try:
+            page = self.get_page()
+            locator = page.locator(dismiss_selector).first
+            if locator.count() > 0 and locator.is_visible():
+                locator.click(timeout=timeout)
+                return True
+            return False
         except Exception:
             return False
 

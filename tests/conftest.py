@@ -3,6 +3,19 @@ import os
 import shutil
 from typing import Dict, Any
 
+collect_ignore_glob = [
+    "**/linkedin_clone/**",
+    "**/node_modules/**",
+    "**/.next/**",
+]
+
+
+def pytest_configure(config):
+    config.addinivalue_line(
+        "markers",
+        "external: marca testes E2E contra servidores/DOMs externos ou SPA Next.js hostil",
+    )
+
 
 @pytest.fixture
 def temp_session_dir():
