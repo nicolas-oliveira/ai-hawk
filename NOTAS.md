@@ -7,16 +7,16 @@ Fonte unica de verdade para a coordenacao assincrona entre Agy e Claude.
 ## 📬 COMUNICADO OFICIAL ATIVO NO TOPO (TURNO ATUAL)
 
 ```text
-DE: Claude (Dev) | PARA: Agy (QA/Infra), Nicolas, Argon | TURNO: Agy (finalizar infra: seletores de titulo/empresa do card) | 2026-10-31T04:43-03:00
-STATUS: PRONTO (ajuste fino de desacoplamento) + PEDIDO ao Agy | PR da v1.0 NAO aberto; plano de tags segue parado ate a infra fechar
-ACEITE/RESUMO: commits d35516f (chaves opcionais `job_card_title`/`job_card_company`) e 7fe2b46 (`canonicalize_url` preserva id/jobId/gh_jid so se o path nao tem ID). `pytest tests/domain tests/application` = 38 passed; suite real NAO rodada.
+DE: Claude (Dev) | PARA: Agy (QA/Infra), Nicolas, Argon | TURNO: Agy (commitar o turno anterior) | 2026-10-31T04:48-03:00
+STATUS: BLOQUEIO - Commit do turno anterior ausente | PR da v1.0 NAO aberto (nada empurrado ao GitHub)
+ACEITE/RESUMO: pendentes do Agy no git status: `src/infrastructure/browser_service.py`, `tests/infrastructure/test_browser_service.py`, `tests/application/test_job_cache_and_circuit_breaker.py` (novo). Agy: rode a suite, commite SO os seus arquivos com `[Agy] v0.x:` e devolva com PRONTO; eu abro o PR em seguida (pre-PR real -> push -> `gh pr create`).
 ```
 
 ---
 
 ## 1. Estado Atual da Squad
 
-* **Turno Atual:** Agy (finalizar a infraestrutura: seletores de titulo/empresa vindos do dicionario).
+* **Turno Atual:** Agy (commitar o trabalho pendente; depois o Claude abre o PR).
 * **Versao Consolidada da Aplicacao:** NENHUMA (`master` = `first commit`; sem tag nem PR). A v0.1/v0.5 so existem apos PR aprovado.
 * **Versoes:** v0.1 = so uma TAG historica local em `b4a33ca` (sem PR, sem branch; nao empurrada). Estaveis intermediarias sem tag: v0.6 `8f32943`, v0.7 `bce92f1`. PR unico previsto: v1.0, depois da v0.9 e dos testes de borda.
 * **Versao Alvo da Squad:** `v0.9` (app completa); depois, com testes de borda, `v1.0`.
@@ -62,6 +62,8 @@ ACEITE/RESUMO: commits d35516f (chaves opcionais `job_card_title`/`job_card_comp
 
 ## 4. Historico de Handoffs
 
+* [2026-10-31] [BLOQUEIO] [Claude -> Agy] Commit do turno anterior ausente: `browser_service.py`, `tests/infrastructure/test_browser_service.py` e `tests/application/test_job_cache_and_circuit_breaker.py` (novo) estao SEM commit. Devolvo o turno (regra 3 do Mutex).
+  O comunicado ja esta cumprido nos itens 1 e 2 (`d35516f`, `7fe2b46`). Item 3 (PR) aguarda: (a) o commit do Agy; (b) eu rodar o pre-PR (`pytest tests/real/ tests/infrastructure/ -v` + suite completa) em arvore SEM trabalho pela metade; (c) push da branch e `gh pr create`.
 * [2026-10-31] [PRONTO] [Claude] src/application/dtos, src/domain - d35516f: `job_card_title` e `job_card_company` em `LINKEDIN_DEFAULT_SELECTORS` (OPCIONAIS, valores copiados do browser_service; sem chaves duplicadas, conferido por AST). 7fe2b46: `Job.canonicalize_url` mantem `id`/`jobId`/`gh_jid` so quando o path nao tem 6+ digitos.
   Verificacao: `pytest tests/domain tests/application` = 38 passed. Limite documentado: outros parametros de ID (ex.: `currentJobId` do LinkedIn em /collections/) exigem ampliar a whitelist na Fase 2.
 * [2026-10-31] [PEDIDO] [Claude -> Agy] `BrowserService.extract_job_cards(card_selector, title_selector=None, company_selector=None)`: use os parametros no lugar dos seletores LinkedIn das linhas ~214 e ~217 (None = padrao generico). Compativel com a assinatura atual.
