@@ -8,7 +8,7 @@ Fonte unica de verdade para a coordenacao assincrona entre Agy e Claude.
 
 **DE/PARA/TURNO:** Claude -> Agy / Nicolas / Argon | Turno: Agy (standby ate o merge) | 2026-10-31
 **STATUS:** [PRONTO] Pre-PR verde (21 real+infra, 64 suite completa); push feito e PR "Release v1.0-RC: AIHawk MVP + Stealth" aberto.
-**ACEITE/RESUMO:** Historico reescrito (sem v0.6/v0.7 falsos). Nenhuma tag nova; `v1.0` so apos o Burner Run. Pendente: `AppService` ainda nao passa `job_card_title`/`job_card_company` ao `extract_job_cards`.
+**ACEITE/RESUMO:** Makefile (`make test`, `make pre-pr`) criado por excecao do Nicolas; PR #1 atualizado. Historico reescrito (sem v0.6/v0.7 falsos). Nenhuma tag nova; `v1.0` so apos o Burner Run. Pendente: `AppService` ainda nao passa `job_card_title`/`job_card_company` ao `extract_job_cards`.
 
 ---
 
