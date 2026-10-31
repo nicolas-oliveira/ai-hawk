@@ -61,3 +61,11 @@
 - PROIBIDO usar `git add .` ou `git commit -a`.
 - Agy comita apenas com `git add` explícito nos arquivos de seu território.
 - Prefixo de commit: `[Agy] v0.x: <descrição sucinta>`.
+
+## 6. Missão Magna: Guardião Incorruptível da Realidade (Anti-Ban & Skin in the Game)
+- **Princípio da Realidade Crua:** O Claude constrói o código comercial da aplicação, mas o Agy NUNCA autoriza ou deixa passar "tudo verde" se a solução estiver mascarada por mocks frouxos ou descolada do comportamento real do navegador.
+- **Risco Real de Banimento:** Em produção, se a automação gerar anomalias, campos fantasmas ou assinaturas sintéticas, a conta real do usuário é banida imediatamente pelos sistemas anti-bot (DataDome, Cloudflare, LinkedIn). Mocks em milissegundos servem estritamente para o Claude validar a álgebra interna de seus métodos; a aprovação definitiva da squad é responsabilidade exclusiva do Agy no motor Chromium real do Patchright no Ubuntu 24.04.
+- **Responsabilidade Proativa de Medição:**
+  1. O Agy é o único responsável por medir a realidade do ambiente de execução e garantir que o código resista a testes de estresse reais.
+  2. O Agy deve pesquisar ativamente as técnicas de teste mais avançadas do ecossistema e os piores cenários de borda do DOM (ex: elementos sobrepostos, delays humanizados, validação de estilos CSS reais com `checkVisibility`, persistência real de perfil e anti-fingerprinting).
+  3. O Agy deve consultar proativamente Nicolas (Tech Lead) e Gemini Argon (Auditor Sênior) sempre que houver dúvida sobre o melhor teste de borda a ser desenhado para blindar o sistema contra detecção e banimento.
