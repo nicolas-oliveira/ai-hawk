@@ -1,22 +1,45 @@
 # Segredos e configuracao local (versionar apenas .env.example)
 .env
+*.env.local
 
 # Ambientes virtuais
 .venv/
 venv/
+ENV/
 
-# Sessoes do navegador (perfil do Chrome/Chromium com cookies de login) e caches locais
+# Sessoes do navegador (perfil Chrome/Chromium, cookies de login, checkpoints)
 sessions/
+linkedin_session/
+*_session/
 .cache/
+
+# QA, Scratchpads temporarios e Logs de execucao do Agy
+scratch/
+tests_scratch/
+*.log
+*.tmp
+*.trace
+test_report*.json
+
+# Playwright / Patchright artifacts
+test-results/
+playwright-report/
+blob-report/
 
 # Python
 __pycache__/
 *.py[cod]
+*$py.class
 *.egg-info/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+.coverage
+htmlcov/
 
-# IDE
+# Ferramental de Agentes e IDEs
+.gemini/
 .idea/
 .vscode/
+*.swp
+*.swo
