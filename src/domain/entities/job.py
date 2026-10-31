@@ -1,14 +1,25 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
+from enum import StrEnum
 
-VALID_STATUSES = frozenset(
-    {"PENDING", "APPLIED", "SKIPPED_COMPLEX", "ALREADY_APPLIED", "ERROR"}
-)
+
+class JobStatus(StrEnum):
+    """Maquina de estados de uma vaga.
+
+    StrEnum permite comparar com strings (`job.status == "PENDING"`) e
+    persistir o valor diretamente em cache/JSON.
+    """
+
+    PENDING = "PENDING"
+    APPLIED = "APPLIED"
+    SKIPPED_COMPLEX = "SKIPPED_COMPLEX"
+    ALREADY_APPLIED = "ALREADY_APPLIED"
+    ERROR = "ERROR"
 
 
 @dataclass(eq=False)
 class Job:
-    """Entidade pura de uma vaga.
+    """Entidade pura de uma vaga (sem dependencia de navegador ou plataforma).
 
     A identidade de um Job e o par (url, platform), nunca o conteudo mutavel
     (title, company, status, timestamp). Isso permite verificar o cache local
@@ -19,8 +30,8 @@ class Job:
     platform: str
     title: str
     company: str
-    status: str
-    timestamp: datetime
+    status: JobStatus = JobStatus.PENDING
+    timestamp: datetime = field(default_factory=datetime.now)
 
     def __post_init__(self) -> None:
         if not self.url or not self.url.strip():
@@ -29,12 +40,11 @@ class Job:
             raise ValueError("Job.platform nao pode ser vazio.")
 
     def __setattr__(self, name: str, value) -> None:
-        # Garante o invariante do status tambem em atribuicoes posteriores
-        # (ex.: service marcando a vaga como APPLIED ou SKIPPED_COMPLEX).
-        if name == "status" and value not in VALID_STATUSES:
-            raise ValueError(
-                f"Status invalido: {value!r}. Permitidos: {sorted(VALID_STATUSES)}."
-            )
+        # Converte e valida o status na criacao e em toda atribuicao posterior
+        # (ex.: service marcando a vaga como APPLIED). Valor invalido levanta
+        # ValueError.
+        if name == "status":
+            value = JobStatus(value)
         super().__setattr__(name, value)
 
     def __eq__(self, other: object) -> bool:
