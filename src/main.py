@@ -1,6 +1,7 @@
 import os
 import sys
 import json
+from typing import Dict
 from dotenv import load_dotenv
 
 # Garante o import limpo da raiz do projeto sem acoplamentos
@@ -11,22 +12,48 @@ load_dotenv()
 from src.infrastructure.browser_service import BrowserService
 
 
+def resolve_selector_profile(platform: str) -> Dict[str, str]:
+    """
+    Busca o dicionario de seletores da plataforma no SELECTOR_PROFILES exportado pelo DTO.
+    Se a plataforma nao for suportada, levanta ValueError explicito.
+    """
+    from src.application.dtos import search_request as sr_module
+
+    normalized = (platform or "").strip().lower()
+    profiles = getattr(sr_module, "SELECTOR_PROFILES", None)
+    if not isinstance(profiles, dict):
+        default_linkedin = getattr(sr_module, "LINKEDIN_DEFAULT_SELECTORS", None)
+        profiles = {"linkedin": default_linkedin} if isinstance(default_linkedin, dict) else {}
+
+    if normalized not in profiles:
+        available = ", ".join(sorted(profiles.keys())) or "nenhum"
+        raise ValueError(
+            f"Plataforma '{platform}' nao suportada em SELECTOR_PROFILES. "
+            f"Perfis disponiveis: {available}."
+        )
+    return profiles[normalized]
+
+
 def bootstrap():
     """
-    Ponto de entrada do AIHawk CLI (v0.5 - Loop Easy Apply Seco).
+    Ponto de entrada do AIHawk CLI.
     Execucao 100% sincrona, linear e previsivel.
-    Instancia a infraestrutura, injeta no AppService / AppController e dispara a orquestracao.
+    Instancia a infraestrutura, resolve o perfil de seletores por PLATFORM,
+    injeta no AppService / AppController e dispara a orquestracao.
     """
     print("==================================================")
     print("AIHawk v0.5 - Motor de Candidaturas Easy Apply Seco")
     print("==================================================")
 
-    platform = os.getenv("PLATFORM", "linkedin")
+    platform = os.getenv("PLATFORM", "linkedin").strip().lower()
     headless_env = os.getenv("HEADLESS", "false").lower() in ("true", "1", "yes")
     channel = os.getenv("BROWSER_CHANNEL", "chromium")
     max_apps = int(os.getenv("MAX_APPLICATIONS", "10"))
-    
-    raw_urls = os.getenv("STATIC_URLS", "https://www.linkedin.com/jobs/search/?f_AL=true&keywords=python")
+
+    raw_urls = os.getenv(
+        "STATIC_URLS",
+        "https://www.linkedin.com/jobs/search/?f_AL=true&keywords=python",
+    )
     if raw_urls.strip().startswith("["):
         try:
             static_urls = json.loads(raw_urls)
@@ -34,6 +61,9 @@ def bootstrap():
             static_urls = [u.strip() for u in raw_urls.split(",") if u.strip()]
     else:
         static_urls = [u.strip() for u in raw_urls.split(",") if u.strip()]
+
+    # Valida e resolve o perfil de seletores da plataforma antes de subir o navegador
+    selectors = resolve_selector_profile(platform)
 
     browser_service = BrowserService(platform=platform, headless=headless_env, channel=channel)
 
@@ -51,23 +81,22 @@ def bootstrap():
         try:
             from src.application.app_controller import AppController
             from src.application.app_service import AppService
-            from src.application.dtos.search_request import SearchRequest, LINKEDIN_DEFAULT_SELECTORS
+            from src.application.dtos.search_request import SearchRequest
 
-            # Instancia o servico e o controller com o browser_service real
-            app_service = AppService(browser_service=browser_service)
+            app_service = AppService(browser_service)
             app_controller = AppController(app_service=app_service)
 
             request = SearchRequest(
                 platform=platform,
                 static_urls=static_urls,
-                selectors=LINKEDIN_DEFAULT_SELECTORS,
+                selectors=selectors,
                 max_applications=max_apps,
             )
 
             print("[*] Disparando loop de candidatura atraves do AppController...")
             result = app_controller.run(request)
             print("\n==================================================")
-            print(f"[+] Relatorio Final da Execucao:")
+            print("[+] Relatorio Final da Execucao:")
             print(f"    - Total Processadas: {getattr(result, 'total_processed', len(getattr(result, 'jobs', [])))}")
             print(f"    - Aplicadas (APPLIED): {getattr(result, 'applied_count', 0)}")
             print(f"    - Ignoradas Complexas (SKIPPED_COMPLEX): {getattr(result, 'skipped_count', 0)}")
@@ -76,7 +105,7 @@ def bootstrap():
 
         except (ImportError, AttributeError, NotImplementedError, TypeError) as err:
             print(f"[!] Camada de aplicacao (AppController/AppService) em desenvolvimento pelo Claude: {err}")
-            print("[*] Executando smoke test basico da infraestrutura síncrona...")
+            print("[*] Executando smoke test basico da infraestrutura sincrona...")
             page = browser_service.get_page()
             page.goto("https://example.com", wait_until="domcontentloaded")
             print(f"[+] Infraestrutura operacional. Pagina ativa: '{page.title()}'")

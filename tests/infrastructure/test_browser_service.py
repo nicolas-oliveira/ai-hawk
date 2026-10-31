@@ -414,3 +414,20 @@ def test_browser_service_extract_job_cards_agnostic(temp_session_dir):
     finally:
         service.close()
 
+
+def test_main_cli_invalid_platform_raises_error():
+    """Valida que o main.py encerra com erro explicito ao receber plataforma desconhecida."""
+    result = subprocess.run(
+        [sys.executable, "-m", "src.main"],
+        capture_output=True,
+        text=True,
+        env={
+            **os.environ,
+            "PLATFORM": "plataforma_inexistente_xyz",
+            "HEADLESS": "true",
+            "SESSION_ROOT_DIR": "./tests_scratch/cli_sessions",
+        },
+    )
+    assert result.returncode != 0
+    assert "nao suportada em SELECTOR_PROFILES" in result.stderr or "nao suportada em SELECTOR_PROFILES" in result.stdout
+

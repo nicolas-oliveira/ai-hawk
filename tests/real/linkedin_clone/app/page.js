@@ -54,15 +54,40 @@ export default function Home() {
     setWrapperVariant(variant);
     console.log("DOM Seed:", generatedSeed, "Variant:", variant);
 
+    // Restaura estado de armadilha Honeypot se tiver sido violado em navegacao anterior da sessao
+    const savedTrap = window.sessionStorage.getItem("honeypot_compromised");
+    if (savedTrap) {
+      setHoneypotTriggered(true);
+      setHoneypotReason(savedTrap);
+    }
+
     // Simula Lazy Loading da lista inicial de vagas (1.2s)
     const jobsTimer = setTimeout(() => {
       setJobs(INITIAL_JOBS);
       setJobsLoading(false);
+      const params = new URLSearchParams(window.location.search);
+      const jobIdParam = params.get("jobId");
+      if (jobIdParam) {
+        if (jobIdParam === "honeypot-job") {
+          triggerHoneypot("Navegou diretamente para a URL da vaga Honeypot oculta");
+        } else {
+          const matched = INITIAL_JOBS.find((j) => j.id === jobIdParam);
+          if (matched) {
+            setSelectedJob(matched);
+          }
+        }
+      }
     }, 1200);
 
-    // Dispara Overlay Intrusivo após 800ms
+    // Dispara Overlay Intrusivo após 800ms (se ainda nao descartado na sessao)
+    const overlayDismissedSession = window.sessionStorage.getItem("overlay_dismissed") === "true";
+    if (overlayDismissedSession) {
+      setOverlayDismissed(true);
+    }
     const overlayTimer = setTimeout(() => {
-      setOverlayVisible(true);
+      if (!overlayDismissedSession) {
+        setOverlayVisible(true);
+      }
     }, 800);
 
     return () => {
@@ -73,11 +98,16 @@ export default function Home() {
 
   const triggerHoneypot = (reason) => {
     console.error("HONEYPOT TRIGGERED:", reason);
+    window.sessionStorage.setItem("honeypot_compromised", reason);
     setHoneypotTriggered(true);
     setHoneypotReason(reason);
   };
 
   const handleSelectJob = (job) => {
+    if (overlayVisible && !overlayDismissed) {
+      triggerHoneypot("Tentou selecionar vaga com Overlay Intrusivo ativo (bypass de z-index)");
+      return;
+    }
     setDetailLoading(true);
     setSelectedJob(null);
     setWrapperVariant((prev) => (prev + 1) % 3);
@@ -88,6 +118,10 @@ export default function Home() {
   };
 
   const handleOpenModal = () => {
+    if (overlayVisible && !overlayDismissed) {
+      triggerHoneypot("Tentou abrir modal com Overlay Intrusivo ativo (bypass de z-index)");
+      return;
+    }
     setStepLoading(true);
     setIsModalOpen(true);
     setModalStep(1);
@@ -113,6 +147,10 @@ export default function Home() {
     setTimeout(() => {
       setSubmitted(true);
       setStepLoading(false);
+      window.sessionStorage.setItem(
+        "modal_submission_success",
+        "Candidatura enviada com sucesso!"
+      );
     }, 1000);
   };
 
@@ -123,6 +161,7 @@ export default function Home() {
   };
 
   const handleDismissOverlay = () => {
+    window.sessionStorage.setItem("overlay_dismissed", "true");
     setOverlayVisible(false);
     setOverlayDismissed(true);
   };
@@ -246,7 +285,7 @@ export default function Home() {
                   onClick={() => triggerHoneypot("Clicou em card de vaga oculto (display:none)")}
                   className={"card-honeypot-" + seed}
                 >
-                  <a href="#honeypot-job">Vaga Fantasma Armadilha</a>
+                  <a href="/?jobId=honeypot-job">Vaga Fantasma Armadilha</a>
                   <h3>Vaga Armadilha</h3>
                   <p>Empresa Honeypot</p>
                 </li>
@@ -267,7 +306,7 @@ export default function Home() {
                   >
                     <div className={"job-card-wrapper-" + seed}>
                       <a
-                        href={`#${job.id}`}
+                        href={`/?jobId=${job.id}`}
                         onClick={(e) => e.preventDefault()}
                         className={"font-bold text-blue-700 block card-title-" + seed}
                       >
@@ -395,7 +434,7 @@ export default function Home() {
             </div>
 
             {/* Corpo do Modal */}
-            <form onSubmit={handleSubmitApplication} className={"p-6 modal-body-" + seed}>
+            <form noValidate onSubmit={handleSubmitApplication} className={"p-6 modal-body-" + seed}>
               {/* 3. HONEYPOTS DE FORMULÁRIO: Inputs required ocultos que o Inspetor 3C DEVE ignorar */}
               <input
                 type="text"
@@ -425,7 +464,10 @@ export default function Home() {
                   Processando etapa da candidatura...
                 </div>
               ) : submitted ? (
-                <div className={"text-center py-6 success-state-" + seed}>
+                <div
+                  data-testid="modal-submission-success"
+                  className={"text-center py-6 success-state-" + seed}
+                >
                   <p className={"text-green-600 font-bold text-lg mb-2"}>
                     Candidatura enviada com sucesso!
                   </p>
