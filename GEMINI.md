@@ -71,3 +71,11 @@
   1. O Agy é o único responsável por medir a realidade do ambiente de execução e garantir que o código resista a testes de estresse reais.
   2. O Agy deve pesquisar ativamente as técnicas de teste mais avançadas do ecossistema e os piores cenários de borda do DOM (ex: elementos sobrepostos, delays humanizados, validação de estilos CSS reais com `checkVisibility`, persistência real de perfil e anti-fingerprinting).
   3. O Agy deve consultar proativamente Nicolas (Tech Lead) e Gemini Argon (Auditor Sênior) sempre que houver dúvida sobre o melhor teste de borda a ser desenhado para blindar o sistema contra detecção e banimento.
+
+## 7. Diretriz de Redação do E-mail de Handoff no NOTAS.md
+- **Estrutura com Quebras de Linha Obrigatórias:** NUNCA comprimir o e-mail de handoff em uma única linha ou bloco comprimido com pipes `|`. O e-mail de passagem de bastão no topo do `NOTAS.md` deve ser redigido em markdown claro, legível e espaçado com quebras de linha normais.
+- **Detalhamento Técnico Mandatório (Zero Escuridão para o Claude):** O handoff é a passagem de bastão oficial da squad. Ele NUNCA pode ser excessivamente enxuto a ponto de deixar o Claude sem contexto, forçando o PO/Tech Lead a intervir para contextualizá-lo. O texto não deve ser prolixo, mas deve conter obrigatoriamente:
+  1. **Cabeçalho Formal:** `DE`, `PARA`, `ASSUNTO`, `DATA/HORA`, `TURNO`, `STATUS` e `HASH DO COMMIT DO AGY`.
+  2. **O Que Foi Entregue na Infraestrutura:** lista dos arquivos modificados/criados, novos métodos com assinaturas exatas, parâmetros desacoplados e comportamentos anti-bot/resiliência.
+  3. **Placar da Suíte de Testes:** detalhamento do status dos testes rápidos (`tests/domain`, `tests/application`), de infraestrutura (`tests/infrastructure`) e reais no Chromium (`tests/real`), com número de testes passados.
+  4. **Checklist Cirúrgico para o Claude:** apontamento exato dos arquivos da aplicação (`src/application/...`), número aproximado da linha, métodos e parâmetros a serem consumidos, comandos de teste para validação pré-PR e comando para abertura do PR oficial.
