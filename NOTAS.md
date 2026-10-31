@@ -6,22 +6,35 @@ Fonte unica de verdade para a coordenacao assincrona entre Agy e Claude.
 
 ## 📬 COMUNICADO OFICIAL ATIVO NO TOPO (TURNO ATUAL)
 
-TURNO: CLAUDE
-**DE/PARA/TURNO:** Agy -> Claude / Nicolas / Argon | TURNO: CLAUDE | 2026-10-31T07:40-03:00
-**STATUS:** [PRONTO] Clone Next.js criado em `tests/real/linkedin_clone` com DOM ofuscado via seed, layout de 2 colunas e modal Easy Apply em 2 passos.
-**ACEITE/RESUMO:** Contrato fixo respeitado: `aria-label="Continue to next step"`, `aria-label="Submit application"`, `aria-label="Dismiss"`, tags semânticas (button, ul, li). Classes mutáveis concatenadas com a seed. Build Next.js validado com sucesso.
+TURNO: AGY
+**DE:** Agy (QA / Runtime & Infraestrutura)  
+**PARA:** Nicolas (PO), Argon (Tech Lead / Auditora), Claude (Dev / Em Standby)  
+**ASSUNTO:** Polimento Hostil do Clone Next.js Concluído (Lazy Loading, Overlays, Honeypots e Mutação Estrutural)  
+**TURNO:** Agy (Mantido com Agy para escrita da suíte de testes Python na sequência)  
+**DATA/HORA:** 2026-10-31T07:49-03:00  
+**STATUS:** [PRONTO] Front-end hostil compilado e validado (`npm run build` OK).
+
+### Armadilhas Ativadas em `tests/real/linkedin_clone/app/page.js`:
+1. **Lazy Loading Assíncrono (Simulação de Rede):**
+   - A listagem inicial de vagas (`1.2s`), o carregamento do painel de detalhes (`1.0s`), a abertura do modal (`1.1s`) e a transição entre etapas ("Avançar" -> "Enviar", `1.3s`) exibem estados de carregamento intermediários (`role="status"`) via `setTimeout` antes de montar os elementos finais no DOM.
+2. **Overlay Intrusivo de Alto Z-Index (`z-[90]`):**
+   - Um modal de interceptação ("Aviso de Privacidade e Assinatura Premium") surge sobre a tela bloqueando cliques nos cards e botões principais até ser fechado através do botão semântico (`aria-label="Dismiss overlay"`).
+3. **Honeypots (Filtro de Elementos Invisíveis):**
+   - Inseridos cards de vaga ocultos (`display: none`), botões falsos de "Candidatura Simplificada" e "Avançar" (`opacity: 0; left: -9999px` e `display: none`), além de campos `<input required>` invisíveis dentro do `<form>` do modal. Qualquer interação ou preenchimento nesses elementos dispara o estado de detecção de bot (`data-testid="honeypot-compromised"`).
+4. **Mutação Hostil de Árvore e Classes:**
+   - Além da `seed` dinâmica concatenada em IDs e classes CSS (`console.log("DOM Seed:", seed)`), a profundidade de wrappers (`<div>` simples vs múltiplos `<div>` aninhados vs `<section>`) alterna dinamicamente a cada interação (`wrapperVariant`), preservando apenas os contratos semânticos e `aria-label` literais (`Continue to next step`, `Submit application`, `Dismiss`).
 
 ---
 
 ## 1. Estado Atual da Squad
 
-* **Turno Atual:** Claude.
+* **Turno Atual:** Agy (Escrita dos testes Python contra o clone e alvos externos na sequência).
 * **Versao Consolidada da Aplicacao:** NENHUMA (`master` = `first commit`; sem tag nem PR). A v0.1/v0.5 so existem apos PR aprovado.
 * **Versoes:** v0.1 = so uma TAG historica local em `b4a33ca` (sem PR, sem branch; nao empurrada). Estaveis intermediarias sem tag: v0.6 `8f32943`, v0.7 `bce92f1`. PR unico previsto: v1.0 ("Release v1.0: AIHawk MVP Operacional").
 * **Versao Alvo da Squad:** `v1.0` (AIHawk MVP Operacional).
 * **Branch Ativa:** `feat/v0.1-stealth-engine` (branch compartilhada onde a squad opera).
 * **Placar do Pytest:** rapido (`tests/domain` + `tests/application`) = 43 PASSED. Suite real/infra: 21 PASSED no Chromium (12 infra + 9 real). Total geral: 64 PASSED.
-* **Proxima Acao Esperada:** Claude consome seletores desacoplados e roda testes contra alvos. Agy em standby.
+* **Proxima Acao Esperada:** Agy implementa os testes Python de integracao com o clone Next.js e alvos externos. Claude permanece em standby.
 
 ---
 
@@ -61,6 +74,8 @@ TURNO: CLAUDE
 
 ## 4. Historico de Handoffs
 
+* [2026-10-31] [PRONTO] [Agy] tests/real/linkedin_clone/app/page.js, NOTAS.md - Polimento do clone Next.js com lazy loading, overlays, honeypots e mutacao de wrappers.
+  Build Next.js validado sem erros. Turno mantido com Agy para criacao dos testes Python.
 * [2026-10-31] [PRONTO] [Agy] tests/real/linkedin_clone/, .gitignore, NOTAS.md - Cria clone frontend mutavel em Next.js (Painel Duplo e Modal).
   Layout 2 colunas com lista e detalhes, modal 2 passos, classes ofuscadas via seed, ARIA labels fixos literais. Turno: Claude.
 * [2026-10-31] [PRONTO] [Agy] src/infrastructure/browser_service.py, tests/ - Cinetica humana, desacoplamento de seletores, modal_signature e testes de resiliencia.
