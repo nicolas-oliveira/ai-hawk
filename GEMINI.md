@@ -93,8 +93,8 @@
   4. **Cenários da Realidade Crua do DOM e Comportamento Ideal Esperado:** descrição dos cenários de teste reais aos quais a aplicação está submetida (ex: redesign de seletores, modais travados/Next infinito, freio de erros consecutivos, proteção de cache) e como a aplicação DEVE responder idealmente no mundo real para evitar banimento ou falhas operacionais, cabendo exclusivamente ao Claude conceber e implementar a lógica comercial interna.
 
 ## 8. Formato Oficial da "Carta do Chat" (Comunicação Direta no Chat)
-- **Delimitadores Obrigatórios (`---`):** Utilizar delimitadores padrão ASCII puros (`---`). Abrir a mensagem com `---`, inserir o cabeçalho (`DE`, `PARA`, `ASSUNTO`), fechar o cabeçalho com `---`, apresentar o corpo enxuto e finalizar com `---`.
-- **Proibição de Caracteres Unicode Especiais:** NUNCA usar caracteres Unicode de desenho de caixa (como box-drawing `\u2500`) ou símbolos especiais que quebrem o clipboard/encoding ao copiar.
+- **Delimitadores Obrigatórios (`──────`):** O e-mail de chat tem cabeçalho separado começando com `──────`, inserindo as linhas (`DE`, `PARA`, `ASSUNTO`), e fechando o cabeçalho com `──────`. O e-mail encerra no final absoluto com `──────`.
+- **Proibição de Delimitadores no Corpo:** NUNCA usar `──────` ou divisores horizontais dentro do corpo do e-mail; `──────` só serve para isolar o cabeçalho e para o encerramento final.
+- **Proibição de Títulos Markdown (`##`):** NUNCA usar marcações de cabeçalho `##` ou `###` nem dentro do cabeçalho nem no corpo do texto. Manter a estrutura limpa em tópicos ou parágrafos diretos com negrito (`**`).
 - **Destinatários Suportados no `PARA`:** Pode ser direcionado para Claude (Dev), Gemini Argon (Auditoria) ou Nicolas (PO/Tech Lead).
-- **Sem Títulos Markdown (`##`):** NUNCA usar marcações de cabeçalho `##` ou `###` no corpo do texto. Manter a estrutura limpa em tópicos ou parágrafos diretos.
 - **Formatação de Commits:** Commits SEMPRE referenciados entre aspas simples (ex.: `'dbbfbca'`). Proibido usar sem aspas ou em outros formatos.
