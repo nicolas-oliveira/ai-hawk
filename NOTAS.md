@@ -1,76 +1,35 @@
 # NOTAS.md - Log de Handoff entre Agentes (AIHawk)
 
-Este documento e a fonte unica de verdade (Single Source of Truth) para coordenacao assincrona,
-troca de turnos e especificacao de contratos entre o Antigravity (Agy) e o Claude.
+Fonte unica de verdade para a coordenacao assincrona entre Agy e Claude.
 
 ---
 
 ## 📬 COMUNICADO OFICIAL ATIVO NO TOPO (TURNO ATUAL)
 
 ```text
-================================================================================
-DE:                  Agy (Antigravity - QA, Runtime & Infra)
-PARA:                Claude (DEV), Nicolas (Tech Lead), Argon (Auditor Senior)
-DATA:                2026-10-31T03:52:00-03:00
-VERSAO CONSOLIDADA:  NENHUMA (aguardando PR/merge na master)
-CANDIDATAS:          v0.1 = b4a33ca (12 passed) | v0.5 = HEAD (41 passed)
-VERSAO ALVO:         v0.5 (Loop Easy Apply Seco Completo)
-AGUARDA:             Nicolas e Argon (Passo 5 - Revisao Humana da squad para aprovacao de PR)
-ASSUNTO:             Passo 3 (QA Real) CONCLUIDO: 41 PASSED (7 testes reais no Chromium do Ubuntu)
-================================================================================
-
-Claude, Nicolas e Argon:
-
-Missao de QA da Realidade Crua (Passo 3) CONCLUIDA com Skin in the Game absoluto!
-Criei a suite `tests/real/` com servidor HTTP local embutido e testes de ponta a ponta
-da aplicacao (`AppService` + `BrowserService`) rodando direto no Chromium real do Patchright.
-
-RESULTADO DA SUITE COMPLETA (.venv/bin/python -m pytest):
-============================= 41 passed in 20.23s =============================
-- tests/application/ (DTOs e orquestracao rapida): 17 PASSED
-- tests/domain/ (Entidade Job e canonizacao): 8 PASSED
-- tests/infrastructure/ (Engine síncrona no Chromium): 9 PASSED
-- tests/real/ (Integracao Real E2E no Chromium do Patchright sem mocks): 7 PASSED
-  1. `test_real_lazy_loading_and_deduplication`: Container com overflow rola fisicamente, dispara
-     evento JS de scroll real, anexa novos cards dinamicamente e canoniza todas as 5 vagas.
-  2. `test_real_job_101_direct_submission`: Formulario direto submete e marca APPLIED.
-  3. `test_real_job_102_css_trap_anti_ban`: Campo obrigatorio com display:none (trap/honeypot) e ignorado
-     pela Heuristica 3C (`checkVisibility`), evitando falso-positivo e submetendo como APPLIED.
-  4. `test_real_job_103_complex_modal_discards_cleanly`: Campo obrigatorio visivel vazio detectado pela 3C,
-     clica em Close, confirma no popup real de descarte e marca SKIPPED_COMPLEX.
-  5. `test_real_job_104_multi_step_submission`: Avanco real de etapas no DOM e submissao como APPLIED.
-  6. `test_real_job_105_external_redirect_skipped_complex`: Vaga externa sem Easy Apply tratada como SKIPPED_COMPLEX.
-  7. `test_real_full_orchestration_with_max_applications_ceiling`: Loop completo atinge o teto max_applications=2
-     e encerra imediatamente sem tocar nas vagas restantes.
-
-AJUSTE REAL FEITO NA INFRAESTRUTURA:
-- Em `BrowserService.scroll_container`, adicionado `el.dispatchEvent(new Event('scroll', { bubbles: true }))`
-  para garantir que o motor Blink do Chromium emita o evento de scroll para os listeners JS das plataformas.
-
-STATUS: Codigo 100% blindado contra a realidade do navegador no Ubuntu 24.04.
-AGUARDA: Revisao Humana (Nicolas e Argon - Passo 5 da Esteira).
-Apos a aprovacao humana, o Claude assume o Passo 6 (fechamento, PRs e criacao das tags).
-================================================================================
+DE: Claude (Dev) | PARA: Agy (QA), Nicolas, Argon | TURNO: Agy (checagem de telemetria no Chromium) | 2026-10-31T04:09-03:00
+STATUS: PRONTO (Fase 1: queries estaticas + telemetria) | PEDIDO ao Agy: testes de URL/telemetria e `reports/` no .gitignore
+ACEITE/RESUMO: `pytest tests/domain tests/application` = 25 passed (suite real NAO rodada, reservada ao pre-PR). `build_linkedin_search_url` (f_AL/f_WT/f_TPR) em `search_request.py`; `AppController.execute` exporta `reports/telemetry_YYYYMMDD.json` (funil total_read > skipped_complex > applied > errors). Detalhe no Historico.
 ```
 
 ---
 
 ## 1. Estado Atual da Squad
 
-* **Turno Atual:** Nicolas e Argon (Passo 5 da esteira: Revisao Humana e Aprovacao de PR).
+* **Turno Atual:** Agy (checagem de telemetria no Chromium, antes do PR).
 * **Versao Consolidada da Aplicacao:** NENHUMA (`master` = `first commit`; sem tag nem PR). A v0.1 so existe apos PR aprovado.
 * **Candidatas:** v0.1 = `b4a33ca` (12 passed) | v0.5 = HEAD (41 passed). Dois PRs/tags previstos: v0.1 e v0.5.
 * **Versao Alvo da Squad:** `v0.5` (Loop Easy Apply Seco Completo).
 * **Branch Ativa:** `feat/v0.1-stealth-engine` (branch compartilhada onde a squad opera).
-* **Placar do Pytest:** 41 testes coletados | **41 PASSED** | **0 FAILED** (20.23s).
-* **Proxima Acao Esperada:** Nicolas e Argon realizam a revisao humana; Claude assume o Passo 6 (PR e Tags).
+* **Placar do Pytest:** rapido (`tests/domain` + `tests/application`) = 25 PASSED. Suite real/infra: ultimo placar do Agy = 41 PASSED; o Claude so a roda no pre-PR.
+* **Proxima Acao Esperada:** Agy cobre URLs e telemetria em testes e valida a telemetria no Chromium; depois revisao de Nicolas e Argon; Claude assume o Passo 6.
 
 ---
 
 ## 2. Regras de Governanca e Etiquetas do NOTAS.md
 
 1. **Leitura Obrigatoria do Topo:** Cada agente deve ler o e-mail ativo no topo e o Estado Atual antes de qualquer acao.
-2. **Regra do Topo Vivo:** O topo contem SEMPRE APENAS 1 E-MAIL (o do turno corrente). Ao passar o bastao, o e-mail e substituido pelo novo com Data e Hora atualizadas.
+2. **Regra do Topo Vivo:** o topo tem SEMPRE 3 linhas, do turno corrente: (1) DE / PARA / TURNO + data-hora; (2) STATUS (PRONTO | BLOQUEIO | PEDIDO); (3) ACEITE / RESUMO TECNICO. Detalhe vai para o Historico e para a mensagem do commit.
    Commit OBRIGATORIO entre turnos: o recado anterior e removido do topo (o git guarda o historico).
 3. **Formato Padrao de Linha de Evento no Historico:**
    `* [AAAA-MM-DD] [ETIQUETA] [autor] [arquivos] - descricao do evento`
@@ -103,6 +62,12 @@ Apos a aprovacao humana, o Claude assume o Passo 6 (fechamento, PRs e criacao da
 
 ## 4. Historico de Handoffs
 
+* [2026-10-31] [PRONTO] [Claude] src/application/dtos/search_request.py, app_controller.py - Fase 1: `build_linkedin_search_url` (f_AL=true, f_WT=2/remote, f_TPR=r86400/24h; encode %20) e telemetria JSON.
+  `reports/telemetry_YYYYMMDD.json` = `{date, runs[]}` (cada execucao ACRESCENTA); funil: total_read = skipped_complex + applied + errors + already_applied + not_processed; arquivo corrompido vira `.corrupt-HHMMSS`; I/O que falha nao derruba a sessao.
+  Teste: `.venv/bin/python -m pytest tests/domain tests/application -q` = 25 passed. NAO editei `tests/` (territorio do Agy). Validar: f_WT onsite=1/hybrid=3 nao confirmados; `reports_dir=None` desliga a exportacao.
+* [2026-10-31] [PEDIDO] [Claude -> Agy] Testes em `tests/`: (a) URL do LinkedIn exata (`?keywords=python%20developer&location=...&f_AL=true&f_WT=2&f_TPR=r86400`) e filtros invalidos => ValueError; (b) telemetria: soma do funil, runs acrescentando, arquivo corrompido preservado.
+  Aceite: testes verdes usando `reports_dir=tmp_path`.
+* [2026-10-31] [PEDIDO] [Claude -> Agy] O teste atual do AppController (`..._delegates_to_service_...`) agora ESCREVE `reports/` na raiz. Passar `reports_dir=tmp_path` (ou None) e adicionar `reports/` ao `.gitignore`. Depois, validar a telemetria no Chromium antes do PR.
 * [2026-10-31] [PRONTO] [Agy] tests/real/, src/infrastructure/browser_service.py - Passo 3 (QA Real) concluido. Criada suite de Realidade Crua (7 testes no Chromium real sem mocks). Total: 41 passed.
 * [2026-10-31] [PRONTO] [Agy] GEMINI.md - Formalizada a Missao Magna (Guardiao Incorruptivel da Realidade & Anti-Ban).
 * [2026-10-31] [PRONTO] [Claude] src/domain/entities/job.py, src/application/dtos/search_request.py, src/application/app_service.py, src/application/app_controller.py - Green Phase v0.5 entregue (`2567bf3`). Job.canonicalize_url, validacoes no SearchRequest, deduplicacao na listagem. Placar: 34 passed.

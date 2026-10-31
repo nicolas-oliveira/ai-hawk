@@ -1,5 +1,6 @@
 from dataclasses import dataclass
-from typing import Dict, List
+from typing import Dict, List, Optional
+from urllib.parse import quote, urlencode
 
 # Chaves genericas que a engine exige de QUALQUER plataforma (`review_button` e opcional).
 REQUIRED_SELECTOR_KEYS = (
@@ -29,6 +30,62 @@ LINKEDIN_DEFAULT_SELECTORS: Dict[str, str] = {
     "discard_button": "button[data-control-name='discard_application_confirm_btn']",
     "modal_container": ".jobs-easy-apply-modal",
 }
+
+
+# --------------------------------------------------------------------------
+# Queries estaticas do LinkedIn (Roadmap Fase 1): os filtros viajam na query
+# string; o robo NUNCA preenche inputs de busca na tela.
+# --------------------------------------------------------------------------
+LINKEDIN_JOBS_SEARCH_URL = "https://www.linkedin.com/jobs/search/"
+
+# f_WT: confirmado pelo Nicolas apenas `remote` = 2. `onsite` = 1 e `hybrid` = 3
+# sao do conhecimento geral do parametro e ainda NAO foram validados no site.
+LINKEDIN_WORKPLACE_FILTER: Dict[str, str] = {"onsite": "1", "remote": "2", "hybrid": "3"}
+
+# f_TPR: janela de publicacao em segundos (`r` + segundos).
+LINKEDIN_POSTED_WITHIN_FILTER: Dict[str, str] = {
+    "24h": "r86400",
+    "week": "r604800",
+    "month": "r2592000",
+}
+
+
+def build_linkedin_search_url(
+    keywords: str,
+    *,
+    location: Optional[str] = None,
+    easy_apply: bool = True,
+    workplace: Optional[str] = None,
+    posted_within: Optional[str] = None,
+) -> str:
+    """Monta uma URL canonica de busca do LinkedIn com filtros pre-aplicados.
+
+    - `easy_apply=True`  -> `f_AL=true` (somente Easy Apply)
+    - `workplace`        -> `f_WT` (`onsite`, `remote` ou `hybrid`)
+    - `posted_within`    -> `f_TPR` (`24h`, `week` ou `month`)
+    Todos os valores sao URL-encoded (espacos viram %20). A ordem dos
+    parametros e fixa, para a mesma busca gerar sempre a mesma URL.
+    """
+    if not keywords or not keywords.strip():
+        raise ValueError("keywords nao pode ser vazio.")
+    if workplace is not None and workplace not in LINKEDIN_WORKPLACE_FILTER:
+        raise ValueError(f"workplace invalido: {workplace!r}. Use {sorted(LINKEDIN_WORKPLACE_FILTER)}.")
+    if posted_within is not None and posted_within not in LINKEDIN_POSTED_WITHIN_FILTER:
+        raise ValueError(
+            f"posted_within invalido: {posted_within!r}. Use {sorted(LINKEDIN_POSTED_WITHIN_FILTER)}."
+        )
+
+    params = [("keywords", keywords.strip())]
+    if location and location.strip():
+        params.append(("location", location.strip()))
+    if easy_apply:
+        params.append(("f_AL", "true"))
+    if workplace:
+        params.append(("f_WT", LINKEDIN_WORKPLACE_FILTER[workplace]))
+    if posted_within:
+        params.append(("f_TPR", LINKEDIN_POSTED_WITHIN_FILTER[posted_within]))
+
+    return f"{LINKEDIN_JOBS_SEARCH_URL}?{urlencode(params, quote_via=quote)}"
 
 
 @dataclass
