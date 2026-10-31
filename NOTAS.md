@@ -5,45 +5,7 @@ troca de turnos e especificacao de contratos entre o Antigravity (Agy) e o Claud
 
 ---
 
-## 1. Regras de Governanca e Etiquetas do NOTAS.md
-
-1. **Leitura Obrigatoria:** Cada agente deve ler este arquivo no inicio de todo turno de trabalho antes de executar qualquer acao.
-2. **Formato Padrao de Linha de Evento:**
-   `* [AAAA-MM-DD] [ETIQUETA] [autor] [arquivos] - descricao do evento`
-3. **Etiquetas Padronizadas:**
-   - `[PEDIDO]`: Requisicao formal de um agente para outro (com componente e criterio de aceite).
-   - `[PRONTO]`: Conclusao de etapa/tarefa com hash do commit, placar do pytest e resultado validado.
-   - `[RESPOSTA]`: Atendimento a um `[PEDIDO]` previo (move-se a solicitacao atendida para o historico).
-   - `[BLOQUEIO]`: Impedimento critico que necessita de intervencao humana de Nicolas ou Argon.
-4. **Controle de Turno:** Apenas quem possui o `Turno atual` pode alterar a secao `Estado Atual da Squad`.
-5. **Governanca de Git:**
-   - NUNCA usar `git add .` ou `git commit -a`. Sempre usar `git add NOTAS.md` explicitamente com seus arquivos de territorio.
-   - Prefixos de commit obrigatorios: `[Agy] v0.x: ...` ou `[Claude] v0.x: ...`.
-
----
-
-## 2. Papeis e Territorios de Escrita
-
-| Papel | Agente | Territorio Permitido de Escrita |
-|---|---|---|
-| Decisor / Merge PR / Tag | Nicolas | `master` (PR manual via GitHub) |
-| DEV (Arquitetura e Contratos) | Claude | `src/domain/`, `src/application/`, `NOTAS.md` |
-| QA, Runtime e Infraestrutura | Antigravity (Agy) | `src/infrastructure/`, `src/main.py`, `tests/`, `requirements.txt`, `.env*`, `.gitignore`, `NOTAS.md` |
-| Auditoria e Revisao | Argon | Somente leitura |
-
----
-
-## 3. Estado Atual da Squad
-
-* **Turno Atual:** Claude (Passo 2 da esteira autonoma para v0.5 - Green Phase).
-* **Versao em Andamento:** v0.5 (Loop Easy Apply Seco Completo - salto direto sem tags intermediarias).
-* **Branch Ativa:** `feat/v0.1-stealth-engine` (branch compartilhada onde a squad opera).
-* **Placar do Pytest:** 34 testes coletados | **29 PASSED** | **5 FAILED** (Red Phase planejada).
-* **Proxima Acao Esperada:** Claude realizar os 3 ajustes de dominio/aplicacao para zerar os 5 testes e alcancar 100% GREEN.
-
----
-
-## 4. Caixa de Entrada / Handoff Ativo
+## 📬 COMUNICADOS OFICIAIS NO TOPO (HANDOFF ATIVO)
 
 ### E-MAIL 1: Protocolo de Estrutura Oficial do NOTAS.md
 ```text
@@ -54,23 +16,37 @@ Data: 2026-10-31
 Assunto: Protocolo Unificado e Estrutura Oficial do NOTAS.md para Operacao Autonoma v0.5
 
 Claude, conforme alinhamento com Nicolas e Argon, nosso modo de trabalho agora e 100% autonomo
-ate a entrega final da v0.5. Para garantir sintonia perfeita e evitar qualquer conflito,
+ate a entrega final da v0.5. Para garantir sintonia perfeita e evitar qualquer conflito ou desvio,
 esta e a estrutura oficial e definitiva do nosso NOTAS.md:
 
-1. Secao 1 (Governanca): define as regras de etiquetas ([PEDIDO], [PRONTO], [RESPOSTA], [BLOQUEIO]).
-2. Secao 2 (Territorios): blinda fisicamente as fronteiras de escrita (respeitadas rigidamente).
-3. Secao 3 (Estado Atual): traz o marcador unico de "Turno Atual", branch, versao e placar de testes.
-   Apenas o dono do turno atual pode passar o bastao editando esta secao.
-4. Secao 4 (Caixa de Entrada / Handoff Ativo): local onde deixamos os e-mails detalhados de handoff,
-   assinaturas de metodos, contratos de API e tracebacks de erro para o agente do turno seguinte.
-5. Secao 5 (Historico): registro cronologico imutavel (mais recente no topo) de todos os passos dados.
+1. Topo Absoluto (Comunicados Oficiais):
+   - Os e-mails e mensagens de handoff ficam SEMPRE no comeco de tudo para visualizacao imediata.
+   - Quem assume o turno le o topo antes de tocar em qualquer codigo.
+
+2. Secao 1 (Estado Atual da Squad):
+   - Traz o marcador unico de "Turno Atual", versao em foco, branch ativa e placar do pytest.
+   - REGRA: Apenas quem possui o "Turno Atual" pode editar esta secao e passar o bastao.
+
+3. Secao 2 (Regras de Governanca e Etiquetas):
+   - Formato padronizado de evento: `* [AAAA-MM-DD] [ETIQUETA] [autor] [arquivos] - descricao`.
+   - Etiquetas permitidas: [PEDIDO], [PRONTO], [RESPOSTA], [BLOQUEIO].
+   - Proibicao estrita de `git add .` ou `git commit -a`. Sempre dar `git add NOTAS.md` explicito.
+
+4. Secao 3 (Papeis e Territorios Fisicos):
+   - Claude (DEV): restrito a `src/domain/` e `src/application/`.
+   - Agy (QA/Infra): restrito a `src/infrastructure/`, `src/main.py`, `tests/` e configuracoes.
+   - Ninguem invade o territorio do outro.
+
+5. Secao 4 (Historico de Handoffs):
+   - Registro cronologico imutavel (mais recente sempre no topo).
+   - NUNCA apagar eventos anteriores, apenas empilhar novas conclusoes ([PRONTO] / [RESPOSTA]).
 
 Ao assumir seu turno:
-- Leia a Secao 3 e a Secao 4.
-- Rode o comando de teste indicado.
-- Faca seus commits estritamente no seu territorio com [Claude] v0.5: ...
-- Quando terminar seu turno, registre um [PRONTO] no Historico, atualize a Secao 4 com a sua mensagem
-  para mim, mude o "Turno Atual" para "Agy" e commite seu trabalho.
+1. Leia os Comunicados Oficiais no topo e o Estado Atual.
+2. Execute a suite de testes (.venv/bin/python -m pytest).
+3. Desenvolva estritamente no seu territorio (src/domain/ e src/application/) para deixar os testes verdes.
+4. Quando finalizar, registre um [PRONTO] no Historico, atualize a mensagem no topo,
+   passe o "Turno Atual" para "Agy" e commite com [Claude] v0.5: ...
 ```
 
 ### E-MAIL 2: Especificação Técnica Completa da v0.5 para o Claude
@@ -115,8 +91,47 @@ Ao finalizar, rode `.venv/bin/python -m pytest` para confirmar 34 passed!
 
 ---
 
-## 5. Historico de Handoffs
+## 1. Estado Atual da Squad
 
+* **Turno Atual:** Claude (Passo 2 da esteira autonoma para v0.5 - Green Phase).
+* **Versao em Andamento:** v0.5 (Loop Easy Apply Seco Completo - salto direto sem tags intermediarias).
+* **Branch Ativa:** `feat/v0.1-stealth-engine` (branch compartilhada onde a squad opera).
+* **Placar do Pytest:** 34 testes coletados | **29 PASSED** | **5 FAILED** (Red Phase planejada).
+* **Proxima Acao Esperada:** Claude realizar os 3 ajustes de dominio/aplicacao para zerar os 5 testes e alcancar 100% GREEN.
+
+---
+
+## 2. Regras de Governanca e Etiquetas do NOTAS.md
+
+1. **Leitura Obrigatoria:** Cada agente deve ler este arquivo no inicio de todo turno de trabalho antes de executar qualquer acao.
+2. **Formato Padrao de Linha de Evento:**
+   `* [AAAA-MM-DD] [ETIQUETA] [autor] [arquivos] - descricao do evento`
+3. **Etiquetas Padronizadas:**
+   - `[PEDIDO]`: Requisicao formal de um agente para outro (com componente e criterio de aceite).
+   - `[PRONTO]`: Conclusao de etapa/tarefa com hash do commit, placar do pytest e resultado validado.
+   - `[RESPOSTA]`: Atendimento a um `[PEDIDO]` previo (move-se a solicitacao atendida para o historico).
+   - `[BLOQUEIO]`: Impedimento critico que necessita de intervencao humana de Nicolas ou Argon.
+4. **Controle de Turno:** Apenas quem possui o `Turno atual` pode alterar a secao `Estado Atual da Squad`.
+5. **Governanca de Git:**
+   - NUNCA usar `git add .` ou `git commit -a`. Sempre usar `git add NOTAS.md` explicitamente com seus arquivos de territorio.
+   - Prefixos de commit obrigatorios: `[Agy] v0.x: ...` ou `[Claude] v0.x: ...`.
+
+---
+
+## 3. Papeis e Territorios de Escrita
+
+| Papel | Agente | Territorio Permitido de Escrita |
+|---|---|---|
+| Decisor / Merge PR / Tag | Nicolas | `master` (PR manual via GitHub) |
+| DEV (Arquitetura e Contratos) | Claude | `src/domain/`, `src/application/`, `NOTAS.md` |
+| QA, Runtime e Infraestrutura | Antigravity (Agy) | `src/infrastructure/`, `src/main.py`, `tests/`, `requirements.txt`, `.env*`, `.gitignore`, `NOTAS.md` |
+| Auditoria e Revisao | Argon | Somente leitura |
+
+---
+
+## 4. Historico de Handoffs
+
+* [2026-10-31] [PRONTO] [Agy] NOTAS.md - E-mail de alinhamento e estrutura movidos para o comeco absoluto de tudo.
 * [2026-10-31] [PRONTO] [Agy] NOTAS.md - Estrutura oficial do NOTAS.md formalizada e e-mails de especificacao registrados para o Claude.
 * [2026-10-31] [PRONTO] [Agy] src/infrastructure/browser_service.py, src/main.py, tests/ - Bateria completa de Infraestrutura e TDD v0.5 implementada (commit `caaca36`).
   - BrowserService com Heuristica 3C, scroll_container, extract_job_cards, extract_links, navigate, click_element e aliases BrowserPort.
