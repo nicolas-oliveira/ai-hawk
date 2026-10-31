@@ -19,7 +19,7 @@ CACHEABLE_STATUSES = frozenset(
 MAX_MODAL_STEPS = 15
 
 # Esperas por condicao do DOM (auto-waiting), sempre com teto curto (2-5 s).
-# NUNCA sleep fixo: o BrowserService espera o elemento sumir e volta antes.
+# NUNCA sleep fixo: o BrowserService espera por condicao do DOM e volta antes.
 SHORT_TIMEOUT_MS = 3000
 LOADER_TIMEOUT_MS = 5000
 
@@ -64,15 +64,14 @@ class BrowserPort(Protocol):
         """Inspetor DOM 3C: True se o container tem `input[required]`,
         `aria-required="true"`, `textarea` ou `select` obrigatorios vazios."""
 
-    def wait_until_gone(self, selector: str, timeout_ms: int) -> bool:
-        """Espera DINAMICA (sem sleep) ate o elemento sumir ou ficar oculto, no
-        maximo `timeout_ms`. True se sumiu; False se estourou o tempo. Elemento
-        que nunca existiu conta como True, e a chamada retorna na hora."""
+    def dismiss_overlay_if_present(self, dismiss_selector: str, timeout: int) -> bool:
+        """Fecha overlays intrusivos (cookies, premium) se estiverem visiveis.
+        True se clicou; False se nao havia nada. Nunca levanta por ausencia.
+        `timeout` em ms."""
 
-    def click_if_present(self, selector: str, timeout_ms: int) -> bool:
-        """Clica no elemento SO se ele aparecer dentro de `timeout_ms` (use
-        valor curto). True se clicou; False se nao havia nada a clicar. Nunca
-        levanta excecao por ausencia do elemento."""
+    def wait_for_loader_to_disappear(self, loader_selector: str, timeout: int) -> bool:
+        """Espera DINAMICA (sem sleep) o loader sumir. True se nao existia ou
+        sumiu antes de `timeout` ms; False se continuou visivel."""
 
 
 class JobCache(Protocol):
@@ -213,12 +212,19 @@ class AppService:
 
     # ------------------------------------------- SPA: loader e overlay (DOM)
     def _prepare_page(self, sel: Dict[str, str]) -> None:
-        """Depois de abrir uma URL: dispensa o overlay e espera o loader sumir.
-        Cada passo so roda se o perfil de seletores o define (opcional)."""
-        if sel.get("overlay_dismiss"):
-            self._browser.click_if_present(sel["overlay_dismiss"], SHORT_TIMEOUT_MS)
+        """Depois de abrir uma URL: espera o loader sumir e dispensa o overlay.
+        Cada passo so roda se o perfil de seletores o define (opcional).
+
+        Ordem: loader primeiro (o SPA assenta), depois o overlay, que costuma
+        aparecer so apos o carregamento. `element_exists` espera por visibilidade
+        (prazo curto da infra); o overlay so e fechado se de fato apareceu."""
         if sel.get("loading_indicator"):
-            self._browser.wait_until_gone(sel["loading_indicator"], LOADER_TIMEOUT_MS)
+            self._browser.wait_for_loader_to_disappear(
+                sel["loading_indicator"], timeout=LOADER_TIMEOUT_MS
+            )
+        dismiss = sel.get("overlay_dismiss")
+        if dismiss and self._browser.element_exists(dismiss):
+            self._browser.dismiss_overlay_if_present(dismiss, timeout=SHORT_TIMEOUT_MS)
 
     # ---------------------------------------------------------- v0.6: cache
     def _apply_cache(self, jobs: List[Job]) -> None:
@@ -286,6 +292,7 @@ class AppService:
             if not self._browser.element_exists(sel["apply_button"]):
                 # Sem Easy Apply (candidatura externa ou ja enviada): fora do
                 # escopo da v1.0. Decisao a validar pelo QA/Nicolas.
+                logger.info("Sem botao de candidatura visivel (%s): %s", sel["apply_button"], job.url)
                 job.status = JobStatus.SKIPPED_COMPLEX
                 return
 
@@ -303,6 +310,7 @@ class AppService:
 
         for _ in range(MAX_MODAL_STEPS):
             if self._browser.has_empty_required_inputs(modal):
+                logger.info("Regra 3C: campo obrigatorio vazio no passo; descartando (%s).", modal)
                 self._discard(sel)
                 return JobStatus.SKIPPED_COMPLEX
 

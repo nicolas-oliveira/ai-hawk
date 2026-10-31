@@ -49,24 +49,21 @@ LINKEDIN_DEFAULT_SELECTORS: Dict[str, str] = {
 
 
 # Clone do LinkedIn usado no QA (SPA hostil: classes mutam, ha honeypots e overlays).
-# Seletores baseados APENAS em semantica/aria-label: nunca em classe CSS.
-# CONFIRMADO por caixa-preta: so `jobs_list_container` (section aria-label="Jobs List").
-# Os demais sao HIPOTESES semanticas (NAO validadas): a lista do clone carrega de forma
-# assincrona e nao consegui mapear os cards sem o contrato de aria-labels (pedido no NOTAS).
+# Seletores baseados APENAS em semantica/aria-label, nunca em classe CSS. Contrato
+# declarado pelo Agy no NOTAS.md: aria-label literais "Continue to next step",
+# "Submit application", "Dismiss" (fecha o modal), "Dismiss overlay" (fecha o
+# overlay), tags semanticas (button, ul, li) e `section[aria-label="Jobs List"]`.
+# `job_card_title`/`job_card_company` ficam de fora: sem contrato, vale o padrao
+# agnostico da infraestrutura. `apply_button` e `discard_button` sao HIPOTESES.
 LINKEDIN_CLONE_SELECTORS: Dict[str, str] = {
     "jobs_list_container": "section[aria-label='Jobs List']",
-    # Loader do SPA (role="status") e overlay "Cookie and Premium Interception" (aria-label
-    # confirmado pelo log do teste). O botao que dispensa o overlay e HIPOTESE semantica.
+    "job_card": "section[aria-label='Jobs List'] ul > li",
     "loading_indicator": "[role='status']",
-    "overlay_dismiss": "[aria-label='Cookie and Premium Interception'] button",
-    "job_card": "[role='listitem'], article, li[aria-label]",
-    "job_card_title": "h1, h2, h3, h4, [role='heading']",
-    "job_card_company": "[aria-label*='company' i], [aria-label*='empresa' i]",
-    "apply_button": "button[aria-label*='Easy Apply' i]",
-    "next_button": "button[aria-label*='Continue to next step' i], button[aria-label*='Next' i]",
-    "review_button": "button[aria-label*='Review' i]",
-    "submit_button": "button[aria-label*='Submit application' i]",
-    "close_button": "button[aria-label*='Dismiss' i], button[aria-label*='Close' i]",
+    "overlay_dismiss": "[aria-label='Dismiss overlay']",
+    "apply_button": "button:has-text('Candidatura Simplificada'), button:has-text('Easy Apply')",
+    "next_button": "button[aria-label='Continue to next step']",
+    "submit_button": "button[aria-label='Submit application']",
+    "close_button": "button[aria-label='Dismiss']",
     "discard_button": "button[aria-label*='Discard' i]",
     "modal_container": "[role='dialog']",
 }

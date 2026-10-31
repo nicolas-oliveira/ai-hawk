@@ -6,15 +6,15 @@ Fonte unica de verdade para a coordenacao assincrona entre Agy e Claude.
 
 ## 📬 COMUNICADO OFICIAL ATIVO NO TOPO (TURNO ATUAL)
 
-**DE/PARA/TURNO:** Claude -> Agy (Nicolas, Argon cientes) | Turno: Agy | 2026-10-31
-**STATUS:** [PEDIDO] Hostil 2 FAILED por falta de 2 metodos de infra: `click_if_present` e `wait_until_gone` (AttributeError no BrowserService).
-**ACEITE/RESUMO:** Entregue: queries booleanas, SELECTOR_PROFILES (linkedin/orangehrm/linkedin_clone), repasse de titulo/empresa, espera dinamica de loader/overlay. Rápida+infra 56 passed; hostil fica verde quando os 2 metodos existirem.
+**DE/PARA/TURNO:** Claude -> Nicolas / Argon (Agy em standby) | Turno: revisao humana | 2026-10-31
+**STATUS:** [PRONTO] Hostil 2 passed; pre-PR 24 passed (real+infra+hostil) e suite completa 98 passed; `make test` = 74 passed.
+**ACEITE/RESUMO:** Pedido anterior ao Agy RETIRADO (usei `wait_for_loader_to_disappear`/`dismiss_overlay_if_present` ja existentes). Perfil `linkedin_clone` pelo contrato do NOTAS; 31 testes novos meus em tests/application.
 
 ---
 
 ## 1. Estado Atual da Squad
 
-* **Turno Atual:** Agy (implementar `click_if_present` e `wait_until_gone` no BrowserService; depois rodar o teste hostil).
+* **Turno Atual:** Nicolas e Argon (revisao humana do PR #1). Agy e Claude em standby.
 * **Versao Consolidada da Aplicacao:** NENHUMA (`master` = `first commit`; sem tag nem PR). A v0.1/v0.5 so existem apos PR aprovado.
 * **Versoes:** v0.1 = so uma TAG historica local em `b4a33ca` (sem PR, sem branch; nao empurrada). Estaveis intermediarias sem tag: v0.6 `8f32943`, v0.7 `bce92f1`. PR unico previsto: v1.0 ("Release v1.0: AIHawk MVP Operacional").
 * **Versao Alvo da Squad:** `v1.0` (AIHawk MVP Operacional).
@@ -60,10 +60,10 @@ Fonte unica de verdade para a coordenacao assincrona entre Agy e Claude.
 
 ## 4. Historico de Handoffs
 
-* [2026-10-31] [PEDIDO] [Claude -> Agy] `BrowserService.click_if_present(selector, timeout_ms) -> bool` (clica so se aparecer no prazo; ausencia NAO levanta) e `wait_until_gone(selector, timeout_ms) -> bool` (espera dinamica ate sumir/ocultar; elemento inexistente = True na hora). Sem sleep/wait_for_timeout; auto-waiting, timeouts 2-5 s.
-  Uso (AppService, so se o perfil define as chaves opcionais `overlay_dismiss`/`loading_indicator`): apos `open_url`, `click_if_present(overlay_dismiss, 3000)` e `wait_until_gone(loading_indicator, 5000)`. Log do hostil: overlay `[aria-label="Cookie and Premium Interception"]` permanece aberto e a lista volta 0 vagas.
-  Hipotese NAO validada: `overlay_dismiss` do clone = `[aria-label='Cookie and Premium Interception'] button`. Se o botao tiver outro rotulo, informe o aria-label (contrato, nao codigo). Cobertura de teste das funcoes novas (`AppService` + queries booleanas) e sua.
-* [2026-10-31] [PRONTO] [Claude] src/application - `build_boolean_keywords`/`build_linkedin_boolean_search_url` (OR/AND/NOT, termo com espaco entre aspas, aspas/parenteses rejeitados); `SELECTOR_PROFILES`; `extract_job_cards` recebe titulo/empresa do perfil. `orangehrm` NAO validado em DOM real; `linkedin_clone`: so `jobs_list_container` confirmado.
+* [2026-10-31] [PRONTO] [Claude] src/application, tests/application - queries booleanas (`build_boolean_keywords`, `build_linkedin_boolean_search_url`), `SELECTOR_PROFILES` (linkedin, orangehrm, linkedin_clone), titulo/empresa repassados ao extrator, `_prepare_page` (loader + overlay, timeouts 5 s/3 s, sem sleep) usando metodos ja existentes da infra.
+  Contrato usado no clone: `Dismiss overlay`, `[role='status']`, `Continue to next step`, `Submit application`, `Dismiss`; apply = texto "Candidatura Simplificada"/"Easy Apply" (HIPOTESE que passou). `orangehrm` e `discard_button`/`modal_container` do clone NAO validados. Hostil: 33.9 s + 20.3 s; parte do tempo e espera do overlay (ate 3 s por pagina) no meu lado, o resto na infra.
+
+
 * [2026-10-31] [PRONTO] [Agy] tests/real/external/, src/main.py, .env.example, NOTAS.md - Suite externa blindada contra falsos positivos e amarra entrypoint.
   Assercoes negativas anti-trapaca ativas (zero honeypots). Validado E2E real no Chromium (2 passed). Turno: Claude.
 * [2026-10-31] [PRONTO] [Agy] tests/real/linkedin_clone/app/page.js, NOTAS.md - Polimento do clone Next.js com lazy loading, overlays, honeypots e mutacao de wrappers.
