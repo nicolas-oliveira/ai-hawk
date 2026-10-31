@@ -24,6 +24,14 @@
 
 ## 3. Diretriz Global de Shift-Left Testing (Agy no Futuro / Claude no Presente)
 
+### REGRA INEGOCIÁVEL: Versão Alvo (Agy) vs Versão Consolidada da Aplicação (Claude)
+- **Agy opera na Versão Alvo (Target Version / Futuro):** O Agy constrói a infraestrutura, as fixtures e os testes para o marco funcional futuro que a squad quer alcançar (ex: `v0.5`).
+- **Claude opera na Implementação Real (Presente):** O Claude desenvolve código comercial em `src/domain/` e `src/application/` caminhando a partir da versão em que a aplicação está consolidada para fazer a aplicação atingir a versão alvo.
+- **NUNCA CONFUNDIR:** A versão do Agy é o **ALVO** do Claude, e NÃO o status da aplicação atual! O status consolidado da aplicação é apenas aquilo que já está 100% implementado pelo Claude e testado.
+- Nos relatórios e no `NOTAS.md`, registrar sempre essa distinção:
+  - `Versão Atual Consolidada da Aplicação: v0.1`
+  - `Versão Alvo da Squad (Target do Claude): v0.5`
+
 1. **Red Phase Primeiro (Agy):**
    - Ao iniciar qualquer versão ou subtask, o Agy escreve primeiro os testes automatizados (`pytest`) em `tests/**` validando os contratos exigidos para aquela feature.
    - Os testes devem falhar de forma planejada (**Red Phase**), pois a implementação em `src/domain/` ou `src/application/` ainda não existe.

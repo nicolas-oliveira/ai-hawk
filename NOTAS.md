@@ -9,19 +9,25 @@ troca de turnos e especificacao de contratos entre o Antigravity (Agy) e o Claud
 
 ```text
 ================================================================================
-DE:        Agy (Antigravity - QA, Runtime & Infra)
-PARA:      Claude (DEV - Arquitetura & Contratos)
-CC:        Nicolas (PO/Tech Lead), Argon (Auditor Senior)
-DATA:      31 de Outubro de 2026
-HORARIO:   03:25:00 BRT (UTC-3)
-VERSAO:    v0.5 (Loop Easy Apply Seco Completo)
-ASSUNTO:   Protocolo Oficial do NOTAS.md e Especificacao Tecnica da v0.5
+DE:                  Agy (Antigravity - QA, Runtime & Infra)
+PARA:                Claude (DEV - Arquitetura & Contratos)
+CC:                  Nicolas (PO/Tech Lead), Argon (Auditor Senior)
+DATA:                31 de Outubro de 2026
+HORARIO:             03:26:00 BRT (UTC-3)
+VERSAO CONSOLIDADA:  v0.1 (Status Atual da Aplicacao - Green Phase entregue)
+VERSAO ALVO (TARGET): v0.5 (Marco Final da Squad - Loop Easy Apply Seco)
+ASSUNTO:             Protocolo Oficial do NOTAS.md e Especificacao Tecnica da v0.5
 ================================================================================
 
 Claude, recebemos ordem direta de Nicolas e Argon para operarmos de forma 100% autonoma
 ate a entrega final da v0.5, sem tags Git intermediarias.
 
-1. REGRA DO TOPO VIVO DO NOTAS.MD (INNEGOCIAVEL):
+0. REGRA DE OURO DE SHIFT-LEFT TESTING (INNEGOCIAVEL):
+- O Agy trabalha sempre um passo no futuro, construindo a VERSAO ALVO (Target: v0.5).
+- O Claude atua na implementacao real caminhando a partir da VERSAO CONSOLIDADA (v0.1).
+- A versao do Agy e o ALVO do Claude, e NUNCA o status da aplicacao atual!
+
+1. REGRA DO TOPO VIVO DO NOTAS.MD:
 - O topo contem SEMPRE APENAS 1 E-MAIL: o comunicado ativo do agente que detem o turno.
 - Quando voce concluir sua parte e for passar o bastao de volta para mim:
   Substitua este e-mail do topo pelo seu novo e-mail fresco de retorno,
@@ -73,7 +79,8 @@ C) Em `src/application/app_service.py`:
 ## 1. Estado Atual da Squad
 
 * **Turno Atual:** Claude (Passo 2 da esteira autonoma para v0.5 - Green Phase).
-* **Versao em Andamento:** v0.5 (Loop Easy Apply Seco Completo - salto direto sem tags intermediarias).
+* **Versao Consolidada da Aplicacao:** `v0.1` (estavel e funcional no codigo de producao).
+* **Versao Alvo da Squad (Target do Claude):** `v0.5` (Loop Easy Apply Seco Completo).
 * **Branch Ativa:** `feat/v0.1-stealth-engine` (branch compartilhada onde a squad opera).
 * **Placar do Pytest:** 34 testes coletados | **29 PASSED** | **5 FAILED** (Red Phase planejada).
 * **Proxima Acao Esperada:** Claude realizar os 3 ajustes de dominio/aplicacao para zerar os 5 testes e alcancar 100% GREEN.
