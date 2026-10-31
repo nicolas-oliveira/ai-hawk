@@ -7,16 +7,16 @@ Fonte unica de verdade para a coordenacao assincrona entre Agy e Claude.
 ## 📬 COMUNICADO OFICIAL ATIVO NO TOPO (TURNO ATUAL)
 
 ```text
-DE: Claude (Dev) | PARA: Agy (QA/Infra), Nicolas, Argon | TURNO: Agy (testes + QA real das v0.6 e v0.7) | 2026-10-31T04:22-03:00
-STATUS: PRONTO (v0.6 cache, v0.7 freio) + PEDIDO ao Agy | PR da v1.0 NAO aberto (ordem do Nicolas: primeiro a app completa ate a v0.9; a v1.0 so entra com testes de borda)
-ACEITE/RESUMO: commits 8f32943 (cache `JsonJobCache`, opt-in) e bce92f1 (freio `max_consecutive_errors`=3, `aborted_reason` na telemetria). `pytest tests/domain tests/application` = 38 passed; suite real NAO rodada (e sua). Tag local `v0.1` em b4a33ca, nao empurrada.
+DE: Claude (Dev) | PARA: Agy (QA/Infra), Nicolas, Argon | TURNO: Agy (finalizar infra: seletores de titulo/empresa do card) | 2026-10-31T04:43-03:00
+STATUS: PRONTO (ajuste fino de desacoplamento) + PEDIDO ao Agy | PR da v1.0 NAO aberto; plano de tags segue parado ate a infra fechar
+ACEITE/RESUMO: commits d35516f (chaves opcionais `job_card_title`/`job_card_company`) e 7fe2b46 (`canonicalize_url` preserva id/jobId/gh_jid so se o path nao tem ID). `pytest tests/domain tests/application` = 38 passed; suite real NAO rodada.
 ```
 
 ---
 
 ## 1. Estado Atual da Squad
 
-* **Turno Atual:** Agy (testes e QA real das v0.6 e v0.7).
+* **Turno Atual:** Agy (finalizar a infraestrutura: seletores de titulo/empresa vindos do dicionario).
 * **Versao Consolidada da Aplicacao:** NENHUMA (`master` = `first commit`; sem tag nem PR). A v0.1/v0.5 so existem apos PR aprovado.
 * **Versoes:** v0.1 = so uma TAG historica local em `b4a33ca` (sem PR, sem branch; nao empurrada). Estaveis intermediarias sem tag: v0.6 `8f32943`, v0.7 `bce92f1`. PR unico previsto: v1.0, depois da v0.9 e dos testes de borda.
 * **Versao Alvo da Squad:** `v0.9` (app completa); depois, com testes de borda, `v1.0`.
@@ -62,6 +62,11 @@ ACEITE/RESUMO: commits 8f32943 (cache `JsonJobCache`, opt-in) e bce92f1 (freio `
 
 ## 4. Historico de Handoffs
 
+* [2026-10-31] [PRONTO] [Claude] src/application/dtos, src/domain - d35516f: `job_card_title` e `job_card_company` em `LINKEDIN_DEFAULT_SELECTORS` (OPCIONAIS, valores copiados do browser_service; sem chaves duplicadas, conferido por AST). 7fe2b46: `Job.canonicalize_url` mantem `id`/`jobId`/`gh_jid` so quando o path nao tem 6+ digitos.
+  Verificacao: `pytest tests/domain tests/application` = 38 passed. Limite documentado: outros parametros de ID (ex.: `currentJobId` do LinkedIn em /collections/) exigem ampliar a whitelist na Fase 2.
+* [2026-10-31] [PEDIDO] [Claude -> Agy] `BrowserService.extract_job_cards(card_selector, title_selector=None, company_selector=None)`: use os parametros no lugar dos seletores LinkedIn das linhas ~214 e ~217 (None = padrao generico). Compativel com a assinatura atual.
+  Aceite: testes reais verdes. Quando voce devolver o turno, eu passo `sel.get("job_card_title")` e `sel.get("job_card_company")` no AppService (nao passei agora para nao quebrar a assinatura atual).
+* [2026-10-31] [RESPOSTA] [Claude] Check-in Mutex: o ultimo commit era `f50a809` [Claude] (o Agy nao commitou no turno dele; a diretoria passou o turno direto). Arvore sem arquivo do Agy pendente (so `CLAUDE.md`, sem dono), entao nao devolvi com BLOQUEIO.
 * [2026-10-31] [PRONTO] [Claude] src/domain, src/application - v0.6 `8f32943`: `JsonJobCache` (opt-in, `AppService(browser, cache=...)`); so APPLIED/SKIPPED_COMPLEX/ALREADY_APPLIED persistem (ERROR nao); vaga em cache nao reabre o card nem consome o teto.
   v0.7 `bce92f1`: `SearchRequest.max_consecutive_errors`=3 interrompe a sessao; telemetria ganha `aborted_reason` e `cache.hits` (fora do funil). Verificacao: scripts manuais + 38 passed; tests/real NAO rodado.
   Validar: APPLIED em cache vira ALREADY_APPLIED; `Job.from_cache`; o cache vem DESLIGADO (cache=None) para nao contaminar testes.
