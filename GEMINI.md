@@ -63,6 +63,11 @@
 5. **Passo 5 (Revisão Humana):** Nicolas e Argon validam os arquivos e aprovam.
 6. **Passo 6 (Entrega Final - Claude):** Claude cria o PR para a `master`, aguarda merge do Nicolas e gera a tag oficial.
 
+### Regra de Ouro sobre Turnos e Edição do NOTAS.md:
+- Uma interação, consulta no chat, planejamento ou auditoria de QA com Nicolas ou Argon **NÃO transfere o turno operacional no repositório**.
+- O turno só se torna do Agy (e o `NOTAS.md` só pode ser editado) quando houver necessidade real de **execução de modificações ativas e comitáveis** em seu território.
+- Se não houver edição de código ou arquivos de infraestrutura, o `NOTAS.md` **permanece 100% intocado**, preservando o mutex da esteira intacto com o outro agente ou com a revisão humana.
+
 ## 5. Governança Estrita de Git
 - Branch única compartilhada: `feat/v0.1-stealth-engine` (e futuras).
 - PROIBIDO usar `git add .` ou `git commit -a`.
@@ -86,3 +91,10 @@
   2. **Capacidades e Contratos Disponibilizados pela Infraestrutura:** o que foi construído no motor (métodos públicos, assinaturas genéricas, parâmetros desacoplados, garantias de anti-detecção e resiliência).
   3. **Placar da Suíte de Testes:** detalhamento do status dos testes rápidos (`tests/domain`, `tests/application`), de infraestrutura (`tests/infrastructure`) e reais no Chromium (`tests/real`).
   4. **Cenários da Realidade Crua do DOM e Comportamento Ideal Esperado:** descrição dos cenários de teste reais aos quais a aplicação está submetida (ex: redesign de seletores, modais travados/Next infinito, freio de erros consecutivos, proteção de cache) e como a aplicação DEVE responder idealmente no mundo real para evitar banimento ou falhas operacionais, cabendo exclusivamente ao Claude conceber e implementar a lógica comercial interna.
+
+## 8. Formato Oficial da "Carta do Chat" (Comunicação Direta no Chat)
+- **Delimitadores Obrigatórios (`---`):** Utilizar delimitadores padrão ASCII puros (`---`). Abrir a mensagem com `---`, inserir o cabeçalho (`DE`, `PARA`, `ASSUNTO`), fechar o cabeçalho com `---`, apresentar o corpo enxuto e finalizar com `---`.
+- **Proibição de Caracteres Unicode Especiais:** NUNCA usar caracteres Unicode de desenho de caixa (como box-drawing `\u2500`) ou símbolos especiais que quebrem o clipboard/encoding ao copiar.
+- **Destinatários Suportados no `PARA`:** Pode ser direcionado para Claude (Dev), Gemini Argon (Auditoria) ou Nicolas (PO/Tech Lead).
+- **Sem Títulos Markdown (`##`):** NUNCA usar marcações de cabeçalho `##` ou `###` no corpo do texto. Manter a estrutura limpa em tópicos ou parágrafos diretos.
+- **Formatação de Commits:** Commits SEMPRE referenciados entre aspas simples (ex.: `'dbbfbca'`). Proibido usar sem aspas ou em outros formatos.
