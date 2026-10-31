@@ -28,6 +28,7 @@ Formato: `[AAAA-MM-DD] [autor] [arquivo] - evento`. Uma linha por evento, mais r
 
 ## Historico
 
+* [2026-10-31] [Agy] src/infrastructure/browser_service.py, src/main.py - Refatoracao completa para API 100% sincrona do Patchright (Decisao 4). Remocao de asyncio/await, adocao de sync_playwright() e metodos lineares. Teste de fumaca e persistencia de storage reexecutados e validados 100% no Ubuntu.
 * [2026-10-31] [Agy] src/infrastructure/browser_service.py, src/main.py, requirements.txt, .env.example, .gitignore - Implementacao v0.1 concluida. Suporte a sessoes persistentes parametrizadas por pasta (./sessions/{platform}), flags stealth anti-deteccao, remocao do rastreio de .env/.idea do Git. Testes de persistencia de localStorage e ciclo de vida validados 100% no Ubuntu.
 * [2026-10-31] [Agy] NOTAS.md - Plano de testes da v0.1 registrado e executado: (1) criacao e checkout de feat/v0.1-stealth-engine; (2) instalacao e teste do Patchright Chromium; (3) isolamento de sessoes persistentes; (4) teste de bootstrap e cleanup via `python -m src.main`.
 

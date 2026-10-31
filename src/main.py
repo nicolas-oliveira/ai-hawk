@@ -1,4 +1,3 @@
-import asyncio
 import os
 import sys
 
@@ -8,16 +7,16 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.infrastructure.browser_service import BrowserService
 
 
-async def bootstrap():
+def bootstrap():
     """
     Ponto de entrada do AIHawk CLI (v0.1 - Foundation & Stealth Engine).
-    Valida inicialização, persistência de sessão e fechamento seguro da infraestrutura.
+    Execucao 100% sincrona, linear e previsivel.
     """
     print("==================================================")
-    print("AIHawk v0.1 - Inicializando Infraestrutura Stealth")
+    print("AIHawk v0.1 - Inicializando Infraestrutura Stealth (Sync)")
     print("==================================================")
 
-    # Instancia com a plataforma de teste e configurações lidas do .env
+    # Instancia com a plataforma de teste e configuracoes lidas do .env
     browser_service = BrowserService(platform="test_session")
 
     print(f"[-] Diretorio de Sessao: {browser_service.user_data_dir}")
@@ -25,20 +24,20 @@ async def bootstrap():
     print(f"[-] Canal: {browser_service.channel}")
 
     try:
-        print("[*] Iniciando contexto persistente...")
-        context = await browser_service.start_session()
-        page = await browser_service.get_page()
+        print("[*] Iniciando contexto persistente sincrono...")
+        context = browser_service.start_session()
+        page = browser_service.get_page()
 
         test_url = "https://example.com"
         print(f"[*] Navegando para {test_url}...")
-        await page.goto(test_url, wait_until="domcontentloaded")
+        page.goto(test_url, wait_until="domcontentloaded")
 
-        title = await page.title()
+        title = page.title()
         print(f"[+] Pagina carregada com sucesso! Titulo: '{title}'")
 
         # Injeta um valor no localStorage para atestar persistencia
-        await page.evaluate("localStorage.setItem('aihawk_probe', 'v0.1_persistence_verified')")
-        probe_val = await page.evaluate("localStorage.getItem('aihawk_probe')")
+        page.evaluate("localStorage.setItem('aihawk_probe', 'v0.1_sync_persistence_verified')")
+        probe_val = page.evaluate("localStorage.getItem('aihawk_probe')")
         print(f"[+] Verificacao de Storage: probe_val='{probe_val}'")
 
     except Exception as e:
@@ -46,9 +45,9 @@ async def bootstrap():
         raise e
     finally:
         print("[*] Encerrando sessao do navegador e gravando dados de perfil...")
-        await browser_service.close()
+        browser_service.close()
         print("[+] Sessao encerrada com sucesso.")
 
 
 if __name__ == "__main__":
-    asyncio.run(bootstrap())
+    bootstrap()
