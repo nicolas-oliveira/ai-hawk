@@ -18,9 +18,9 @@ Formato: `[AAAA-MM-DD] [autor] [arquivo] - evento`. Uma linha por evento, mais r
 
 ## Estado atual
 
-* Versao em andamento: v0.1 (Fundacao e Engine Stealth) - Concluida por Agy, pronta para Revisao Humana (Passo 5).
-* Branch ativa: `feat/v0.1-stealth-engine` (criada a partir da `master`).
-* Repositorio: Git ativo.
+* Versao em andamento: v0.1 (Fundacao, Engine Stealth e Contratos Iniciais) - Handoff para o Claude (Passo 2 da esteira).
+* Branch ativa: `feat/v0.1-stealth-engine`.
+* Suite de testes: pytest configurado e estruturado em `tests/unit/` e `tests/integration/`.
 
 ## Pedidos pendentes
 
@@ -28,6 +28,16 @@ Formato: `[AAAA-MM-DD] [autor] [arquivo] - evento`. Uma linha por evento, mais r
 
 ## Historico
 
+* [2026-10-31] [Agy] tests/, requirements.txt, NOTAS.md - Handoff Passo 1 -> Passo 2 (v0.1): Instalado pytest>=9.0.0. Criada suite de testes reais:
+  1) `tests/integration/` (4 testes passando 100%): persistencia de sessao, isolamento por plataforma, ciclo de vida e execucao da CLI.
+  2) `tests/unit/` (7 testes prontos, falhando conforme TDD): validacao dos contratos `Job` (`src/domain/entities/job.py`) e `SearchRequest` (`src/application/dtos/search_request.py`).
+  Comandos para execucao:
+  - Unitarios (dominio/contratos): `.venv/bin/python -m pytest tests/unit/`
+  - Integracao (Patchright/infra): `.venv/bin/python -m pytest tests/integration/`
+  - Todos: `.venv/bin/python -m pytest`
+  Bastao passado para o Claude implementar `job.py` e `search_request.py` no Passo 2!
+
+* [2026-10-31] [Claude] fluxo - Nicolas definiu: TODA versao e QA + Dev, inclusive a v0.1; Claude desenvolve na branch atual (`feat/v0.1-stealth-engine`) e, aprovada, ela recebe a tag v0.1. Sequencia: Agy (QA) -> Claude -> Nicolas e Argon -> Claude (PR/tag). Se houver teste errado ou falha: Agy (QA) -> Claude -> Agy (QA) -> Claude, em loop. Isso substitui a excecao "na v0.1 o codigo e do Agy" do Passo 2 (AGENTS.md/CLAUDE.md/GEMINI.md ainda trazem a excecao; correcao aguarda ordem do Nicolas). Nota: li que o Agy migrou o `BrowserService` para API sincrona (Decisao 4); o `app_service.py` da v0.2 deve chamar metodos sincronos.
 * [2026-10-31] [Agy] src/infrastructure/browser_service.py, src/main.py - Refatoracao completa para API 100% sincrona do Patchright (Decisao 4). Remocao de asyncio/await, adocao de sync_playwright() e metodos lineares. Teste de fumaca e persistencia de storage reexecutados e validados 100% no Ubuntu.
 * [2026-10-31] [Agy] src/infrastructure/browser_service.py, src/main.py, requirements.txt, .env.example, .gitignore - Implementacao v0.1 concluida. Suporte a sessoes persistentes parametrizadas por pasta (./sessions/{platform}), flags stealth anti-deteccao, remocao do rastreio de .env/.idea do Git. Testes de persistencia de localStorage e ciclo de vida validados 100% no Ubuntu.
 * [2026-10-31] [Agy] NOTAS.md - Plano de testes da v0.1 registrado e executado: (1) criacao e checkout de feat/v0.1-stealth-engine; (2) instalacao e teste do Patchright Chromium; (3) isolamento de sessoes persistentes; (4) teste de bootstrap e cleanup via `python -m src.main`.
