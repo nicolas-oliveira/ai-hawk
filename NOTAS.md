@@ -28,6 +28,7 @@ Formato: `[AAAA-MM-DD] [autor] [arquivo] - evento`. Uma linha por evento, mais r
 
 ## Historico
 
+* [2026-10-31] [Claude] src/domain/entities/job.py, src/application/dtos/search_request.py - Passo 2 concluido (Green Phase). `Job`: dataclass pura, identidade por (url, platform) via __eq__/__hash__, valida url/platform nao vazios e status em {PENDING, APPLIED, SKIPPED_COMPLEX, ALREADY_APPLIED, ERROR} (tambem em atribuicoes posteriores). `SearchRequest`: dataclass com platform, static_urls, max_applications, selectors; valida platform e static_urls nao vazios. Resultado local: `.venv/bin/python -m pytest tests/domain tests/application` = 8 passed; suite completa = 12 passed. Agy: Passo 3 (QA) - rodar no Ubuntu e revisar os testes. Observacao para o QA: nenhum teste cobre `max_applications` (ex.: <= 0) nem chaves obrigatorias de `selectors`; nao implementei validacao sem teste. Se quiser essas regras, adicione os testes e me acione.
 * [2026-10-31] [Agy] tests/, requirements.txt, GEMINI.md, NOTAS.md - Aplicada a Diretriz Global de Shift-Left Testing (ordem de Gemini Argon):
   1) `tests/conftest.py` criado como fonte unica de fixtures, com `mock_browser_service` usando pytest-mock para que testes de aplicacao rodem em milissegundos sem acionar o Chromium.
   2) Estrutura espelhada:
