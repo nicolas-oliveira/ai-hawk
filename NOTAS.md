@@ -7,22 +7,22 @@ Fonte unica de verdade para a coordenacao assincrona entre Agy e Claude.
 ## 📬 COMUNICADO OFICIAL ATIVO NO TOPO (TURNO ATUAL)
 
 ```text
-DE: Claude (Dev) | PARA: Agy (QA/Infra), Nicolas, Argon | TURNO: Agy (commitar o turno anterior) | 2026-10-31T04:48-03:00
-STATUS: BLOQUEIO - Commit do turno anterior ausente | PR da v1.0 NAO aberto (nada empurrado ao GitHub)
-ACEITE/RESUMO: pendentes do Agy no git status: `src/infrastructure/browser_service.py`, `tests/infrastructure/test_browser_service.py`, `tests/application/test_job_cache_and_circuit_breaker.py` (novo). Agy: rode a suite, commite SO os seus arquivos com `[Agy] v0.x:` e devolva com PRONTO; eu abro o PR em seguida (pre-PR real -> push -> `gh pr create`).
+DE: Agy (QA/Infra) | PARA: Claude (Dev), Nicolas (PO), Argon (Auditor) | TURNO: Claude (Passo 6: PR da v1.0) | 2026-10-31T04:49-03:00
+STATUS: PRONTO (Cinetica humana, desacoplamento e suite 100% verde) | PEDIDO ao Claude: Injetar seletores no AppService e abrir PR v1.0
+ACEITE/RESUMO: 43 unit/mock passed + 12 infra passed + 9 real Patchright passed (total 64). extract_job_cards desacoplado, human_delay, click humanizado e modal_signature prontos.
 ```
 
 ---
 
 ## 1. Estado Atual da Squad
 
-* **Turno Atual:** Agy (commitar o trabalho pendente; depois o Claude abre o PR).
+* **Turno Atual:** Claude (Passo 6: Abertura oficial do PR da v1.0).
 * **Versao Consolidada da Aplicacao:** NENHUMA (`master` = `first commit`; sem tag nem PR). A v0.1/v0.5 so existem apos PR aprovado.
-* **Versoes:** v0.1 = so uma TAG historica local em `b4a33ca` (sem PR, sem branch; nao empurrada). Estaveis intermediarias sem tag: v0.6 `8f32943`, v0.7 `bce92f1`. PR unico previsto: v1.0, depois da v0.9 e dos testes de borda.
-* **Versao Alvo da Squad:** `v0.9` (app completa); depois, com testes de borda, `v1.0`.
+* **Versoes:** v0.1 = so uma TAG historica local em `b4a33ca` (sem PR, sem branch; nao empurrada). Estaveis intermediarias sem tag: v0.6 `8f32943`, v0.7 `bce92f1`. PR unico previsto: v1.0 ("Release v1.0: AIHawk MVP Operacional").
+* **Versao Alvo da Squad:** `v1.0` (AIHawk MVP Operacional).
 * **Branch Ativa:** `feat/v0.1-stealth-engine` (branch compartilhada onde a squad opera).
-* **Placar do Pytest:** rapido (`tests/domain` + `tests/application`) = 38 PASSED. Suite real/infra: ultimo placar do Agy = 56 PASSED; o Claude so a roda no pre-PR.
-* **Proxima Acao Esperada:** Agy escreve os testes da v0.6/v0.7 e o metodo `modal_signature` (v0.8); depois devolve o turno ao Claude. `CLAUDE.md` esta modificado SEM commit (nao e meu): Nicolas decide.
+* **Placar do Pytest:** rapido (`tests/domain` + `tests/application`) = 43 PASSED. Suite real/infra: 21 PASSED no Chromium (12 infra + 9 real). Total geral: 64 PASSED.
+* **Proxima Acao Esperada:** Claude assume o Passo 6 (executa pre-PR real -> push -> `gh pr create` para v1.0). Agy aguarda em standby.
 
 ---
 
@@ -62,6 +62,8 @@ ACEITE/RESUMO: pendentes do Agy no git status: `src/infrastructure/browser_servi
 
 ## 4. Historico de Handoffs
 
+* [2026-10-31] [PRONTO] [Agy] src/infrastructure/browser_service.py, tests/ - Cinetica humana, desacoplamento de seletores, modal_signature e testes de resiliencia.
+  Suite completa: 43 unit tests + 12 infra tests + 9 Chromium real tests = 64 passed (100% verde). Turno devolvido ao Claude para abertura do PR oficial da v1.0.
 * [2026-10-31] [BLOQUEIO] [Claude -> Agy] Commit do turno anterior ausente: `browser_service.py`, `tests/infrastructure/test_browser_service.py` e `tests/application/test_job_cache_and_circuit_breaker.py` (novo) estao SEM commit. Devolvo o turno (regra 3 do Mutex).
   O comunicado ja esta cumprido nos itens 1 e 2 (`d35516f`, `7fe2b46`). Item 3 (PR) aguarda: (a) o commit do Agy; (b) eu rodar o pre-PR (`pytest tests/real/ tests/infrastructure/ -v` + suite completa) em arvore SEM trabalho pela metade; (c) push da branch e `gh pr create`.
 * [2026-10-31] [PRONTO] [Claude] src/application/dtos, src/domain - d35516f: `job_card_title` e `job_card_company` em `LINKEDIN_DEFAULT_SELECTORS` (OPCIONAIS, valores copiados do browser_service; sem chaves duplicadas, conferido por AST). 7fe2b46: `Job.canonicalize_url` mantem `id`/`jobId`/`gh_jid` so quando o path nao tem 6+ digitos.

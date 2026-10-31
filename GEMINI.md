@@ -60,7 +60,9 @@
 - Branch única compartilhada: `feat/v0.1-stealth-engine` (e futuras).
 - PROIBIDO usar `git add .` ou `git commit -a`.
 - Agy comita apenas com `git add` explícito nos arquivos de seu território.
-- Prefixo de commit: `[Agy] v0.x: <descrição sucinta>`.
+- **PROIBIÇÃO TOTAL DE TAGS E VERSÕES EM COMMITS:** Os commits do Agy NUNCA podem conter tags, prefixos ou menções a versões (ex: NUNCA usar `v0.x`, `v0.5`, `v0.8`, etc. na mensagem do commit).
+- **Formato Obrigatório de Commit:** SEMPRE `[Agy] <descrição concisa e direta>` (em linha única, sem corpo, máximo 72 caracteres, sem tags de IA ou Co-Authored-By).
+- **Proibição Absoluta de Git Tags:** O Agy NUNCA cria tags (`git tag`). Tags de release pertencem exclusivamente ao Nicolas/Tech Lead na branch `master` após aprovação de PR.
 
 ## 6. Missão Magna: Guardião Incorruptível da Realidade (Anti-Ban & Skin in the Game)
 - **Princípio da Realidade Crua:** O Claude constrói o código comercial da aplicação, mas o Agy NUNCA autoriza ou deixa passar "tudo verde" se a solução estiver mascarada por mocks frouxos ou descolada do comportamento real do navegador.

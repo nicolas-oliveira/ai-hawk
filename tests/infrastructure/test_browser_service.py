@@ -316,3 +316,101 @@ def test_main_cli_execution():
     assert result.returncode == 0
     assert "AIHawk v0.5 - Motor de Candidaturas Easy Apply Seco" in result.stdout
     assert "Sessao encerrada com sucesso." in result.stdout
+
+
+def test_browser_service_human_delay_stochastic_range(temp_session_dir):
+    """Valida geracao de delay estocastico gaussiano com clamping no intervalo."""
+    service = BrowserService(
+        platform="test_jitter",
+        headless=True,
+        channel="chromium",
+        session_root_dir=temp_session_dir,
+    )
+    # Testa sem abrir navegador para medicao pura
+    d = service.human_delay(0.05, 0.15)
+    assert 0.05 <= d <= 0.15
+
+
+def test_browser_service_modal_signature(temp_session_dir):
+    """Valida determinismo e deteccao de mudanca de estado no modal_signature."""
+    service = BrowserService(
+        platform="test_signature",
+        headless=True,
+        channel="chromium",
+        session_root_dir=temp_session_dir,
+    )
+    service.start_session()
+    try:
+        page = service.get_page()
+        page.set_content("""
+        <div id="modal" style="display: block;">
+            <h2>Passo 1</h2>
+            <p>Dados Pessoais</p>
+        </div>
+        """)
+        sig1 = service.modal_signature("#modal")
+        assert len(sig1) == 64  # SHA-256
+
+        # Conteudo identico -> mesma assinatura
+        assert service.modal_signature("#modal") == sig1
+
+        # Conteudo muda -> assinatura diferente
+        page.set_content("""
+        <div id="modal" style="display: block;">
+            <h2>Passo 2</h2>
+            <p>Experiencia Profissional</p>
+        </div>
+        """)
+        sig2 = service.modal_signature("#modal")
+        assert sig2 != sig1
+        assert len(sig2) == 64
+
+        # Modal invisivel ou inexistente
+        assert service.modal_signature("#inexistente") == ""
+    finally:
+        service.close()
+
+
+def test_browser_service_extract_job_cards_agnostic(temp_session_dir):
+    """Valida extracao desacoplada de cards sem seletores exclusivos do LinkedIn."""
+    service = BrowserService(
+        platform="test_cards",
+        headless=True,
+        channel="chromium",
+        session_root_dir=temp_session_dir,
+    )
+    service.start_session()
+    try:
+        page = service.get_page()
+        page.set_content("""
+        <div class="agnostic-card">
+            <a href="https://jobs.example.com/view/100">Candidatura</a>
+            <h3 class="custom-title">Senior Python Architect</h3>
+            <span class="custom-org">Global Tech</span>
+        </div>
+        <div class="agnostic-card">
+            <a href="https://jobs.example.com/view/101">Candidatura 2</a>
+            <div class="heading-title">Lead QA Engineer</div>
+            <p class="company-name">QualityCorp</p>
+        </div>
+        """)
+
+        # 1. Fallback semantico generico
+        cards_generic = service.extract_job_cards(".agnostic-card")
+        assert len(cards_generic) == 2
+        assert cards_generic[0]["url"] == "https://jobs.example.com/view/100"
+        assert cards_generic[0]["title"] == "Senior Python Architect"
+        assert cards_generic[0]["company"] == "Global Tech"
+
+        # 2. Seletores customizados parametrizados
+        cards_custom = service.extract_job_cards(
+            ".agnostic-card",
+            title_selector=".heading-title, .custom-title",
+            company_selector=".company-name, .custom-org",
+        )
+        assert len(cards_custom) == 2
+        assert cards_custom[1]["title"] == "Lead QA Engineer"
+        assert cards_custom[1]["company"] == "QualityCorp"
+    finally:
+        service.close()
+

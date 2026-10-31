@@ -1,6 +1,9 @@
 import os
 import shutil
-from typing import Optional, List
+import time
+import random
+import hashlib
+from typing import Optional, List, Dict, Any
 from dotenv import load_dotenv
 from patchright.sync_api import sync_playwright, BrowserContext, Page, Playwright
 
@@ -120,9 +123,23 @@ class BrowserService:
             print(f"[BrowserService.navigate] Falha ao navegar para {url}: {e}")
             return False
 
+    def human_delay(self, min_s: float = 0.25, max_s: float = 0.65) -> float:
+        """
+        Aplica um atraso estocastico imitando a variancia de tempo de reacao humana
+        utilizando distribuicao normal (gaussiana) truncada no intervalo [min_s, max_s].
+        Elimina assinaturas de metronomo temporal nos logs de navegacao.
+        """
+        mean = (min_s + max_s) / 2.0
+        std = (max_s - min_s) / 6.0
+        delay = random.gauss(mean, std)
+        delay = max(min_s, min(max_s, delay))
+        time.sleep(delay)
+        return delay
+
     def scroll_container(self, container_selector: str, steps: int = 5, delay: float = 0.5) -> bool:
         """
         Executa scroll incremental dentro de um container com overflow (para lazy loading de vagas).
+        Elimina assinatura de metronomo variando os deltas de deslocamento e os intervalos com jitter estocastico.
         Retorna True se o container existir e for rolado; False caso contrario.
         """
         try:
@@ -132,16 +149,19 @@ class BrowserService:
                 return False
 
             for _ in range(steps):
+                jitter_factor = random.uniform(0.75, 1.15)
                 locator.evaluate(
                     """
-                    (el) => {
-                        const delta = el.clientHeight || 500;
+                    (el, factor) => {
+                        const delta = (el.clientHeight || 500) * factor;
                         el.scrollTop += delta;
                         el.dispatchEvent(new Event('scroll', { bubbles: true }));
                     }
-                    """
+                    """,
+                    jitter_factor,
                 )
-                page.wait_for_timeout(int(delay * 1000))
+                step_delay = delay * random.uniform(0.70, 1.30)
+                page.wait_for_timeout(int(step_delay * 1000))
             return True
         except Exception as e:
             print(f"[BrowserService.scroll_container] Erro ao rolar container {container_selector}: {e}")
@@ -196,25 +216,37 @@ class BrowserService:
             print(f"[BrowserService.extract_links] Erro ao extrair links com {card_selector}: {e}")
             return []
 
-    def extract_job_cards(self, card_selector: str) -> List[Dict[str, str]]:
+    def extract_job_cards(
+        self,
+        card_selector: str,
+        title_selector: Optional[str] = None,
+        company_selector: Optional[str] = None,
+        link_selector: Optional[str] = None,
+    ) -> List[Dict[str, str]]:
         """
         Extrai cards completos com url, title e company conforme exigido pelo BrowserPort.
+        Completamente agnostico: recebe seletores semanticos por parametro ou adota fallbacks
+        estruturais genericos (classes que contem title/company, headings h1-h4, links).
+        Nenhum seletor exclusivo do LinkedIn permanece fixo no motor.
         """
         try:
             page = self.get_page()
             cards_data = page.evaluate(
                 """
-                (cardSel) => {
+                ({ cardSel, titleSel, compSel, linkSel }) => {
                     const cards = document.querySelectorAll(cardSel);
                     const result = [];
                     cards.forEach(card => {
-                        const linkEl = card.matches('a') ? card : card.querySelector('a');
+                        const lSel = linkSel || 'a';
+                        const linkEl = card.matches(lSel) ? card : card.querySelector(lSel);
                         const url = linkEl ? linkEl.href : '';
-                        
-                        const titleEl = card.querySelector('.job-card-list__title, .base-search-card__title, h3, h4, .title');
+
+                        const tSel = titleSel || '[class*="title"], h1, h2, h3, h4, .title';
+                        const titleEl = card.querySelector(tSel);
                         const title = titleEl ? titleEl.innerText.trim() : (linkEl ? linkEl.innerText.trim() : 'Vaga');
 
-                        const companyEl = card.querySelector('.job-card-container__primary-description, .base-search-card__subtitle, .company');
+                        const cSel = compSel || '[class*="company"], [class*="subtitle"], [class*="description"], .company, .subtitle, p, span';
+                        const companyEl = card.querySelector(cSel);
                         const company = companyEl ? companyEl.innerText.trim() : 'Empresa';
 
                         if (url) {
@@ -224,7 +256,12 @@ class BrowserService:
                     return result;
                 }
                 """,
-                card_selector,
+                {
+                    "cardSel": card_selector,
+                    "titleSel": title_selector,
+                    "compSel": company_selector,
+                    "linkSel": link_selector,
+                },
             )
             return cards_data or []
         except Exception as e:
@@ -339,20 +376,57 @@ class BrowserService:
             print(f"[BrowserService.has_empty_required_inputs] Erro ao inspecionar modal {modal_selector}: {e}")
             return False
 
-    def click_element(self, selector: str, timeout: int = 5000) -> bool:
+    def click_element(self, selector: str, timeout: int = 5000, humanized: bool = True) -> bool:
         """
-        Tenta clicar em um elemento de forma segura (espera estar visivel).
+        Clica em um elemento aplicando cinematica humana:
+        1. Aguarda que o elemento fique visivel.
+        2. Aplica atraso estocastico de reacao humana (200ms a 450ms).
+        3. Obtem o bounding box e seleciona uma coordenada com desvio estocastico seguro (20% a 80%).
+        4. Move o mouse suavemente em multiplos passos (steps) para evitar teletransporte.
+        5. Aplica hold-time realista entre mouse.down() e mouse.up() (60ms a 120ms).
         Retorna True se clicou com sucesso; False em caso de timeout ou erro.
         """
         try:
             page = self.get_page()
             locator = page.locator(selector).first
             locator.wait_for(state="visible", timeout=timeout)
+
+            if humanized:
+                self.human_delay(0.20, 0.45)
+                box = locator.bounding_box()
+                if box and box.get("width", 0) > 0 and box.get("height", 0) > 0:
+                    target_x = box["x"] + box["width"] * random.uniform(0.20, 0.80)
+                    target_y = box["y"] + box["height"] * random.uniform(0.20, 0.80)
+
+                    steps = random.randint(3, 8)
+                    page.mouse.move(target_x, target_y, steps=steps)
+
+                    page.mouse.down()
+                    time.sleep(random.uniform(0.06, 0.12))
+                    page.mouse.up()
+                    return True
+
             locator.click(timeout=timeout)
             return True
         except Exception as e:
             print(f"[BrowserService.click_element] Nao foi possivel clicar em {selector}: {e}")
             return False
+
+    def modal_signature(self, container_selector: str) -> str:
+        """
+        Calcula um hash deterministico SHA-256 do conteudo visivel do container (v0.8).
+        Permite a camada de aplicacao detectar ausência de transicao de estado no modal.
+        """
+        try:
+            page = self.get_page()
+            locator = page.locator(container_selector).first
+            if locator.count() == 0 or not locator.is_visible():
+                return ""
+            text = locator.inner_text()
+            return hashlib.sha256(text.strip().encode("utf-8")).hexdigest()
+        except Exception as e:
+            print(f"[BrowserService.modal_signature] Erro ao obter assinatura do modal {container_selector}: {e}")
+            return ""
 
     def is_visible(self, selector: str, timeout: int = 3000) -> bool:
         """
