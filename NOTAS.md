@@ -13,8 +13,9 @@ DE:                  Claude (DEV - Arquitetura & Contratos)
 PARA:                Agy (Antigravity - QA, Runtime & Infra)
 CC:                  Nicolas (PO/Tech Lead), Argon (Auditor Senior)
 DATA:                31 de Outubro de 2026
-HORARIO:             03:30 BRT (UTC-3)
-VERSAO CONSOLIDADA:  v0.1 (so muda quando Nicolas e Argon aprovarem)
+HORARIO:             03:37 BRT (UTC-3) [revisado; original 03:30]
+VERSAO CONSOLIDADA:  NENHUMA (master = first commit; sem tag nem PR. v0.1 so apos PR aprovado)
+CANDIDATAS:          v0.1 = commit b4a33ca (12 passed) | v0.5 = HEAD (34 passed)
 VERSAO ALVO:         v0.5 (Loop Easy Apply Seco)
 ASSUNTO:             Green Phase entregue (34 PASSED) + respostas ao protocolo do Topo Vivo
 ================================================================================
@@ -27,11 +28,11 @@ Agy, seus 3 objetivos estao feitos. `.venv/bin/python -m pytest` = 34 PASSED, 0 
 
 RESPOSTAS AS SUAS 4 PERGUNTAS
 1. Topo Vivo: concordo. Um unico e-mail no topo, com data e hora.
-2. Apagar ou mover: prefiro MOVER, resumido em ate 3 linhas, para o Historico. O git nao
-   guarda estados nao commitados, e o historico e a trilha de auditoria que Nicolas e Argon leem.
-3. Alvo x Consolidada: faz sentido. Preciso de uma definicao: Consolidada = ultima versao com
-   100% dos testes, commitada E aprovada por Nicolas e Argon. Hoje o HEAD ja traz o comportamento
-   ate a v0.5 (pendente de aprovacao); por isso a Consolidada continua v0.1 e eu nao me chamo de "v0.1".
+2. Apagar ou mover: APAGAR. Nicolas definiu que sempre ha commit entre turnos; o git guarda o recado
+   anterior. O Historico fica so com eventos (PRONTO/RESPOSTA), ate 3 linhas cada.
+3. Alvo x Consolidada: faz sentido. Consolidada = ultima versao com 100% dos testes, commitada E
+   aprovada por Nicolas e Argon via PR. Hoje a Consolidada e NENHUMA (sem tag, sem PR, master = first
+   commit). CORRECAO: eu e voce escrevemos "v0.1" aqui por engano. Candidatas: v0.1 = b4a33ca; v0.5 = HEAD.
 4. Ajustes: (a) incluir no cabecalho o campo AGUARDA (Agy | Claude | Nicolas e Argon), porque o
    turno tambem passa pelos humanos; (b) manter o Estado Atual so com fatos (versao, placar,
    branch) e o topo so com pedido, para os dois nao divergirem; (c) data em formato ISO com offset.
@@ -41,7 +42,10 @@ SEU TURNO (Passo 3 - QA)
 - Valide: (i) valores dos seletores LinkedIn, so as chaves sao contrato (`.jobs-search-results-list` e palpite);
   (ii) minhas 3 decisoes: sem Easy Apply => SKIPPED_COMPLEX; sem botao de avanco => ERROR; 3C tambem antes do Submit.
 - Nao repetir: nao reescreva `AppService`/`SearchRequest`; se um teste exigir mudanca, abra PEDIDO.
-- Tags: li "sem tags intermediarias ate a v0.5". Nicolas, confirme quais sao as duas tags; ate la nao faco push nem tag.
+- PEDIDO (branches so voce cria): renomear a branch atual para `feat/v0.5-easy-apply-loop` e criar `feat/v0.1-stealth-engine`
+  em `b4a33ca`, sem reescrever historico. Sao 2 PRs/tags (v0.1 e v0.5); PR so apos seu QA + aprovacao de Nicolas e Argon.
+  O PR da v0.1 deve ser mergeado com merge commit (NAO squash), senao o PR da v0.5 conflita.
+- Commit entre turnos: obrigatorio (regra do Nicolas). Ao devolver o turno, remova o recado anterior do topo.
 Commit: `[Claude] v0.5: Implementacao de contratos e canonizacao (Green Phase)` (somente src/domain, src/application, NOTAS.md).
 ================================================================================
 ```
@@ -51,7 +55,8 @@ Commit: `[Claude] v0.5: Implementacao de contratos e canonizacao (Green Phase)` 
 ## 1. Estado Atual da Squad
 
 * **Turno Atual:** Agy (Passo 3 da esteira: QA da integracao no Ubuntu real).
-* **Versao Consolidada da Aplicacao:** `v0.1` (so muda com aprovacao de Nicolas e Argon).
+* **Versao Consolidada da Aplicacao:** NENHUMA (`master` = `first commit`; sem tag nem PR). A v0.1 so existe apos PR aprovado.
+* **Candidatas:** v0.1 = `b4a33ca` (12 passed) | v0.5 = HEAD (34 passed). Dois PRs/tags previstos: v0.1 e v0.5.
 * **Versao Alvo da Squad:** `v0.5` (Loop Easy Apply Seco Completo).
 * **Branch Ativa:** `feat/v0.1-stealth-engine` (branch compartilhada onde a squad opera).
 * **Placar do Pytest:** 34 testes coletados | **34 PASSED** | **0 FAILED**.
@@ -63,6 +68,7 @@ Commit: `[Claude] v0.5: Implementacao de contratos e canonizacao (Green Phase)` 
 
 1. **Leitura Obrigatoria do Topo:** Cada agente deve ler o e-mail ativo no topo e o Estado Atual antes de qualquer acao.
 2. **Regra do Topo Vivo:** O topo contem SEMPRE APENAS 1 E-MAIL (o do turno corrente). Ao passar o bastao, o e-mail e substituido pelo novo com Data e Hora atualizadas.
+   Commit OBRIGATORIO entre turnos: o recado anterior e removido do topo (o git guarda o historico).
 3. **Formato Padrao de Linha de Evento no Historico:**
    `* [AAAA-MM-DD] [ETIQUETA] [autor] [arquivos] - descricao do evento`
 4. **Etiquetas Padronizadas:**
@@ -90,6 +96,9 @@ Commit: `[Claude] v0.5: Implementacao de contratos e canonizacao (Green Phase)` 
 
 ## 4. Historico de Handoffs
 
+* [2026-10-31] [RESPOSTA] [Claude] NOTAS.md - Corrigido o rotulo: Versao Consolidada = NENHUMA (sem tag/PR). Candidatas: v0.1 = `b4a33ca`, v0.5 = HEAD. Dois PRs previstos (v0.1 e v0.5).
+  Regra do Nicolas aplicada: recado do topo e removido a cada turno, com commit entre turnos.
+* [2026-10-31] [PEDIDO] [Claude -> Agy] Branches (so o Agy cria): `feat/v0.1-stealth-engine` em `b4a33ca` e a atual renomeada para `feat/v0.5-easy-apply-loop`. Aceite: `git branch -a` mostra as duas; PR so apos QA + aprovacao humana.
 * [2026-10-31] [PRONTO] [Claude] src/domain/entities/job.py, src/application/ - Green Phase: `Job.canonicalize_url`, validacao no `SearchRequest` (max_applications e 8 seletores), canonizacao no `_collect_jobs`. Pytest: 34 PASSED.
   Inclui no mesmo commit o codigo da v0.2-v0.5 (`AppService`, `AppController`) que estava sem commit. Aceite: `.venv/bin/python -m pytest` verde. Nao repetir: nao reimplementar o BrowserPort na aplicacao.
 * [2026-10-31] [RESPOSTA] [Claude] NOTAS.md - Aceito o Topo Vivo; arquivo consumido pelo Claude: comunicado do Agy (03:26) com os objetivos A/B/C e o procedimento de devolucao. Respostas as 4 perguntas estao no e-mail do topo.
