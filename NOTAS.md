@@ -7,20 +7,20 @@ Fonte unica de verdade para a coordenacao assincrona entre Agy e Claude.
 ## 📬 COMUNICADO OFICIAL ATIVO NO TOPO (TURNO ATUAL)
 
 **DE/PARA/TURNO:** Claude -> Nicolas / Argon (Agy em standby) | Turno: revisao humana | 2026-10-31
-**STATUS:** [PRONTO] Hostil 2 passed; pre-PR 24 passed (real+infra+hostil) e suite completa 98 passed; `make test` = 74 passed.
-**ACEITE/RESUMO:** Pedido anterior ao Agy RETIRADO (usei `wait_for_loader_to_disappear`/`dismiss_overlay_if_present` ja existentes). Perfil `linkedin_clone` pelo contrato do NOTAS; 31 testes novos meus em tests/application.
+**STATUS:** [PRONTO] QA homologou ('e50e4e7'): suite geral 98 passed, hostil 2 passed (55,99 s); `make test` = 81 passed.
+**ACEITE/RESUMO:** Lentidao medida e explicada (18,5 s de sondagens negativas na minha camada, mantidas por seguranca; proposta de reduzir vetada pelo Agy). Aguarda Nicolas: push da branch (atualiza o PR #1), tag `v0.5`.
 
 ---
 
 ## 1. Estado Atual da Squad
 
-* **Turno Atual:** Nicolas e Argon (revisao humana do PR #1). Agy e Claude em standby.
+* **Turno Atual:** Nicolas e Argon (revisao humana e push do PR #1). Agy e Claude em standby.
 * **Versao Consolidada da Aplicacao:** NENHUMA (`master` = `first commit`; sem tag nem PR). A v0.1/v0.5 so existem apos PR aprovado.
 * **Versoes:** v0.1 = so uma TAG historica local em `b4a33ca` (sem PR, sem branch; nao empurrada). Estaveis intermediarias sem tag: v0.6 `8f32943`, v0.7 `bce92f1`. PR unico previsto: v1.0 ("Release v1.0: AIHawk MVP Operacional").
 * **Versao Alvo da Squad:** `v1.0` (AIHawk MVP Operacional).
 * **Branch Ativa:** `feat/v0.1-stealth-engine` (branch compartilhada onde a squad opera).
-* **Placar do Pytest:** rapido (`tests/domain` + `tests/application`) = 43 PASSED. Suite real/infra: 23 PASSED no Chromium (12 infra + 9 real + 2 hostil externa). Total geral: 66 PASSED.
-* **Proxima Acao Esperada:** Claude consome `SELECTOR_PROFILES` no DTO, ajusta `AppService` e roda validação pré-PR. Agy em standby.
+* **Placar do Pytest:** rapido (`tests/domain` + `tests/application`) = 81 PASSED. Suite geral homologada pelo QA = 98 PASSED (inclui 2 hostil E2E no Chromium).
+* **Proxima Acao Esperada:** Nicolas autoriza o push da branch (3 commits do Claude + 1 do Agy ainda fora do PR #1) e define o commit da tag `v0.5`. Burner Run (`v1.0`) so com o "vai" do Nicolas.
 
 ---
 
@@ -60,8 +60,11 @@ Fonte unica de verdade para a coordenacao assincrona entre Agy e Claude.
 
 ## 4. Historico de Handoffs
 
+* [2026-10-31] [PRONTO] [Claude] src/application, tests/application - Cronometro por chamada da aplicacao ao navegador ('e50e4e7'); log INFO "Tempo por chamada" (`pytest -s -o log_cli=true -o log_cli_level=INFO`).
+  Teste 2 (34,4 s): 6 `element_exists` negativos = 18,5 s (overlay x3, submit x2, discard x1; ~3,1 s cada). Proposta de nao sondar overlay nas vagas (-8,8 s) VETADA pelo Agy: overlays tardios ocorrem em sites reais. Codigo mantido.
+
 * [2026-10-31] [PRONTO] [Claude] src/application, tests/application - queries booleanas (`build_boolean_keywords`, `build_linkedin_boolean_search_url`), `SELECTOR_PROFILES` (linkedin, orangehrm, linkedin_clone), titulo/empresa repassados ao extrator, `_prepare_page` (loader + overlay, timeouts 5 s/3 s, sem sleep) usando metodos ja existentes da infra.
-  Contrato usado no clone: `Dismiss overlay`, `[role='status']`, `Continue to next step`, `Submit application`, `Dismiss`; apply = texto "Candidatura Simplificada"/"Easy Apply" (HIPOTESE que passou). `orangehrm` e `discard_button`/`modal_container` do clone NAO validados. Hostil: 33.9 s + 20.3 s; parte do tempo e espera do overlay (ate 3 s por pagina) no meu lado, o resto na infra.
+  Contrato usado no clone: `Dismiss overlay`, `[role='status']`, `Continue to next step`, `Submit application`, `Dismiss`; apply = texto "Candidatura Simplificada"/"Easy Apply" (HIPOTESE que passou). `orangehrm` e `discard_button`/`modal_container` do clone NAO validados. Hostil: 33.9 s + 20.3 s (ver entrada do cronometro acima).
 
 
 * [2026-10-31] [PRONTO] [Agy] tests/real/external/, src/main.py, .env.example, NOTAS.md - Suite externa blindada contra falsos positivos e amarra entrypoint.
