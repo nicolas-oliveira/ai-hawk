@@ -440,6 +440,45 @@ class BrowserService:
         except Exception:
             return False
 
+    def wait_for_loader_to_disappear(
+        self, loader_selector: str = '[role="status"]', timeout: int = 15000
+    ) -> bool:
+        """
+        Espera deterministica por descarte/sumico de loaders e transicoes assincronas.
+        Elimina 'Flaky Tests' causados por variacoes de latencia ou carga de CPU sem usar time.sleep().
+        Retorna True se o loader nao existir ou sumir antes do timeout; False se continuar visivel.
+        """
+        try:
+            page = self.get_page()
+            locator = page.locator(loader_selector).first
+            if locator.count() == 0 or not locator.is_visible():
+                return True
+            locator.wait_for(state="detached", timeout=timeout)
+            return True
+        except Exception:
+            # Fallback caso fique hidden em vez de detached
+            try:
+                locator.wait_for(state="hidden", timeout=1000)
+                return True
+            except Exception:
+                return False
+
+    def dismiss_overlay_if_present(
+        self, dismiss_selector: str = '[aria-label="Dismiss overlay"]', timeout: int = 2000
+    ) -> bool:
+        """
+        Detecta e descarta overlays intrusivos de alto z-index (ex: banners de cookies/privacidade)
+        que bloqueiam interacoes no viewport principal.
+        """
+        try:
+            page = self.get_page()
+            locator = page.locator(dismiss_selector).first
+            if locator.count() > 0 and locator.is_visible():
+                return self.click_element(dismiss_selector, timeout=timeout, humanized=False)
+            return False
+        except Exception:
+            return False
+
     # Aliases de conveniencia para maxima interoperabilidade com AppService / BrowserPort
     open_url = navigate
     element_exists = is_visible
