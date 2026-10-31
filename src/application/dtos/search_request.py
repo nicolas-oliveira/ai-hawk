@@ -102,6 +102,9 @@ class SearchRequest:
     static_urls: List[str]
     selectors: Dict[str, str]
     max_applications: int = 10
+    # Freio de seguranca: apos N vagas seguidas com ERROR a sessao e interrompida
+    # (insistir numa plataforma que esta falhando e como se queima uma conta).
+    max_consecutive_errors: int = 3
 
     def __post_init__(self) -> None:
         if not self.platform or not self.platform.strip():
@@ -110,6 +113,8 @@ class SearchRequest:
             raise ValueError("SearchRequest.static_urls deve conter ao menos uma URL.")
         if self.max_applications < 1:
             raise ValueError("SearchRequest.max_applications deve ser >= 1.")
+        if self.max_consecutive_errors < 1:
+            raise ValueError("SearchRequest.max_consecutive_errors deve ser >= 1.")
         missing = [key for key in REQUIRED_SELECTOR_KEYS if not self.selectors.get(key)]
         if missing:
             raise ValueError(

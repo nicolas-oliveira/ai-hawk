@@ -44,7 +44,11 @@ class AppController:
         finished = self._clock()
 
         summary = self.format_summary(jobs, request)
-        report = self.build_telemetry(jobs, request, started, finished)
+        reason = getattr(self._service, "last_abort_reason", None)
+        report = self.build_telemetry(
+            jobs, request, started, finished,
+            aborted_reason=reason if isinstance(reason, str) else None,
+        )
         path = self._export_telemetry(report, finished)
         if path:
             summary += f"\nTelemetria:           {path}"
@@ -83,6 +87,7 @@ class AppController:
         request: SearchRequest,
         started: datetime,
         finished: datetime,
+        aborted_reason: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Funil de conversao de UMA execucao.
 
@@ -102,6 +107,8 @@ class AppController:
             "platform": request.platform,
             "search_urls": len(request.static_urls),
             "max_applications": request.max_applications,
+            # None = sessao completa; texto = interrompida de proposito (freio v0.7).
+            "aborted_reason": aborted_reason,
             "funnel": {
                 "total_read": total,
                 "skipped_complex": counts[JobStatus.SKIPPED_COMPLEX],

@@ -147,13 +147,17 @@ class AppService:
     def __init__(self, browser: BrowserPort, cache: Optional[JobCache] = None) -> None:
         self._browser = browser
         self._cache = cache
+        # Preenchido quando a sessao e interrompida de proposito (ex.: freio v0.7).
+        self.last_abort_reason: Optional[str] = None
 
     # ------------------------------------------------------------------ API
     def run(self, request: SearchRequest) -> List[Job]:
         """Executa a sessao e devolve todas as vagas lidas, com status."""
+        self.last_abort_reason = None
         jobs = self._collect_jobs(request)
         self._apply_cache(jobs)
         applied = 0
+        consecutive_errors = 0
 
         for job in jobs:
             if job.from_cache:
@@ -166,6 +170,19 @@ class AppService:
                 self._cache.put(job)
             if job.status == JobStatus.APPLIED:
                 applied += 1
+
+            # v0.7: freio de erros consecutivos. As vagas restantes ficam PENDING.
+            if job.status == JobStatus.ERROR:
+                consecutive_errors += 1
+                if consecutive_errors >= request.max_consecutive_errors:
+                    self.last_abort_reason = (
+                        f"{consecutive_errors} erros consecutivos "
+                        f"(limite {request.max_consecutive_errors})"
+                    )
+                    logger.error("Sessao interrompida: %s.", self.last_abort_reason)
+                    break
+            else:
+                consecutive_errors = 0
 
         return jobs
 
