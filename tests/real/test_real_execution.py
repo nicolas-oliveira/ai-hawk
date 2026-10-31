@@ -1,40 +1,16 @@
 import pytest
-from tests.real.mock_server import start_local_server
-from src.infrastructure.browser_service import BrowserService
 from src.application.app_service import AppService
 from src.application.dtos.search_request import SearchRequest, LINKEDIN_DEFAULT_SELECTORS
 from src.domain.entities.job import Job, JobStatus
 
 
-@pytest.fixture(scope="module")
-def local_http_server():
-    """Inicia o servidor HTTP local servindo as rotas da plataforma real."""
-    server, base_url = start_local_server()
-    yield base_url
-    server.shutdown()
-
-
-@pytest.fixture
-def real_browser_service(temp_session_dir):
-    """Instancia real do BrowserService com Chromium do Patchright e perfil isolado."""
-    service = BrowserService(
-        platform="real_suite",
-        headless=True,
-        channel="chromium",
-        session_root_dir=temp_session_dir,
-    )
-    service.start_session()
-    yield service
-    service.close()
-
-
-def test_real_lazy_loading_and_deduplication(real_browser_service, local_http_server):
+def test_real_lazy_loading_scroll_physical_trigger(real_browser_service, stress_http_server):
     """
-    REAL-01: Valida o lazy loading fisico do Chromium real.
-    Rola o container com overflow, aciona o listener JS real no DOM
-    e coleta todas as vagas anexadas dinamicamente, canonizando URLs.
+    SANTUARIO DO PATCHRIGHT - CENARIO 1:
+    Mede a fisica real do evento de scroll em container com overflow no Chromium.
+    Dispara o listener de scroll real e anexa 3 novos cards de vagas dinamicamente.
     """
-    search_url = f"{local_http_server}/jobs/search"
+    search_url = f"{stress_http_server}/jobs/search"
     request = SearchRequest(
         platform="linkedin",
         static_urls=[search_url],
@@ -44,25 +20,26 @@ def test_real_lazy_loading_and_deduplication(real_browser_service, local_http_se
     app_service = AppService(real_browser_service)
     jobs = app_service._collect_jobs(request)
 
-    # Deve ter extraido as 5 vagas reais (2 iniciais + 3 carregadas via scroll lazy loading)
+    # Deve extrair as 5 vagas reais (2 iniciais + 3 disparadas pelo evento scroll)
     assert len(jobs) == 5
     assert all(isinstance(j, Job) for j in jobs)
     assert all(j.status == JobStatus.PENDING for j in jobs)
 
-    # Todas as URLs foram devidamente limpas e canonizadas sem query strings
-    assert jobs[0].url == f"{local_http_server}/jobs/view/101/"
-    assert jobs[1].url == f"{local_http_server}/jobs/view/102/"
-    assert jobs[2].url == f"{local_http_server}/jobs/view/103/"
-    assert jobs[3].url == f"{local_http_server}/jobs/view/104/"
-    assert jobs[4].url == f"{local_http_server}/jobs/view/105/"
+    # URLs canonizadas de forma estavel
+    assert jobs[0].url == f"{stress_http_server}/jobs/view/201/"
+    assert jobs[1].url == f"{stress_http_server}/jobs/view/202/"
+    assert jobs[2].url == f"{stress_http_server}/jobs/view/203/"
+    assert jobs[3].url == f"{stress_http_server}/jobs/view/204/"
+    assert jobs[4].url == f"{stress_http_server}/jobs/view/205/"
 
 
-def test_real_job_101_direct_submission(real_browser_service, local_http_server):
+def test_real_job_201_async_modal_transition(real_browser_service, stress_http_server):
     """
-    REAL-02: Fluxo feliz direto real.
-    Clica em Easy Apply -> modal abre -> Heuristica 3C valida -> Submit real -> APPLIED.
+    SANTUARIO DO PATCHRIGHT - CENARIO 2 (CHOQUE DE REALIDADE):
+    O modal abre com delay real de 300ms (animacao/transicao do front-end SPA).
+    Testa se o AppService aguarda a estabilizacao do DOM antes de inspecionar ou abortar.
     """
-    job_url = f"{local_http_server}/jobs/view/101/"
+    job_url = f"{stress_http_server}/jobs/view/201/"
     job = Job(url=job_url, platform="linkedin", title="Senior Python", company="TechCorp")
     request = SearchRequest(
         platform="linkedin",
@@ -76,13 +53,14 @@ def test_real_job_101_direct_submission(real_browser_service, local_http_server)
     assert job.status == JobStatus.APPLIED
 
 
-def test_real_job_102_css_trap_anti_ban(real_browser_service, local_http_server):
+def test_real_job_202_advanced_css_trap_honeypot(real_browser_service, stress_http_server):
     """
-    REAL-03: Blindagem contra Armadilhas de CSS (Honeypot / Bot Trap).
-    Input obrigatorio com display: none NAO deve acionar falso-positivo de campo vazio.
-    A Heuristica 3C ignora elemento invisivel e avanca para submissao real.
+    SANTUARIO DO PATCHRIGHT - CENARIO 3 (ANTI-BAN & BLINDAGEM):
+    Honeypots e bot-traps reais: inputs com display: none, visibility: hidden e pais ocultos.
+    A Heuristica 3C deve inspecionar apenas nos computados visiveis (checkVisibility),
+    impedindo tentativas de interacao que denunciam bot e causam banimento imediato.
     """
-    job_url = f"{local_http_server}/jobs/view/102/"
+    job_url = f"{stress_http_server}/jobs/view/202/"
     job = Job(url=job_url, platform="linkedin", title="Backend Dev", company="SecureSystems")
     request = SearchRequest(
         platform="linkedin",
@@ -96,14 +74,15 @@ def test_real_job_102_css_trap_anti_ban(real_browser_service, local_http_server)
     assert job.status == JobStatus.APPLIED
 
 
-def test_real_job_103_complex_modal_discards_cleanly(real_browser_service, local_http_server):
+def test_real_job_203_complex_modal_delayed_discard_popup(real_browser_service, stress_http_server):
     """
-    REAL-04: Deteccao real de campo obrigatorio vazio (Heuristica 3C).
-    Deve identificar complexidade no DOM real, clicar em Close,
-    clicar na confirmacao de Discard e marcar SKIPPED_COMPLEX.
+    SANTUARIO DO PATCHRIGHT - CENARIO 4:
+    Campo obrigatorio visivel vazio.
+    Ao clicar em Close, o popup de confirmacao de descarte demora 200ms para renderizar.
+    Testa se o fluxo aguarda e clica em discard_button, garantindo fechamento limpo.
     """
-    job_url = f"{local_http_server}/jobs/view/103/"
-    job = Job(url=job_url, platform="linkedin", title="Data Engineer", company="BigData Inc")
+    job_url = f"{stress_http_server}/jobs/view/203/"
+    job = Job(url=job_url, platform="linkedin", title="Data Engineer", company="BigData")
     request = SearchRequest(
         platform="linkedin",
         static_urls=[job_url],
@@ -116,12 +95,12 @@ def test_real_job_103_complex_modal_discards_cleanly(real_browser_service, local
     assert job.status == JobStatus.SKIPPED_COMPLEX
 
 
-def test_real_job_104_multi_step_submission(real_browser_service, local_http_server):
+def test_real_job_204_multi_step_delayed_transition(real_browser_service, stress_http_server):
     """
-    REAL-05: Formulario multi-etapas real.
-    Passo 1: Next -> DOM renderiza Passo 2 -> Submit -> APPLIED.
+    SANTUARIO DO PATCHRIGHT - CENARIO 5:
+    Formulario em 2 etapas onde o passo 2 demora 250ms para transicionar apos Next.
     """
-    job_url = f"{local_http_server}/jobs/view/104/"
+    job_url = f"{stress_http_server}/jobs/view/204/"
     job = Job(url=job_url, platform="linkedin", title="DevOps", company="CloudNative")
     request = SearchRequest(
         platform="linkedin",
@@ -135,12 +114,12 @@ def test_real_job_104_multi_step_submission(real_browser_service, local_http_ser
     assert job.status == JobStatus.APPLIED
 
 
-def test_real_job_105_external_redirect_skipped_complex(real_browser_service, local_http_server):
+def test_real_job_205_external_redirect_skipped_complex(real_browser_service, stress_http_server):
     """
-    REAL-06: Vaga sem candidatura simplificada (apenas link externo).
-    Identifica ausencia do botao Easy Apply e marca SKIPPED_COMPLEX com seguranca.
+    SANTUARIO DO PATCHRIGHT - CENARIO 6:
+    Vaga externa sem Easy Apply. Marca SKIPPED_COMPLEX sem estourar excecao.
     """
-    job_url = f"{local_http_server}/jobs/view/105/"
+    job_url = f"{stress_http_server}/jobs/view/205/"
     job = Job(url=job_url, platform="linkedin", title="Frontend", company="WebSoft")
     request = SearchRequest(
         platform="linkedin",
@@ -154,13 +133,12 @@ def test_real_job_105_external_redirect_skipped_complex(real_browser_service, lo
     assert job.status == JobStatus.SKIPPED_COMPLEX
 
 
-def test_real_full_orchestration_with_max_applications_ceiling(real_browser_service, local_http_server):
+def test_real_full_orchestration_with_max_applications_ceiling(real_browser_service, stress_http_server):
     """
-    REAL-07: Execucao completa de ponta a ponta com teto de candidaturas.
-    Carrega listagem via lazy loading, processa vaga 101 (APPLIED) e 102 (APPLIED),
-    atinge a cota max_applications=2 e encerra imediatamente sem tocar nas demais.
+    SANTUARIO DO PATCHRIGHT - CENARIO 7:
+    Loop completo de ponta a ponta com teto de candidaturas max_applications=2.
     """
-    search_url = f"{local_http_server}/jobs/search"
+    search_url = f"{stress_http_server}/jobs/search"
     request = SearchRequest(
         platform="linkedin",
         static_urls=[search_url],
@@ -173,10 +151,10 @@ def test_real_full_orchestration_with_max_applications_ceiling(real_browser_serv
 
     assert len(processed_jobs) == 5
 
-    # Vagas 101 e 102 foram aplicadas
+    # Vagas 201 e 202 foram aplicadas
     applied = [j for j in processed_jobs if j.status == JobStatus.APPLIED]
     assert len(applied) == 2
 
-    # Vagas 103, 104 e 105 foram ignoradas pelo teto e permaneceram PENDING
+    # Vagas restantes permanecem PENDING
     pending = [j for j in processed_jobs if j.status == JobStatus.PENDING]
     assert len(pending) == 3
