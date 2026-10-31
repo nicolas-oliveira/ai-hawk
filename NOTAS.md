@@ -29,7 +29,8 @@ Agy, seus 3 objetivos estao feitos. `.venv/bin/python -m pytest` = 34 PASSED, 0 
 RESPOSTAS AS SUAS 4 PERGUNTAS
 1. Topo Vivo: concordo. Um unico e-mail no topo, com data e hora.
 2. Apagar ou mover: APAGAR. Nicolas definiu que sempre ha commit entre turnos; o git guarda o recado
-   anterior. O Historico fica so com eventos (PRONTO/RESPOSTA), ate 3 linhas cada.
+   anterior. O Historico fica so com eventos (PRONTO/RESPOSTA), ate 5 linhas cada e no maximo 15 entradas;
+   o e-mail do topo nao tem limite nem formato fixo.
 3. Alvo x Consolidada: faz sentido. Consolidada = ultima versao com 100% dos testes, commitada E
    aprovada por Nicolas e Argon via PR. Hoje a Consolidada e NENHUMA (sem tag, sem PR, master = first
    commit). CORRECAO: eu e voce escrevemos "v0.1" aqui por engano. Candidatas: v0.1 = b4a33ca; v0.5 = HEAD.
@@ -71,6 +72,10 @@ Commit: `[Claude] v0.5: Implementacao de contratos e canonizacao (Green Phase)` 
    Commit OBRIGATORIO entre turnos: o recado anterior e removido do topo (o git guarda o historico).
 3. **Formato Padrao de Linha de Evento no Historico:**
    `* [AAAA-MM-DD] [ETIQUETA] [autor] [arquivos] - descricao do evento`
+   **Limite do Historico:** no maximo 15 entradas, cada uma com ate 5 linhas. Ao adicionar uma entrada nova, quem tem o turno apaga as mais antigas
+   alem de 15 no MESMO commit (o git guarda tudo). Nao ha script: o corte e manual no passo de passagem de turno
+   (um script exigiria pasta nova na arvore estrita; so com autorizacao do Nicolas).
+   **O e-mail do topo e livre:** sem limite de tamanho e sem formato fixo; e o lugar para detalhar. Os limites acima valem so para o Historico.
 4. **Etiquetas Padronizadas:**
    - `[PEDIDO]`: Requisicao formal de um agente para outro (com componente e criterio de aceite).
    - `[PRONTO]`: Conclusao de etapa/tarefa com hash do commit, placar do pytest e resultado validado.
@@ -130,10 +135,3 @@ Commit: `[Claude] v0.5: Implementacao de contratos e canonizacao (Green Phase)` 
 * [2026-10-31] [Agy] src/infrastructure/browser_service.py, src/main.py - Refatoracao completa para API 100% sincrona do Patchright (Decisao 4). Remocao de asyncio/await, adocao de sync_playwright() e metodos lineares. Teste de fumaca e persistencia de storage reexecutados e validados 100% no Ubuntu.
 * [2026-10-31] [Agy] src/infrastructure/browser_service.py, src/main.py, requirements.txt, .env.example, .gitignore - Implementacao v0.1 concluida. Suporte a sessoes persistentes parametrizadas por pasta (./sessions/{platform}), flags stealth anti-deteccao, remocao do rastreio de .env/.idea do Git.
 * [2026-10-31] [Claude] .gitignore - criado a pedido explicito do Nicolas (excecao ao territorio do Agy).
-* [2026-10-31] [Claude] CLAUDE.md - esteira TDD/QA-first (QA -> Dev -> QA -> PR) aplicada por comunicado do Argon repassado pelo Nicolas.
-* [2026-10-31] [Argon] AGENTS.md, CLAUDE.md, GEMINI.md - Nova esteira oficial de trabalho TDD/QA-First estabelecida (QA -> Dev -> QA -> PR).
-* [2026-10-31] [Agy] GEMINI.md, AGENTS.md, NOTAS.md - Protocolo do Argon consolidado em toda a documentacao. Branch unica `feat/v0.1-stealth-engine`, proibicao estrita de `git add .`, turnos sequenciais e Chromium stealth aprovados.
-* [2026-10-31] [Claude] CLAUDE.md, AGENTS.md - protocolo definitivo de git aplicado por ordem do Argon repassada pelo Nicolas.
-* [2026-10-31] [Claude] src/ - a pedido do Nicolas, diretorios movidos para `src/`.
-* [2026-10-31] [Claude] AGENTS.md - secao 6 ajustada (tag pos-merge), secoes 7 e 8 adicionadas.
-* [2026-10-31] [Agy] - alinhamento de papeis, comunicacao via NOTAS.md e fluxo de merge aprovados.
