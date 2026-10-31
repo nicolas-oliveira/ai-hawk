@@ -5,88 +5,67 @@ troca de turnos e especificacao de contratos entre o Antigravity (Agy) e o Claud
 
 ---
 
-## 📬 COMUNICADOS OFICIAIS NO TOPO (HANDOFF ATIVO)
+## 📬 COMUNICADO OFICIAL ATIVO NO TOPO (TURNO ATUAL)
 
-### E-MAIL 1: Protocolo de Estrutura Oficial do NOTAS.md
 ```text
-De: Agy (Antigravity - QA, Runtime & Infra)
-Para: Claude (DEV - Arquitetura & Contratos)
-Cc: Nicolas (PO/Tech Lead), Argon (Auditor Senior)
-Data: 2026-10-31
-Assunto: Protocolo Unificado e Estrutura Oficial do NOTAS.md para Operacao Autonoma v0.5
+================================================================================
+DE:        Agy (Antigravity - QA, Runtime & Infra)
+PARA:      Claude (DEV - Arquitetura & Contratos)
+CC:        Nicolas (PO/Tech Lead), Argon (Auditor Senior)
+DATA:      31 de Outubro de 2026
+HORARIO:   03:25:00 BRT (UTC-3)
+VERSAO:    v0.5 (Loop Easy Apply Seco Completo)
+ASSUNTO:   Protocolo Oficial do NOTAS.md e Especificacao Tecnica da v0.5
+================================================================================
 
-Claude, conforme alinhamento com Nicolas e Argon, nosso modo de trabalho agora e 100% autonomo
-ate a entrega final da v0.5. Para garantir sintonia perfeita e evitar qualquer conflito ou desvio,
-esta e a estrutura oficial e definitiva do nosso NOTAS.md:
+Claude, recebemos ordem direta de Nicolas e Argon para operarmos de forma 100% autonoma
+ate a entrega final da v0.5, sem tags Git intermediarias.
 
-1. Topo Absoluto (Comunicados Oficiais):
-   - Os e-mails e mensagens de handoff ficam SEMPRE no comeco de tudo para visualizacao imediata.
-   - Quem assume o turno le o topo antes de tocar em qualquer codigo.
+1. REGRA DO TOPO VIVO DO NOTAS.MD (INNEGOCIAVEL):
+- O topo contem SEMPRE APENAS 1 E-MAIL: o comunicado ativo do agente que detem o turno.
+- Quando voce concluir sua parte e for passar o bastao de volta para mim:
+  Substitua este e-mail do topo pelo seu novo e-mail fresco de retorno,
+  obrigatoriamente informando no cabecalho: DIA, MES, ANO e HORARIO exato.
+- Se quiser arquivar o texto anterior, mova-o para a secao de historico ao final.
+- O topo NUNCA pode acumular mensagens antigas ou obsoletas.
 
-2. Secao 1 (Estado Atual da Squad):
-   - Traz o marcador unico de "Turno Atual", versao em foco, branch ativa e placar do pytest.
-   - REGRA: Apenas quem possui o "Turno Atual" pode editar esta secao e passar o bastao.
+2. INFRAESTRUTURA V0.5 IMPLEMENTADA (Commit caaca36):
+`src/infrastructure/browser_service.py` e `tests/conftest.py` implementam 100% síncrono:
+- navigate(url, timeout) [alias: open_url]
+- scroll_container(container_selector, steps, delay)
+- scroll_container_to_end(container_selector, steps, delay)
+- extract_links(card_selector, link_selector) -> List[str]
+- extract_job_cards(card_selector) -> List[Dict[str, str]] (url, title, company)
+- has_empty_required_inputs(modal_selector) -> bool (Heuristica 3C com DOM real)
+- click_element(selector, timeout) [alias: click]
+- is_visible(selector, timeout) [alias: element_exists]
 
-3. Secao 2 (Regras de Governanca e Etiquetas):
-   - Formato padronizado de evento: `* [AAAA-MM-DD] [ETIQUETA] [autor] [arquivos] - descricao`.
-   - Etiquetas permitidas: [PEDIDO], [PRONTO], [RESPOSTA], [BLOQUEIO].
-   - Proibicao estrita de `git add .` ou `git commit -a`. Sempre dar `git add NOTAS.md` explicito.
+3. STATUS DA SUITE PYTEST (.venv/bin/python -m pytest):
+Total: 34 testes coletados | 29 PASSED | 5 FAILED (Red Phase planejada).
+- Infraestrutura real no Chromium do Ubuntu: 9/9 PASSED (100% GREEN).
+- Loop Easy Apply Seco: 7/7 PASSED (100% GREEN).
 
-4. Secao 3 (Papeis e Territorios Fisicos):
-   - Claude (DEV): restrito a `src/domain/` e `src/application/`.
-   - Agy (QA/Infra): restrito a `src/infrastructure/`, `src/main.py`, `tests/` e configuracoes.
-   - Ninguem invade o territorio do outro.
-
-5. Secao 4 (Historico de Handoffs):
-   - Registro cronologico imutavel (mais recente sempre no topo).
-   - NUNCA apagar eventos anteriores, apenas empilhar novas conclusoes ([PRONTO] / [RESPOSTA]).
-
-Ao assumir seu turno:
-1. Leia os Comunicados Oficiais no topo e o Estado Atual.
-2. Execute a suite de testes (.venv/bin/python -m pytest).
-3. Desenvolva estritamente no seu territorio (src/domain/ e src/application/) para deixar os testes verdes.
-4. Quando finalizar, registre um [PRONTO] no Historico, atualize a mensagem no topo,
-   passe o "Turno Atual" para "Agy" e commite com [Claude] v0.5: ...
-```
-
-### E-MAIL 2: Especificação Técnica Completa da v0.5 para o Claude
-```text
-De: Agy (Antigravity)
-Para: Claude
-Assunto: Especificacao Completa da Infraestrutura e Bateria TDD v0.5 (Loop Easy Apply Seco)
-
-Claude, o commit caaca36 entrega de forma 100% sincrona a infraestrutura real e todos os testes TDD:
-
-1. INFRAESTRUTURA NO BROWSER SERVICE (Validada 100% no Chromium Real do Ubuntu):
-O `src/infrastructure/browser_service.py` e o `mock_browser_service` em `tests/conftest.py` fornecem
-todos os metodos necessarios, compativeis com o seu `BrowserPort`:
-- `navigate(url: str, timeout: int = 30000)` [alias: `open_url`]
-- `scroll_container(container_selector: str, steps: int = 5, delay: float = 0.5)`
-- `scroll_container_to_end(container_selector: str, steps: int = 5, delay: float = 0.5)`
-- `extract_links(card_selector: str, link_selector: str = "a") -> List[str]`
-- `extract_job_cards(card_selector: str) -> List[Dict[str, str]]` (dicts com url, title, company)
-- `has_empty_required_inputs(modal_selector: str) -> bool` (Heuristica 3C estrita no DOM)
-- `click_element(selector: str, timeout: int = 5000)` [alias: `click`]
-- `is_visible(selector: str, timeout: int = 3000)` [alias: `element_exists`]
-
-2. RESULTADO ATUAL DA SUITE DE TESTES:
-Comando: `.venv/bin/python -m pytest` -> 29 PASSED, 5 FAILED (Red Phase planejada).
-Os 9 testes de infraestrutura real e os 7 testes de integracao do Loop Easy Apply Seco estao passando!
-
-3. O QUE FALTA PARA 100% VERDE (Seu territorio em src/domain/ e src/application/):
-Apenas 3 ajustes cirurgicos:
+4. SEUS 3 OBJETIVOS EXCLUSIVOS (Passo 2 - Green Phase) PARA ZERAR AS 5 FALHAS:
 A) Em `src/domain/entities/job.py`:
-   - Implementar `Job.canonicalize_url(raw_url: str) -> str` (metodo estatico ou classmethod)
+   - Implementar `Job.canonicalize_url(raw_url: str) -> str` (metodo estatico/classmethod)
      removendo query strings (?refId=...&trackingId=...&utm_source=...), fragmentos (#...)
      e garantindo barra no final (ex: 'https://www.linkedin.com/jobs/view/123/').
 B) Em `src/application/dtos/search_request.py`:
    - Validar em `__post_init__` que `max_applications >= 1` (ValueError se < 1).
-   - Validar em `selectors` a presenca das 8 chaves: `jobs_list_container`, `job_card`,
-     `apply_button`, `next_button`, `submit_button`, `close_button`, `discard_button`, `modal_container`.
+   - Validar em `selectors` a presenca das 8 chaves obrigatorias:
+     `jobs_list_container`, `job_card`, `apply_button`, `next_button`, `submit_button`,
+     `close_button`, `discard_button`, `modal_container` (ValueError se alguma faltar).
 C) Em `src/application/app_service.py`:
-   - Na coleta de vagas (`_collect_jobs`), aplicar `Job.canonicalize_url(url)` antes de instanciar cada `Job`.
+   - Na coleta de vagas (`_collect_jobs`), aplicar `Job.canonicalize_url(url)` antes
+     de instanciar a entidade `Job`.
 
-Ao finalizar, rode `.venv/bin/python -m pytest` para confirmar 34 passed!
+5. PROCEDIMENTO DE DEVOLUCAO DE TURNO (HANDOFF PARA O AGY):
+- Rode `.venv/bin/python -m pytest` ate confirmar 34 PASSED.
+- Atualize a Secao 1 (Estado Atual) mudando "Turno Atual" para "Agy".
+- Substitua este e-mail do topo pelo seu e-mail de conclusao (com data/hora atualizados).
+- Comite apenas seus arquivos (src/domain/, src/application/ e NOTAS.md) com o prefixo:
+  `[Claude] v0.5: Implementacao de contratos e canonizacao (Green Phase)`
+================================================================================
 ```
 
 ---
@@ -103,16 +82,17 @@ Ao finalizar, rode `.venv/bin/python -m pytest` para confirmar 34 passed!
 
 ## 2. Regras de Governanca e Etiquetas do NOTAS.md
 
-1. **Leitura Obrigatoria:** Cada agente deve ler este arquivo no inicio de todo turno de trabalho antes de executar qualquer acao.
-2. **Formato Padrao de Linha de Evento:**
+1. **Leitura Obrigatoria do Topo:** Cada agente deve ler o e-mail ativo no topo e o Estado Atual antes de qualquer acao.
+2. **Regra do Topo Vivo:** O topo contem SEMPRE APENAS 1 E-MAIL (o do turno corrente). Ao passar o bastao, o e-mail e substituido pelo novo com Data e Hora atualizadas.
+3. **Formato Padrao de Linha de Evento no Historico:**
    `* [AAAA-MM-DD] [ETIQUETA] [autor] [arquivos] - descricao do evento`
-3. **Etiquetas Padronizadas:**
+4. **Etiquetas Padronizadas:**
    - `[PEDIDO]`: Requisicao formal de um agente para outro (com componente e criterio de aceite).
    - `[PRONTO]`: Conclusao de etapa/tarefa com hash do commit, placar do pytest e resultado validado.
    - `[RESPOSTA]`: Atendimento a um `[PEDIDO]` previo (move-se a solicitacao atendida para o historico).
    - `[BLOQUEIO]`: Impedimento critico que necessita de intervencao humana de Nicolas ou Argon.
-4. **Controle de Turno:** Apenas quem possui o `Turno atual` pode alterar a secao `Estado Atual da Squad`.
-5. **Governanca de Git:**
+5. **Controle de Turno:** Apenas quem possui o `Turno atual` pode alterar a secao `Estado Atual da Squad`.
+6. **Governanca de Git:**
    - NUNCA usar `git add .` ou `git commit -a`. Sempre usar `git add NOTAS.md` explicitamente com seus arquivos de territorio.
    - Prefixos de commit obrigatorios: `[Agy] v0.x: ...` ou `[Claude] v0.x: ...`.
 
@@ -131,8 +111,7 @@ Ao finalizar, rode `.venv/bin/python -m pytest` para confirmar 34 passed!
 
 ## 4. Historico de Handoffs
 
-* [2026-10-31] [PRONTO] [Agy] NOTAS.md - E-mail de alinhamento e estrutura movidos para o comeco absoluto de tudo.
-* [2026-10-31] [PRONTO] [Agy] NOTAS.md - Estrutura oficial do NOTAS.md formalizada e e-mails de especificacao registrados para o Claude.
+* [2026-10-31] [PRONTO] [Agy] NOTAS.md - Aplicada a Regra do Topo Vivo: comunicado unico com Data/Hora no topo e instrucao de substituicao por turno.
 * [2026-10-31] [PRONTO] [Agy] src/infrastructure/browser_service.py, src/main.py, tests/ - Bateria completa de Infraestrutura e TDD v0.5 implementada (commit `caaca36`).
   - BrowserService com Heuristica 3C, scroll_container, extract_job_cards, extract_links, navigate, click_element e aliases BrowserPort.
   - Testes reais no Chromium: 9/9 PASSED.
