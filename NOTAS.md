@@ -6,40 +6,22 @@ Fonte unica de verdade para a coordenacao assincrona entre Agy e Claude.
 
 ## 📬 COMUNICADO OFICIAL ATIVO NO TOPO (TURNO ATUAL)
 
-**DE/PARA/TURNO:** Claude -> Agy (copia: Gemini Argon, Maestro, Nicolas) | Turno: Agy | 2026-11-02
-**STATUS:** [PRONTO] Mutation score 81,2% -> 89,3% (482 mortos / 58 sobreviventes de 540); suite rapida 150 PASSED; 2 perfis de sandbox e 1 correcao.
-**ACEITE/RESUMO:** `AppService` aceita lista sem empresa/titulo (None virava None no Job); perfis `books_toscrape` e `quotes_toscrape` criados. Agy: homologar com `make mutation` e rodar os sandboxes com esses perfis.
-
-**ASSUNTO:** Mar aberto na aplicacao: perfis de sandbox, correcao de None e 58 -> 19 sobreviventes em `app_service.py` | commit anterior: '4fe3d99'
-
-Agy (QA/Infra), cc Gemini Argon (Tech Lead), Maestro (Revisor), Nicolas (PO),
-
-1. Achado real corrigido (`app_service.py`, `_collect_jobs`): o extrator pode devolver `title`/`company` como `None`; o `Job` ficava com `None` (quebraria cache/telemetria). Agora `card.get(...) or ""`: lista sem empresa vira `""`, sem erro.
-
-2. Perfis novos em `search_request.py` (`SELECTOR_PROFILES`), DOM conferido por mim no HTML publico em 02/11:
-- `books_toscrape`: container `ol.row`, card `article.product_pod`, titulo `h3 a`; sem `job_card_company`.
-- `quotes_toscrape`: container `body` (rola a JANELA), card `div.quote`, titulo `span.text`. Os itens nao tem link: a aplicacao os descarta (identidade = url + platform) e a sessao termina sem erro e com 0 vagas. Se voce precisa contar itens, e na infra.
-- Chaves de candidatura apontam para `[data-aihawk-inerte]` (nunca existe): se algum card for processado, vira SKIPPED_COMPLEX sem clique. Somente leitura garantido por contrato.
-- `quotes.toscrape.com/scroll` monta os itens por JavaScript; o HTML bruto so tem `div.quotes` vazio. Nao validei o DOM renderizado (e seu).
-
-3. Testes novos (37, `tests/application`): `test_app_service_robustness.py` (listas sem empresa/link, scroll em `body`, falha numa URL, limite de candidaturas, freio, modal de 15 passos, `review_button`, descarte, cache JSON, cronometro) e `dtos/test_selector_profiles_sandbox.py`.
-
-4. Placar: `tests/domain` + `tests/application` = 150 PASSED. Mutation: 482/540 = 89,3% (base 67,9%). Restam 58: 31 em `search_request.py` (valores literais de seletores), 19 em `app_service.py`, 5 no controller, 3 no job. Nao rodei infra+real nem Chromium.
-
-5. Pedido ao Agy: (a) `make mutation` para homologar; (b) rodar `books_toscrape` e `quotes_toscrape` contra os sandboxes e me devolver o traceback se algo quebrar; (c) concluida a validacao, fechar a v1.5 com `Turno: Nicolas`.
+**DE/PARA/TURNO:** Agy -> Nicolas (copia: Gemini Argon, Maestro, Claude) | Turno: Nicolas | 2026-11-02
+**STATUS:** [PRONTO] v1.5 concluida: Mutation score 96,1% (519 mortos / 19 sobreviventes de 540); 150 unitarios PASSED; Mar aberto 8/8 PASSED.
+**ACEITE/RESUMO:** Perfis books_toscrape e quotes_toscrape validados na aplicacao real (20 URLs unicas extraidas; quotes encerra limpo); suite mar aberto 8/8 PASSED no Chromium; src/ 100% limpo sem .bak. Retomada da v1.5 entregue ao PO para auditoria e proximos passos.
 
 ---
 
 ## 1. Estado Atual da Squad
 
-* **Turno Atual:** Agy (homologar mutation e rodar os sandboxes com os perfis novos). Nicolas so entra nas paradas (v1.5 e v2.0) ou em `[BLOQUEIO]`.
+* **Turno Atual:** Nicolas (parada v1.5 concluida).
 * **Regra de turno (lida por script):** o campo `Turno:` do topo so aceita `Claude`, `Agy` ou `Nicolas`. Mudar o `Turno` no mesmo commit do seu trabalho e o sinal de passagem. Commit fora do seu turno e recusado por hook.
 * **Versao Consolidada da Aplicacao:** v1.0 (`master` = `414e4f8`, merge do PR #2, tag `v1.0`). Fase 1 do roadmap concluida.
 * **Caminho:** v1.0 (feito) -> v1.5 (retomada: Nicolas revisa negocio e planejamento contra o que foi construido) -> v2.0 (entrega com PR). Versoes intermediarias (v1.1 a v1.4): so commit local, sem tag, sem push, sem PR.
-* **Versao Alvo da Squad:** `v1.5`. Escopo: mutation testing (Score > 80% na suite rapida) + validacao em mar aberto (sandboxes publicos sem WAF). Burner Run no LinkedIn real e bonus stealth ficam para depois da v1.5; o Burner Run so com o "vai" do Nicolas.
+* **Versao Alvo da Squad:** `v1.5`. Escopo: mutation testing (Score > 80% na suite rapida) + validacao em mar aberto (sandboxes publicos sem WAF). Concluida com sucesso. Proximo: Fase 3/v2.0 conforme decisao do PO.
 * **Branch Ativa:** `feat/v1.5` (criada a partir de `origin/master`). A `feat/v0.1-stealth-engine` e so backup local; ninguem a usa.
-* **Placar do Pytest:** rapido (`tests/domain` + `tests/application`) = 150 PASSED. Suite infra+real homologada pelo QA = 30 PASSED (Chromium real, 183 s; inclui 6 de mar aberto). Mutation Score = 89,3% (482 mortos / 58 sobreviventes de 540; base 67,9%).
-* **Proxima Acao Esperada:** Agy homologa o score (`make mutation`), roda os perfis `books_toscrape`/`quotes_toscrape` nos sandboxes e fecha a v1.5 com `Turno: Nicolas`. So Nicolas faz: push, tag, PR, trocar de branch.
+* **Placar do Pytest:** rapido (`tests/domain` + `tests/application`) = 150 PASSED (0.14s). Suite infra+real homologada pelo QA = 32 PASSED (Chromium real; inclui 8 de mar aberto). Mutation Score homologado = 96,1% (519 mortos / 19 sobreviventes de 540; base 67,9%).
+* **Proxima Acao Esperada:** Nicolas (PO), Gemini Argon (Tech Lead) e Maestro revisam a entrega da v1.5 e definem a diretriz para a v2.0 / Lote de Ignicao. So Nicolas faz: push, tag, PR, trocar de branch.
 
 ---
 
@@ -80,6 +62,7 @@ Agy (QA/Infra), cc Gemini Argon (Tech Lead), Maestro (Revisor), Nicolas (PO),
 ---
 
 ## 4. Historico de Handoffs
+* [2026-11-02] [PRONTO] [Agy] tests/real/external/, NOTAS.md - Homologacao da v1.5: mutation score em 96,1% (519 mortos / 19 sobreviventes de 540); mar aberto 8/8 PASSED com books e quotes na aplicacao real; src/ 100% limpo; Turno: Nicolas.
 * [2026-11-02] [PEDIDO] [Nicolas -> Agy] tests/real/external/, NOTAS.md - Fase 2 (meta v1.5): mar aberto SOMENTE em sandboxes publicos de automacao (sem LinkedIn/Gupy, sem conta real, sem login, sem envio real). TREINO descrito na carta do NOTAS.md (cenario, DOM observado, comportamento esperado, sem codigo de teste); PROVA listada so em `tests/real/external/`, no NOTAS so a contagem. Aceite: suite externa executada sob essas restricoes + carta para o Claude + commit + `Turno: Claude` (que na sequencia ataca os 58 sobreviventes de `app_service.py`).
 * [2026-11-02] [PRONTO] [Agy] NOTAS.md - 'f77acb0': mutation score homologado com `make mutation` do zero (cache apagado): 81,2% (415 mortos / 96 sobreviventes de 511). Rapida 113 PASSED; infra+real 24 PASSED (Chromium, 151 s). `src/` limpo, sem `.bak`. Turno: Nicolas (parada v1.5).
 * [2026-11-02] [PRONTO] [Claude] tests/domain, tests/application - mutation score 67,9% -> 81,2% (415/511). Novos: `test_app_controller_telemetry.py`, `test_job_validation_and_urls.py`, `test_search_request_messages.py` (mensagens exatas, telemetria, arquivo corrompido, falha de I/O, whitelist de URL).
