@@ -6,21 +6,21 @@ Fonte unica de verdade para a coordenacao assincrona entre Agy e Claude.
 
 ## 📬 COMUNICADO OFICIAL ATIVO NO TOPO (TURNO ATUAL)
 
-**DE/PARA/TURNO:** Claude -> Agy | Turno: Agy | 2026-11-02
-**STATUS:** [PRONTO] Mutation score 67,9% -> 81,2% (415 mortos / 96 sobreviventes de 511) na suite rapida: 113 PASSED.
-**ACEITE/RESUMO:** 32 testes novos em tests/domain e tests/application (controller/telemetria, Job, SearchRequest); src/ intocado. Agy: homologar com `make mutation` e seguir para a validacao em mar aberto (sandboxes publicos).
+**DE/PARA/TURNO:** Agy -> Nicolas | Turno: Nicolas | 2026-11-02
+**STATUS:** [PRONTO] Mutation score homologado: 81,2% (415 mortos / 96 sobreviventes de 511); rapida 113 PASSED; infra+real 24 PASSED.
+**ACEITE/RESUMO:** `make mutation` reexecutado do zero (cache apagado) e confirmou os numeros do Claude; `git status --short src/` limpo, sem `.bak`. Falta a validacao em mar aberto (sandboxes publicos): preciso do seu "vai" para escolher alvos e rodar. Sobreviventes restantes: app_service 58, search_request 30, app_controller 5, job 3.
 
 ---
 
 ## 1. Estado Atual da Squad
 
-* **Turno Atual:** Agy (QA/Infra). Nicolas so entra nas paradas (v1.5 e v2.0) ou em `[BLOQUEIO]`.
+* **Turno Atual:** Nicolas (parada v1.5). Nicolas so entra nas paradas (v1.5 e v2.0) ou em `[BLOQUEIO]`.
 * **Regra de turno (lida por script):** o campo `Turno:` do topo so aceita `Claude`, `Agy` ou `Nicolas`. Mudar o `Turno` no mesmo commit do seu trabalho e o sinal de passagem. Commit fora do seu turno e recusado por hook.
 * **Versao Consolidada da Aplicacao:** v1.0 (`master` = `414e4f8`, merge do PR #2, tag `v1.0`). Fase 1 do roadmap concluida.
 * **Caminho:** v1.0 (feito) -> v1.5 (retomada: Nicolas revisa negocio e planejamento contra o que foi construido) -> v2.0 (entrega com PR). Versoes intermediarias (v1.1 a v1.4): so commit local, sem tag, sem push, sem PR.
 * **Versao Alvo da Squad:** `v1.5`. Escopo: mutation testing (Score > 80% na suite rapida) + validacao em mar aberto (sandboxes publicos sem WAF). Burner Run no LinkedIn real e bonus stealth ficam para depois da v1.5; o Burner Run so com o "vai" do Nicolas.
 * **Branch Ativa:** `feat/v1.5` (criada a partir de `origin/master`). A `feat/v0.1-stealth-engine` e so backup local; ninguem a usa.
-* **Placar do Pytest:** rapido (`tests/domain` + `tests/application`) = 113 PASSED. Suite geral homologada pelo QA = 98 PASSED (inclui 2 hostil E2E no Chromium; reexecutar). Mutation Score = 81,2% (415 mortos / 96 sobreviventes; base 67,9%).
+* **Placar do Pytest:** rapido (`tests/domain` + `tests/application`) = 113 PASSED. Suite infra+real homologada pelo QA = 24 PASSED (Chromium real, 151 s). Mutation Score = 81,2% (415 mortos / 96 sobreviventes; base 67,9%).
 * **Proxima Acao Esperada:** Agy homologa o score (`make mutation`) e conduz a validacao em mar aberto. Restam 58 sobreviventes em `app_service.py` (30 em `search_request.py`: seletores literais), caso se queira ir alem de 80%. So Nicolas faz: push, tag, PR, trocar de branch.
 
 ---
