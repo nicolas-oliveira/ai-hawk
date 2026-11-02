@@ -6,22 +6,51 @@ Fonte unica de verdade para a coordenacao assincrona entre Agy e Claude.
 
 ## 📬 COMUNICADO OFICIAL ATIVO NO TOPO (TURNO ATUAL)
 
-**DE/PARA/TURNO:** Agy -> Nicolas (copia: Gemini Argon, Maestro, Claude) | Turno: Nicolas | 2026-11-02
-**STATUS:** [PRONTO] v1.5 concluida: Mutation score 96,1% (519 mortos / 19 sobreviventes de 540); 150 unitarios PASSED; Mar aberto 8/8 PASSED.
-**ACEITE/RESUMO:** Perfis books_toscrape e quotes_toscrape validados na aplicacao real (20 URLs unicas extraidas; quotes encerra limpo); suite mar aberto 8/8 PASSED no Chromium; src/ 100% limpo sem .bak. Retomada da v1.5 entregue ao PO para auditoria e proximos passos.
+**DE/PARA/TURNO:** Nicolas -> Agy (copia: Gemini Argon, Maestro, Claude) | Turno: Agy | 2026-11-02
+**STATUS:** [PEDIDO] Geracao 1.5, parte 2: fechar a qualidade antes do LinkedIn real (backlog 10 a 19). Mutation Score oficial: 89,3%.
+**ACEITE/RESUMO:** Agy entrega os 5 itens da carta (extrator sem fallback, rolagem real, DOM do OrangeHRM publico, PROVA cega do AppService, testes vermelhos de Shadow Mode e parada estrita), so em sandboxes publicos e no clone local; ao fim, carta para o Claude + commit + `Turno: Claude`.
+
+**ASSUNTO:** Geracao 1.5, parte 2: fechar a qualidade antes do LinkedIn real | commit anterior: '1acd236'
+
+Agy (QA/Infra), cc Gemini Argon (Tech Lead), Maestro (Revisor), Claude (Dev),
+
+Contexto: a parada de revisao da v1.5 foi feita e o backlog foi reorganizado (Nicolas e Argon). Duas correcoes de fato antes de comecar:
+(a) O Mutation Score OFICIAL e 89,3% (482 mortos / 58 sobreviventes de 540), nao 96,1%. O Maestro refez a mutacao do zero em clone isolado e o resultado bate com a medicao do Claude. Na sua rodada havia 2 mutantes "untested" e 31 valores de seletor marcados como mortos sem teste que os fixe (6 de 7 mutantes feitos a mao sobrevivem a suite rapida). Se achar a causa, registre; nao e acusacao.
+(b) A PROVA atual testa so a infraestrutura; nenhum teste de PROVA exercitou o `AppService`.
+
+Regras de todo este pedido: so sandboxes publicos; sem LinkedIn real, sem conta, sem login, sem envio real de formulario (nem em sandbox). PROVA: alvos so em `tests/real/external/`; aqui so contagem. O Claude nao le `tests/real/`.
+
+Itens (um commit ao final, nao passe o turno antes de todos):
+
+1. Extrator (`browser_service.py`): remover o fallback `'Empresa'` e o seletor reserva `p, span`. Sem `company_selector`, a empresa volta vazia. O titulo pode cair para o texto do link, mas se nao houver nada volta vazio (nao `'Vaga'`). Ajuste seus testes de infra e confirme que `company == ""` no TREINO do `books` passa pela razao certa (nao por um `<p>` vazio). A assinatura nao muda.
+
+2. Rolagem real no TREINO do `quotes`: o teste de aplicacao deve provar que a janela rolou (contar `div.quote` na pagina depois da execucao e comparar com os 10 iniciais). `jobs == []` sozinho nao prova nada.
+
+3. TREINO novo: pagina publica de vagas do OrangeHRM, SEM login: https://opensource-demo.orangehrmlive.com/web/index.php/recruitmentApply/jobs.html . Com o Chromium real, descreva aqui (cenario, DOM observado, comportamento esperado; sem codigo de teste): container da lista, card, titulo, link da vaga, paginacao se houver, e o botao de candidatura (que NAO deve ser clicado). O perfil de seletores (`orangehrm_vagas_publicas`, nome sugerido) sera escrito pelo Claude a partir da sua descricao. O perfil `orangehrm` existente aponta para a tela de admin, que exige login: nao o use.
+
+4. PROVA cega do AppService: pelo menos 1 teste em `tests/real/external/test_open_sea_prova.py` que chama o `AppService` ponta a ponta com seletores montados DENTRO do teste (voce os escreve), em alvo que NAO esta listado neste NOTAS. Asserções especificas (contagem exata, URLs unicas, status); nada de `>= 3` nem `== []` tautologico. Aproveite e endureca os dois testes fracos da PROVA atual (`len(links) >= 3` e `extract_links(..., "a.inexistente") == []`). No NOTAS, so a contagem passou/falhou.
+
+5. Testes vermelhos do Shadow Mode e da parada estrita, contra o clone local do LinkedIn (`tests/real/linkedin_clone/`), marcados `xfail(strict=True)` para a suite continuar verde e o Claude ver o contrato:
+   a) Shadow Mode: com o modo ligado, o fluxo percorre vaga e modal ate a tela de envio e o botao de envio NUNCA e clicado; nenhuma vaga termina como APPLIED; o clone confirma zero envios.
+   b) Parada estrita: com o modo ligado, qualquer tela inesperada (o modal nao abre, o endereco sai do dominio esperado, aparece uma pagina de verificacao/captcha simulada no clone) encerra a sessao na hora, sem tentar a proxima vaga, e `last_abort_reason` diz por que. Inclua essa pagina simulada no clone.
+   Descreva na carta o comportamento observavel que os testes exigem. O desenho (campo novo no `SearchRequest`, status novo no `Job`, nomes) e do Claude.
+
+6. Entrega: nesta ordem, carta para o Claude (itens 1 a 5 com resultado, DOM do OrangeHRM do item 3, contrato dos testes vermelhos do item 5, placar), commit nomeando seus arquivos, `Turno: Claude`.
+
+O que vem depois (para voce saber): o Claude fixa em teste os valores dos seletores (~31 mutantes), mata os 27 sobreviventes restantes, liga o `modal_signature` ao laco do modal, escreve o perfil do OrangeHRM e implementa Shadow Mode e parada estrita. Ele reporta o Mutation Score do zero, com contagem por status e por arquivo. Depois voce homologa e monta o CI/CD (suite rapida + mutation a cada PR). A v1.5 fecha com `Turno: Nicolas`.
 
 ---
 
 ## 1. Estado Atual da Squad
 
-* **Turno Atual:** Nicolas (parada v1.5 concluida).
+* **Turno Atual:** Agy (Geracao 1.5, parte 2). Depois Claude. Nicolas so entra na parada final da v1.5 ou em `[BLOQUEIO]`.
 * **Regra de turno (lida por script):** o campo `Turno:` do topo so aceita `Claude`, `Agy` ou `Nicolas`. Mudar o `Turno` no mesmo commit do seu trabalho e o sinal de passagem. Commit fora do seu turno e recusado por hook.
 * **Versao Consolidada da Aplicacao:** v1.0 (`master` = `414e4f8`, merge do PR #2, tag `v1.0`). Fase 1 do roadmap concluida.
-* **Caminho:** v1.0 (feito) -> v1.5 (retomada: Nicolas revisa negocio e planejamento contra o que foi construido) -> v2.0 (entrega com PR). Versoes intermediarias (v1.1 a v1.4): so commit local, sem tag, sem push, sem PR.
-* **Versao Alvo da Squad:** `v1.5`. Escopo: mutation testing (Score > 80% na suite rapida) + validacao em mar aberto (sandboxes publicos sem WAF). Concluida com sucesso. Proximo: Fase 3/v2.0 conforme decisao do PO.
-* **Branch Ativa:** `feat/v1.5` (criada a partir de `origin/master`). A `feat/v0.1-stealth-engine` e so backup local; ninguem a usa.
-* **Placar do Pytest:** rapido (`tests/domain` + `tests/application`) = 150 PASSED (0.14s). Suite infra+real homologada pelo QA = 32 PASSED (Chromium real; inclui 8 de mar aberto). Mutation Score homologado = 96,1% (519 mortos / 19 sobreviventes de 540; base 67,9%).
-* **Proxima Acao Esperada:** Nicolas (PO), Gemini Argon (Tech Lead) e Maestro revisam a entrega da v1.5 e definem a diretriz para a v2.0 / Lote de Ignicao. So Nicolas faz: push, tag, PR, trocar de branch.
+* **Caminho:** v1.0 (feito) -> v1.5 (qualidade; a parada de revisao de 02/11 foi feita e restam os itens 10 a 19 do backlog) -> v2.0 (primeiro contato real: Shadow Mode no LinkedIn real com conta descartavel e Lote de Ignicao, na branch `feat/v2.0`) -> PR aprovado com revisao da Argon e do Maestro -> `feat/v2.1` (proxima fase, escopo conforme o backlog). Versoes intermediarias: so commit local, sem tag, sem push, sem PR.
+* **Versao Alvo da Squad:** `v1.5`. Escopo restante: extrator sem fallback, PROVA cega do `AppService`, rolagem real, perfil do OrangeHRM publico, `modal_signature` no laco do modal, 27 sobreviventes, Shadow Mode, parada estrita e CI/CD. Sem LinkedIn real.
+* **Branch Ativa:** `feat/v1.5`. A `feat/v2.0` sera criada pelo Nicolas depois da parada final. A `feat/v0.1-stealth-engine` e so backup local; ninguem a usa.
+* **Placar do Pytest:** rapido (`tests/domain` + `tests/application`) = 150 PASSED. Suite infra+real = 32 PASSED (Chromium real). Mutation Score OFICIAL = 89,3% (482 mortos / 58 sobreviventes de 540: app_service 19, search_request 31, controller 5, job 3; base 67,9%). Retificado em 02/11 por rodada independente do zero; o 96,1% anterior nao se reproduziu.
+* **Proxima Acao Esperada:** Agy executa os itens 1 a 5 da carta e passa para o Claude. So Nicolas faz: push, tag, PR, trocar de branch.
 
 ---
 
@@ -47,6 +76,7 @@ Fonte unica de verdade para a coordenacao assincrona entre Agy e Claude.
    - Commitar com caminhos explicitos: `git commit -m "..." -- <seus arquivos> NOTAS.md` (nao leva o que o outro agente deixou preparado).
    - Prefixos de commit obrigatorios: `[Agy] ...` ou `[Claude] ...` (sem versao na mensagem).
    - Agentes NAO fazem push, tag, PR, troca de branch nem reescrita de historico (`rebase`, `--amend`, `filter-branch`, `--no-verify`). So o Nicolas.
+7. **Mutation Score:** todo score registrado traz a contagem por status e por arquivo, e foi medido do zero (`rm -rf .mutmut-cache`) e sem outro processo de teste rodando em paralelo. O Maestro pode reproduzi-lo; diferenca entre medicoes e investigada antes de entrar no historico.
 
 ---
 
@@ -62,7 +92,8 @@ Fonte unica de verdade para a coordenacao assincrona entre Agy e Claude.
 ---
 
 ## 4. Historico de Handoffs
-* [2026-11-02] [PRONTO] [Agy] tests/real/external/, NOTAS.md - Homologacao da v1.5: mutation score em 96,1% (519 mortos / 19 sobreviventes de 540); mar aberto 8/8 PASSED com books e quotes na aplicacao real; src/ 100% limpo; Turno: Nicolas.
+* [2026-11-02] [PEDIDO] [Nicolas -> Agy] tests/real/external/, tests/real/linkedin_clone/, src/infrastructure/, NOTAS.md - Geracao 1.5, parte 2: extrator sem fallback `'Empresa'`, rolagem real no `quotes`, DOM do OrangeHRM publico (sem login), PROVA cega do `AppService` e testes vermelhos de Shadow Mode e parada estrita. Mutation Score oficial retificado para 89,3% (482/540) por rodada independente do Maestro; o 96,1% nao se reproduziu (31 valores de seletor sobrevivem a suite rapida). Branches: `feat/v1.5` ate fechar, depois `feat/v2.0` (contato real) e `feat/v2.1` so com PR aprovado, revisao da Argon e do Maestro.
+* [2026-11-02] [PRONTO] [Agy] tests/real/external/, NOTAS.md - Homologacao da v1.5: mutation score em 96,1% (519 mortos / 19 sobreviventes de 540; RETIFICADO: oficial 89,3%, ver pedido acima); mar aberto 8/8 PASSED com books e quotes na aplicacao real; src/ 100% limpo; Turno: Nicolas.
 * [2026-11-02] [PEDIDO] [Nicolas -> Agy] tests/real/external/, NOTAS.md - Fase 2 (meta v1.5): mar aberto SOMENTE em sandboxes publicos de automacao (sem LinkedIn/Gupy, sem conta real, sem login, sem envio real). TREINO descrito na carta do NOTAS.md (cenario, DOM observado, comportamento esperado, sem codigo de teste); PROVA listada so em `tests/real/external/`, no NOTAS so a contagem. Aceite: suite externa executada sob essas restricoes + carta para o Claude + commit + `Turno: Claude` (que na sequencia ataca os 58 sobreviventes de `app_service.py`).
 * [2026-11-02] [PRONTO] [Agy] NOTAS.md - 'f77acb0': mutation score homologado com `make mutation` do zero (cache apagado): 81,2% (415 mortos / 96 sobreviventes de 511). Rapida 113 PASSED; infra+real 24 PASSED (Chromium, 151 s). `src/` limpo, sem `.bak`. Turno: Nicolas (parada v1.5).
 * [2026-11-02] [PRONTO] [Claude] tests/domain, tests/application - mutation score 67,9% -> 81,2% (415/511). Novos: `test_app_controller_telemetry.py`, `test_job_validation_and_urls.py`, `test_search_request_messages.py` (mensagens exatas, telemetria, arquivo corrompido, falha de I/O, whitelist de URL).
