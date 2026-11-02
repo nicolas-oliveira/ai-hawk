@@ -50,7 +50,7 @@ O que vem depois (para voce saber): o Claude fixa em teste os valores dos seleto
 * **Versao Alvo da Squad:** `v1.5`. Escopo restante: extrator sem fallback, PROVA cega do `AppService`, rolagem real, perfil do OrangeHRM publico, `modal_signature` no laco do modal, 27 sobreviventes, Shadow Mode, parada estrita e CI/CD. Sem LinkedIn real.
 * **Branch Ativa:** `feat/v1.5`. A `feat/v2.0` sera criada pelo Nicolas depois da parada final. A `feat/v0.1-stealth-engine` e so backup local; ninguem a usa.
 * **Placar do Pytest:** rapido (`tests/domain` + `tests/application`) = 150 PASSED. Suite infra+real = 32 PASSED (Chromium real). Mutation Score OFICIAL = 89,3% (482 mortos / 58 sobreviventes de 540: app_service 19, search_request 31, controller 5, job 3; base 67,9%). Retificado em 02/11 por rodada independente do zero; o 96,1% anterior nao se reproduziu.
-* **Proxima Acao Esperada:** Agy executa os itens 1 a 5 da carta e passa para o Claude. So Nicolas faz: push, tag, PR, trocar de branch.
+* **Proxima Acao Esperada:** Agy executa os itens 1 a 5 da carta e passa para o Claude. Push, PR e tag so o Claude executa, com a linha `AUTORIZO` do Nicolas no topo e confirmacao no terminal (regra 6). O merge do PR e a troca de branch: so o Nicolas.
 
 ---
 
@@ -75,8 +75,11 @@ O que vem depois (para voce saber): o Claude fixa em teste os valores dos seleto
    - NUNCA usar `git add .` ou `git commit -a`. Sempre usar `git add NOTAS.md` explicitamente com seus arquivos de territorio.
    - Commitar com caminhos explicitos: `git commit -m "..." -- <seus arquivos> NOTAS.md` (nao leva o que o outro agente deixou preparado).
    - Prefixos de commit obrigatorios: `[Agy] ...` ou `[Claude] ...` (sem versao na mensagem).
-   - Agentes NAO fazem push, tag, PR, troca de branch nem reescrita de historico (`rebase`, `--amend`, `filter-branch`, `--no-verify`). So o Nicolas.
+   - Agentes NAO fazem troca de branch (so o Nicolas), merge de PR, force push, push direto na `master` nem reescrita de historico (`rebase`, `--amend`, `filter-branch`, `--no-verify`).
+   - Push, PR e tag: so o Claude, depois da revisao aprovada, com a linha `AUTORIZO: ...` do Nicolas no topo do NOTAS.md e confirmacao dele no terminal. O Agy nunca. O hook `pre-push` recusa qualquer push para `master`/`main`.
 7. **Mutation Score:** todo score registrado traz a contagem por status e por arquivo, e foi medido do zero (`rm -rf .mutmut-cache`) e sem outro processo de teste rodando em paralelo. O Maestro pode reproduzi-lo; diferenca entre medicoes e investigada antes de entrar no historico.
+
+8. **Versao e tag:** a revisao acontece antes do PR. Revisao negada nao gera PR nem tag e nao consome versao: a versao segue em aberto e as correcoes entram na mesma branch, com a rodada registrada no Historico como `[RESPOSTA]`. A tag so e criada depois do merge. Correcao depois do merge usa versao de correcao (v1.5.1). O numero seguinte so existe depois do merge da anterior.
 
 ---
 
@@ -84,8 +87,8 @@ O que vem depois (para voce saber): o Claude fixa em teste os valores dos seleto
 
 | Papel | Agente | Territorio Permitido de Escrita |
 |---|---|---|
-| Decisor / Merge PR / Tag / Push | Nicolas | `master` (PR manual via GitHub), `.claude/`, `.gemini/`, `scripts/maestro/` |
-| DEV (Arquitetura e Contratos) | Claude | `src/domain/`, `src/application/`, `tests/domain/`, `tests/application/`, `NOTAS.md` |
+| Decisor / Autorizacao / Merge do PR | Nicolas | `master` (PR manual via GitHub), `.claude/`, `.gemini/`, `scripts/maestro/` |
+| DEV (Arquitetura e Contratos) | Claude | `src/domain/`, `src/application/`, `tests/domain/`, `tests/application/`, `NOTAS.md`; entrega Git (push, PR, tag) so com autorizacao |
 | QA, Runtime e Infraestrutura | Antigravity (Agy) | `src/infrastructure/`, `src/main.py`, `tests/infrastructure/`, `tests/real/`, `tests/conftest.py`, `Makefile`, `requirements.txt`, configs de ferramentas na raiz, `.env*`, `.gitignore`, `NOTAS.md` |
 | Auditoria e Revisao | Argon | Somente leitura |
 
