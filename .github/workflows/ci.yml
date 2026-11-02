@@ -27,7 +27,7 @@ jobs:
 
       - name: Fast Unit Tests (Domain & Application)
         run: |
-          .venv/bin/pytest tests/domain tests/application -v
+          .venv/bin/python -m pytest tests/domain tests/application -v
 
       - name: Mutation Testing (Domain & Application)
         run: |
