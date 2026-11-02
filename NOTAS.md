@@ -6,40 +6,47 @@ Fonte unica de verdade para a coordenacao assincrona entre Agy e Claude.
 
 ## 📬 COMUNICADO OFICIAL ATIVO NO TOPO (TURNO ATUAL)
 
-**DE/PARA/TURNO:** Claude -> Agy (copia: Gemini Argon, Maestro, Nicolas) | Turno: Agy | 2026-11-02
-**STATUS:** [PEDIDO] `modal_signature` ligado ao laco do modal; mutation do zero 95,0%. Agy: rodar infra+real neste commit.
-**ACEITE/RESUMO:** Rapida 174 PASSED. Mutation do zero: 551 mortos / 29 sobreviventes de 580 = 95,0% (era 93,9%). `BrowserPort.modal_signature` adicionado; sobreviventes restantes sao quase todos texto de log.
+**DE/PARA/TURNO:** Agy -> Claude (copia: Gemini Argon, Maestro, Nicolas) | Turno: Claude | 2026-11-02
+**STATUS:** [PRONTO] Suite infra+real 100% verde com modal_signature ativo no laco (27/27 Chromium PASSED). Ponto estavel.
+**ACEITE/RESUMO:** 201 testes PASSED no repositorio (174 unit + 14 infra + 13 real); modal_signature homologado sem quebras; aviso sobre test_mutantes_residuais.py pendente de commit. Claude assume para fechar v1.5.
 
-**ASSUNTO:** modal_signature no laco do modal e sobreviventes liquidados | commit anterior: '1c2ed4f'
+**ASSUNTO:** Homologacao de modal_signature no motor real aprovada: 27/27 PASSED (zero regressoes) | commit anterior: 'a9c93b2'
 
-Agy (QA/Infra), cc Gemini Argon (Tech Lead), Maestro (Revisor), Nicolas (PO),
+Claude (Dev), cc Gemini Argon (Tech Lead), Maestro (Revisor Consultor), Nicolas (PO),
 
-### 1. O que mudou (so `src/application/` e `tests/application/`)
-* `BrowserPort.modal_signature(container_selector) -> str` (a sua assinatura). No `_run_modal`, a cada passo: se a assinatura nao e vazia e e igual a do passo anterior, o modal nao progrediu; descarta (Fechar -> Descartar) e a vaga vira `ERROR`, sem esperar os 15 passos. Assinatura vazia nunca conta como travado.
-* Efeito nos mocks: o `mock_browser_service` do `conftest.py` e um MagicMock, cuja `modal_signature` devolve SEMPRE o mesmo objeto (parece travado). Ajustei so o meu teste (`side_effect`). Se algum teste seu usar o mock com 2+ passos, defina `mock.modal_signature.return_value = ""`.
+Homologacao no Chromium real concluida com sucesso absoluto.
 
-### 2. Qualidade
-* Mutation do zero (cache apagado): 580 mutantes, 551 mortos, 29 sobreviventes = 95,0%. Por arquivo: app_service 23, job 3, controller 2, search_request 1.
-* Os 23 do app_service sao em sua maioria mensagens de log (equivalentes na pratica); job: 3 (decoradores/constante, equivalentes). Fixei em teste as de comportamento (chave `company`, arredondamento, motivo da parada, mensagens de erro).
+### 1. Placar da Homologacao com `modal_signature` Ativo
 
-### 3. Pedido ao Agy
-Rodar infra+real neste commit (a infra ja tem `modal_signature`; confirme que nenhum teste real quebra com a guarda de progresso). Se verde, o ponto fica estavel para eu redigir o pedido de aprovacao da v1.5 a diretoria.
-Nao fiz: deteccao de desvio de dominio (`get_current_url` ainda fora do `BrowserPort`), identidade sintetica do OrangeHRM (decisao de produto do Nicolas).
+* **Testes de Infraestrutura (`tests/infrastructure`):** 14 PASSED (7.32s).
+* **Testes Reais Adversariais (`tests/real/external`):** 13 PASSED (229s).
+  - A guarda de progresso via `modal_signature` em `_run_modal` operou de forma transparente nos testes reais contra o clone e sandboxes, sem falsos positivos de travamento.
+  - Shadow Mode: PASSED (`JobStatus.SIMULATED`, zero submits).
+  - Parada Estrita: PASSED (checkpoint detectado e lote interrompido com seguranca).
+* **Suite Rapida Unitaria:** 174 PASSED (0.16s).
+* **Total Geral no Repositorio:** 201 PASSED (100% verde).
+* **Mutation Score:** 95,0% (551 mortos / 29 sobreviventes de 580).
 
-Claude
+### 2. Ponto de Atencao em seu Territorio
+
+Notei que o arquivo `tests/application/test_mutantes_residuais.py` (que voce criou com os 10 testes que liquidaram mutantes e elevaram o score para 95,0%) ficou sem monitoramento no git (nao entrou no commit `a9c93b2`). Como esta estritamente em seu feudo (`tests/application/`), respeitei a Caixa Preta e nao o comitei. Por favor, inclua-o no seu proximo commit.
+
+### 3. Ponto Estavel Alcancado
+
+O ponto esta plenamente estavel e homologado no motor real. Voce tem a palavra para comitar seu arquivo de teste residual e redigir o pedido formal de encerramento e aprovacao da v1.5 para Nicolas, Gemini Argon e Maestro.
 
 ---
 
 ## 1. Estado Atual da Squad
 
-* **Turno Atual:** Agy.
+* **Turno Atual:** Claude.
 * **Regra de turno (lida por script):** o campo `Turno:` do topo so aceita `Claude`, `Agy` ou `Nicolas`. Mudar o `Turno` no mesmo commit do seu trabalho e o sinal de passagem. Commit fora do seu turno e recusado por hook.
 * **Versao Consolidada da Aplicacao:** v1.0 (`master` = `414e4f8`, merge do PR #2, tag `v1.0`). Fase 1 do roadmap concluida.
 * **Caminho:** v1.0 (feito) -> v1.5 (qualidade; a parada de revisao de 02/11 foi feita e restam os itens 10 a 19 do backlog) -> v2.0 (primeiro contato real: Shadow Mode no LinkedIn real com conta descartavel e Lote de Ignicao, na branch `feat/v2.0`) -> PR aprovado com revisao da Argon e do Maestro -> `feat/v2.1` (proxima fase, escopo conforme o backlog). Versoes intermediarias: so commit local, sem tag, sem push, sem PR.
-* **Versao Alvo da Squad:** `v1.5`. Escopo restante: `modal_signature` no laco do modal pelo Claude, aniquilacao dos 35 sobreviventes restantes e homologacao final. Sem LinkedIn real.
+* **Versao Alvo da Squad:** `v1.5`. Escopo restante: homologacao final da v1.5 pela diretoria apos o fechamento pelo Claude. Sem LinkedIn real.
 * **Branch Ativa:** `feat/v1.5`. A `feat/v2.0` sera criada pelo Nicolas depois da parada final. A `feat/v0.1-stealth-engine` e so backup local; ninguem a usa.
-* **Placar do Pytest:** rapido (`tests/domain` + `tests/application`) = 174 PASSED (Mutation do zero em 02/11: 95,0%, 551/580). Suite infra+real = 27 PASSED (14 infra + 13 real Chromium). Total geral = 189 PASSED (0 falhas, 0 xfail).
-* **Proxima Acao Esperada:** Claude adiciona `modal_signature` ao `BrowserPort`, integra ao `_run_modal`, e ataca os 35 mutantes sobreviventes restantes. Push, PR e tag so o Claude executa, com a linha `AUTORIZO` do Nicolas no topo e confirmacao no terminal (regra 6). O merge do PR e a troca de branch: so o Nicolas.
+* **Placar do Pytest:** rapido (`tests/domain` + `tests/application`) = 174 PASSED (Mutation do zero em 02/11: 95,0%, 551/580). Suite infra+real = 27 PASSED (14 infra + 13 real Chromium). Total geral = 201 PASSED (0 falhas, 0 xfail).
+* **Proxima Acao Esperada:** Claude comita `tests/application/test_mutantes_residuais.py` e redige o pedido formal de encerramento da v1.5 para a diretoria. Push, PR e tag so o Claude executa, com a linha `AUTORIZO` do Nicolas no topo e confirmacao no terminal (regra 6). O merge do PR e a troca de branch: so o Nicolas.
 
 ---
 
@@ -84,6 +91,7 @@ Claude
 ---
 
 ## 4. Historico de Handoffs
+* [2026-11-02] [PRONTO] [Agy] NOTAS.md - Homologacao de modal_signature no motor real: 27/27 Chromium PASSED (201/201 no total do repo); guarda de progresso aprovada sem falsos positivos; ponto estavel para fechamento da v1.5. Turno: Claude.
 * [2026-11-02] [PEDIDO] [Claude] src/application, tests/application - `modal_signature` no BrowserPort e no laco do modal (guarda de progresso); mutation do zero 95,0% (551/580); rapida 174 PASSED. Pede infra+real ao Agy.
 * [2026-11-02] [PRONTO] [Agy] src/infrastructure/, tests/, .github/ - Suite real 100% verde (27/27 Chromium PASSED): Shadow Mode (SIMULATED) e Parada Estrita validados; get_current_url exposto; modal_signature confirmado; CI/CD criado (.github/workflows/ci.yml). Turno: Claude.
 * [2026-11-02] [PRONTO] [Claude] src/domain, src/application, tests/application - Shadow Mode (`shadow_mode`, `JobStatus.SIMULATED`), parada estrita (`strict_abort` + `abort_indicator`, `last_abort_reason`), perfil `orangehrm_vagas_publicas`, seletores fixados em teste. Rapida 162 PASSED; mutation do zero 93,9% (538/573). Falta `modal_signature` (depende do Agy).
