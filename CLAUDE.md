@@ -12,7 +12,7 @@
 - Se tentar a mesma coisa 3 vezes sem sucesso, ou faltar algo que o NOTAS.md diz que existe: pare, escreva `[BLOQUEIO]` no STATUS, `Turno: Nicolas` e commite.
 - Versões intermediárias: apenas commit local. Não peça tag nem push.
 - Ao concluir v1.0 (planejamento), v1.5 (retomada) ou v2.0 (entrega/PR): `Turno: Nicolas`.
-- Precisa de algo meu (dependência nova, push, decisão de negócio)? Use `[BLOQUEIO]` no STATUS ou `Turno: Nicolas`.
+- Precisa de algo meu (dependência nova, decisão de negócio)? Use `[BLOQUEIO]` no STATUS ou `Turno: Nicolas`.
 
 ## 1. Papel do Agente e Visao Geral do Projeto
 Voce atua como Engenheiro de Dominio e Aplicacao do projeto **AIHawk**, uma engine de automacao de candidaturas em Python baseada em Clean Architecture e Patchright (fork stealth do Playwright).
@@ -115,7 +115,7 @@ Voce trabalha em conjunto com o agente **Antigravity** (responsavel por Infraest
 Fonte canonica: o topo e a secao 2 do `NOTAS.md`, e este arquivo. Em caso de divergencia com o `AGENTS.md`, vale o `NOTAS.md`.
 
 1. **Branch:** trabalhe na branch que o Nicolas deixou ativa (hoje `feat/v1.5`).
-   * NEVER create, switch or checkout branches (`git switch`, `git checkout`). So o Nicolas cria e troca branches.
+   * NEVER create, switch or checkout branches (`git switch`, `git checkout`). So o Nicolas cria e troca branches. Excecao: `git checkout master && git pull` depois do merge do PR (o terminal pede confirmacao).
 2. **`git add` restrito:**
    * Claude so pode executar `git add` em: `src/domain/`, `src/application/`, `tests/domain/`, `tests/application/` e `NOTAS.md`.
    * O Agy tem o territorio dele (tabela da secao 3 do `NOTAS.md`).
@@ -127,6 +127,7 @@ Fonte canonica: o topo e a secao 2 do `NOTAS.md`, e este arquivo. Em caso de div
    * **Passo 3 (Agy):** executa o codigo no ambiente real (Ubuntu/Patchright).
    * **Passo 4 (Loop QA vs Dev):** o Agy relata o traceback no `NOTAS.md`. Se o erro esta no design do teste ou na infraestrutura, o Agy corrige. Se o teste esta correto e o erro e de logica de negocio, o Claude corrige. O Agy retesta ate 100%.
    * **Passo 5 (Revisao humana):** Nicolas e Argon verificam os arquivos e fazem testes manuais.
-   * **Passo 6 (Entrega final - Nicolas):** so na v2.0, o Nicolas abre o Pull Request para a `master`, faz o merge e cria a tag. O Claude nunca faz push, PR (`gh`), tag nem checkout da `master`; pode deixar no `NOTAS.md` o texto sugerido para o PR.
+   * **Passo 6 (Entrega final - Claude, com autorizacao):** a revisao (Nicolas, Argon e Maestro) acontece ANTES, sobre a branch. So depois da aprovacao, o Nicolas escreve no topo do `NOTAS.md` `AUTORIZO: push, PR e tag da <branch>` e passa o `Turno` ao Claude. O Claude faz `git push -u origin <branch>` e abre o Pull Request para a `master` (`gh pr create`); o terminal pede a confirmacao do Nicolas em cada push. O merge e SEMPRE do Nicolas, no GitHub. Apos o merge (que e a autorizacao da tag), o Claude atualiza a `master` (`git checkout master && git pull`), cria a tag (`git tag -a`) e a envia (`git push origin <tag>`). Nunca force push, push direto na `master`, `--no-verify` nem merge do PR. Sem a linha `AUTORIZO` no topo do `NOTAS.md`, nao faz nada disso.
+   * **Versao e tag:** a revisao acontece antes do PR. Revisao negada nao gera PR nem tag e nao consome versao: a versao segue em aberto e as correcoes entram na mesma branch. A tag so e criada depois do merge. Correcao depois do merge usa versao de correcao (v1.5.1). O numero seguinte so existe depois do merge da anterior.
 4. **Decisao de infraestrutura v0.1:** Chromium stealth nativo do Patchright (`BROWSER_CHANNEL=chromium`, fallback `chrome`), conforme diagnostico do Agy no Ubuntu 24.04.
 5. **Governanca:** `AGENTS.md` e `CLAUDE.md` so sao editados por ordem explicita do Nicolas (ou comunicado do Argon repassado por ele). Duvidas e furos de regra vao para o `NOTAS.md`.

@@ -1,0 +1,10 @@
+#!/bin/sh
+# Ninguem da push direto na master/main: ela so muda pelo merge do PR no GitHub.
+while read lref lsha rref rsha; do
+  case "$rref" in
+    refs/heads/master|refs/heads/main)
+      echo "PUSH PARA master/main BLOQUEADO: so via merge de PR no GitHub." >&2
+      exit 1 ;;
+  esac
+done
+exit 0

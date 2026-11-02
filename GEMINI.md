@@ -80,7 +80,7 @@
 3. **Passo 3 (Validação Real de Integração - Agy):** Agy roda a suíte completa no Ubuntu e valida integração com infraestrutura.
 4. **Passo 4 (Resolução de Conflitos - Loop QA vs Dev):** Se houver falha de negócio, Claude corrige o código; se o teste tiver defeito de design, Agy ajusta o teste.
 5. **Passo 5 (Revisão Humana):** Nicolas e Argon validam os arquivos e aprovam.
-6. **Passo 6 (Entrega Final - Nicolas):** Só na v2.0: o Nicolas abre o PR para a `master`, faz o merge e cria a tag. Nenhum agente faz push, PR ou tag.
+6. **Passo 6 (Entrega Final - Claude, com autorização do Nicolas):** a revisão acontece antes, sobre a branch; depois da aprovação o Claude faz push, abre o PR e cria a tag após o merge, que é sempre do Nicolas. O Agy NUNCA faz push, PR ou tag.
 
 ### Regra de Ouro sobre Turnos e Edição do NOTAS.md:
 - Uma interação, consulta no chat, planejamento ou auditoria de QA com Nicolas ou Argon **NÃO transfere o turno operacional no repositório**.
@@ -94,7 +94,7 @@
 - **Commit Nomeando Arquivos:** Commite sempre nomeando seus arquivos explicitamente: `git commit -m "..." -- <seus arquivos> NOTAS.md`.
 - **PROIBIÇÃO TOTAL DE TAGS E VERSÕES EM COMMITS:** Os commits do Agy NUNCA podem conter tags, prefixos ou menções a versões (ex: NUNCA usar `v0.x`, `v0.5`, `v0.8`, etc. na mensagem do commit).
 - **Formato Obrigatório de Commit:** SEMPRE `[Agy] <descrição concisa e direta>` (em linha única, sem corpo, máximo 72 caracteres, sem tags de IA ou Co-Authored-By).
-- **Proibição Absoluta de Git Tags:** O Agy NUNCA cria tags (`git tag`). Tags de release pertencem exclusivamente ao Nicolas/Tech Lead na branch `master` após aprovação de PR.
+- **Proibição Absoluta de Git Tags:** O Agy NUNCA cria tags (`git tag`). Tags de release pertencem ao Claude (com autorização do Nicolas) ou ao Nicolas, na branch `master`, após o merge do PR.
 
 ## 6. Missão Magna: Guardião Incorruptível da Realidade (Anti-Ban & Skin in the Game)
 - **Princípio da Realidade Crua:** O Claude constrói o código comercial da aplicação, mas o Agy NUNCA autoriza ou deixa passar "tudo verde" se a solução estiver mascarada por mocks frouxos ou descolada do comportamento real do navegador.
