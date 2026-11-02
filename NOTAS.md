@@ -6,22 +6,48 @@ Fonte unica de verdade para a coordenacao assincrona entre Agy e Claude.
 
 ## 📬 COMUNICADO OFICIAL ATIVO NO TOPO (TURNO ATUAL)
 
-**DE/PARA/TURNO:** Nicolas -> Agy | Turno: Agy | 2026-11-02
-**STATUS:** [PEDIDO] Fase 2 (meta v1.5): preparar mutation testing (`mutmut`) na suite rapida.
-**ACEITE/RESUMO:** Mutar so `src/domain` e `src/application`, rodando so `tests/domain` e `tests/application` (nunca `tests/real`). Usar `mutmut==2.5.1` ja instalado pelo Nicolas (o 3.x nao funciona com imports `src.`). Criar `setup.cfg` e `make mutation`, por `.mutmut-cache` no `.gitignore`, registrar o score base (mortos/sobreviventes) sem ler codigo. Nunca interromper o mutmut com Ctrl+C (ele trava); se precisar, `kill -9` e `git restore src/`. Ao terminar: `git status --short src/` limpo e sem `.bak`; commit + `Turno: Claude`.
+**DE/PARA/TURNO:** Agy -> Claude | Turno: Claude | 2026-11-02
+**STATUS:** [PRONTO] Mutation testing preparado (mutmut); score base 67.9% registrado.
+**ACEITE/RESUMO:** setup.cfg e make mutation configurados (restritos a src/domain e src/application); mutmut==2.5.1 integrado; .mutmut-cache ignorado; score base: 347 mortos, 164 sobreviventes (total 511, 67.9%). src/ limpo sem .bak. Alvo do Claude: elevar score para > 80% cobrindo os 164 sobreviventes.
+
+ASSUNTO: Entrega do Mutation Testing e Handoff para Claude (meta v1.5)
+Hash anterior: '8011c42'
+
+1. Capacidades e Contratos de Infraestrutura Entregues:
+- `setup.cfg`: Criado na raiz definindo paths_to_mutate=src/domain,src/application, runner=.venv/bin/python -m pytest tests/domain tests/application -x -q --tb=no e tests_dir=tests/domain,tests/application.
+- `Makefile`: Adicionado alvo `mutation` que executa ponta a ponta sem abortar prematuramente e exibe o resumo completo (`@$(PY) -m mutmut run || true` e `@$(PY) -m mutmut results`).
+- `.gitignore`: Atualizado para ignorar o banco de dados local `.mutmut-cache` e artefatos de teste.
+- `requirements.txt`: Atualizado fixando `mutmut==2.5.1`.
+
+2. Placar da Suite e Score Base de Mutacao:
+- Suite rapida (`tests/domain` + `tests/application`): 81 PASSED (0.08s).
+- Mutantes testados na suite rapida: 511 total.
+- Mutantes mortos (Killed): 347 (67.91%).
+- Mutantes sobreviventes (Survived): 164 (32.09%).
+- Timeout / Suspicious / Skipped: 0.
+- Distribuicao dos 164 mutantes sobreviventes:
+  - `src/application/app_service.py`: 58 sobreviventes
+  - `src/application/dtos/search_request.py`: 54 sobreviventes
+  - `src/application/app_controller.py`: 37 sobreviventes
+  - `src/domain/entities/job.py`: 15 sobreviventes
+
+3. Cenario da Realidade Crua e Handoff para o Claude:
+- O Claude agora atua no desenvolvimento de testes comerciais em `tests/domain/` e `tests/application/` (e ajustes correspondentes em seu feudo) para elevar a resistencia da aplicacao alcancando Mutation Score > 80% (matando pelo menos 62 dos 164 sobreviventes).
+- Comandos disponiveis para inspecao de mutantes: `make mutation`, `.venv/bin/python -m mutmut results` e `.venv/bin/python -m mutmut show <id>`.
+- A integridade da arvore foi mantida rigorosamente: `git status --short src/` permaneceu limpo, com zero alteracoes em domain/application e sem arquivos `.bak`.
 
 ---
 
 ## 1. Estado Atual da Squad
 
-* **Turno Atual:** Agy (QA). Depois Claude (DEV). Nicolas so entra nas paradas (v1.5 e v2.0) ou em `[BLOQUEIO]`.
+* **Turno Atual:** Claude (DEV). Nicolas so entra nas paradas (v1.5 e v2.0) ou em `[BLOQUEIO]`.
 * **Regra de turno (lida por script):** o campo `Turno:` do topo so aceita `Claude`, `Agy` ou `Nicolas`. Mudar o `Turno` no mesmo commit do seu trabalho e o sinal de passagem. Commit fora do seu turno e recusado por hook.
 * **Versao Consolidada da Aplicacao:** v1.0 (`master` = `414e4f8`, merge do PR #2, tag `v1.0`). Fase 1 do roadmap concluida.
 * **Caminho:** v1.0 (feito) -> v1.5 (retomada: Nicolas revisa negocio e planejamento contra o que foi construido) -> v2.0 (entrega com PR). Versoes intermediarias (v1.1 a v1.4): so commit local, sem tag, sem push, sem PR.
 * **Versao Alvo da Squad:** `v1.5`. Escopo: mutation testing (Score > 80% na suite rapida) + validacao em mar aberto (sandboxes publicos sem WAF). Burner Run no LinkedIn real e bonus stealth ficam para depois da v1.5; o Burner Run so com o "vai" do Nicolas.
 * **Branch Ativa:** `feat/v1.5` (criada a partir de `origin/master`). A `feat/v0.1-stealth-engine` e so backup local; ninguem a usa.
-* **Placar do Pytest:** rapido (`tests/domain` + `tests/application`) = 81 PASSED. Suite geral homologada pelo QA = 98 PASSED (inclui 2 hostil E2E no Chromium).
-* **Proxima Acao Esperada:** Agy prepara o mutation testing (ver topo). Em seguida Claude sobe o score. So Nicolas faz: push, tag, PR, trocar de branch.
+* **Placar do Pytest:** rapido (`tests/domain` + `tests/application`) = 81 PASSED. Suite geral homologada pelo QA = 98 PASSED (inclui 2 hostil E2E no Chromium). Mutation Score base = 67.9% (347 mortos / 164 sobreviventes).
+* **Proxima Acao Esperada:** Claude eleva o mutation score para > 80% nos testes de seu territorio (`tests/domain`, `tests/application`). So Nicolas faz: push, tag, PR, trocar de branch.
 
 ---
 
@@ -63,6 +89,7 @@ Fonte unica de verdade para a coordenacao assincrona entre Agy e Claude.
 
 ## 4. Historico de Handoffs
 
+* [2026-11-02] [PRONTO] [Agy] Makefile, setup.cfg, requirements.txt, .gitignore, NOTAS.md - Setup de mutation testing com mutmut==2.5.1; make mutation roda ponta a ponta; score base registrado (347 mortos / 164 sobreviventes = 67.9%); src/ 100% limpo; Turno: Claude.
 * [2026-11-02] [PEDIDO] [Nicolas -> Agy] Makefile, requirements.txt, config na raiz - Fase 2 (meta v1.5): mutation testing com `mutmut` so em `src/domain` e `src/application`, rodando so `tests/domain` e `tests/application` (nunca `tests/real`: ~56 s por rodada inviabiliza rodar centenas de mutantes). Criar `make mutation` e registrar o score base.
   Aceite: `make mutation` roda ponta a ponta e o NOTAS traz killed/survived e o score. Instalar dependencia so com OK do Nicolas. Depois: `Turno: Claude`, que sobe o score para > 80% (testes e codigo do territorio dele).
 * [2026-10-31] [PRONTO] [Claude] src/application, tests/application - Cronometro por chamada da aplicacao ao navegador ('e50e4e7'); log INFO "Tempo por chamada" (`pytest -s -o log_cli=true -o log_cli_level=INFO`).
@@ -84,14 +111,3 @@ Fonte unica de verdade para a coordenacao assincrona entre Agy e Claude.
   O comunicado ja esta cumprido nos itens 1 e 2 (`d35516f`, `7fe2b46`). Item 3 (PR) aguarda: (a) o commit do Agy; (b) eu rodar o pre-PR (`pytest tests/real/ tests/infrastructure/ -v` + suite completa) em arvore SEM trabalho pela metade; (c) push da branch e `gh pr create`.
 * [2026-10-31] [PRONTO] [Claude] src/application/dtos, src/domain - d35516f: `job_card_title` e `job_card_company` em `LINKEDIN_DEFAULT_SELECTORS` (OPCIONAIS, valores copiados do browser_service; sem chaves duplicadas, conferido por AST). 7fe2b46: `Job.canonicalize_url` mantem `id`/`jobId`/`gh_jid` so quando o path nao tem 6+ digitos.
   Verificacao: `pytest tests/domain tests/application` = 38 passed. Limite documentado: outros parametros de ID (ex.: `currentJobId` do LinkedIn em /collections/) exigem ampliar a whitelist na Fase 2.
-* [2026-10-31] [PEDIDO] [Claude -> Agy] `BrowserService.extract_job_cards(card_selector, title_selector=None, company_selector=None)`: use os parametros no lugar dos seletores LinkedIn das linhas ~214 e ~217 (None = padrao generico). Compativel com a assinatura atual.
-  Aceite: testes reais verdes. Quando voce devolver o turno, eu passo `sel.get("job_card_title")` e `sel.get("job_card_company")` no AppService (nao passei agora para nao quebrar a assinatura atual).
-* [2026-10-31] [RESPOSTA] [Claude] Check-in Mutex: o ultimo commit era `f50a809` [Claude] (o Agy nao commitou no turno dele; a diretoria passou o turno direto). Arvore sem arquivo do Agy pendente (so `CLAUDE.md`, sem dono), entao nao devolvi com BLOQUEIO.
-* [2026-10-31] [PRONTO] [Claude] src/domain, src/application - v0.6 `8f32943`: `JsonJobCache` (opt-in, `AppService(browser, cache=...)`); so APPLIED/SKIPPED_COMPLEX/ALREADY_APPLIED persistem (ERROR nao); vaga em cache nao reabre o card nem consome o teto.
-  v0.7 `bce92f1`: `SearchRequest.max_consecutive_errors`=3 interrompe a sessao; telemetria ganha `aborted_reason` e `cache.hits` (fora do funil). Verificacao: scripts manuais + 38 passed; tests/real NAO rodado.
-  Validar: APPLIED em cache vira ALREADY_APPLIED; `Job.from_cache`; o cache vem DESLIGADO (cache=None) para nao contaminar testes.
-* [2026-10-31] [PEDIDO] [Claude -> Agy] Testes (`tests/`) da v0.6/v0.7: (a) `JsonJobCache`: ERROR fora do cache, arquivo corrompido preservado, vaga em cache nao consome `max_applications`; (b) freio: 3 ERROR seguidos interrompem, vaga ok no meio zera; `aborted_reason` no JSON.
-  Decisao sua: ligar o `JsonJobCache(".cache/...")` no `main.py` (`.cache/` ja esta no .gitignore) e cobrir no E2E real.
-* [2026-10-31] [PEDIDO] [Claude -> Agy] v0.8: expor no `BrowserService` `modal_signature(container_selector) -> str` (texto/hash do passo atual do modal). Eu uso para abortar e descartar se um clique em Next/Review nao mudar o passo (hoje o laco pode repetir ate 15 cliques).
-  Plano: v0.8 = guarda de progresso do modal; v0.9 = app completa integrada (cache + freio ligados na CLI) com E2E real; v1.0 = v0.9 + testes de borda + PR unico.
-* [2026-10-31] [BLOQUEIO] [Claude -> Nicolas] PR "Release v1.0" NAO aberto, por ordem sua. A tag `v0.1` NAO existia (git tag -l vazio): criei localmente em `b4a33ca`; empurrar ao GitHub so com seu OK.
