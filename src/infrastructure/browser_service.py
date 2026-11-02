@@ -123,6 +123,16 @@ class BrowserService:
             print(f"[BrowserService.navigate] Falha ao navegar para {url}: {e}")
             return False
 
+    def get_current_url(self) -> str:
+        """
+        Retorna a URL corrente ativa da pagina no navegador.
+        Permite a camada de aplicacao detectar desvios de dominio ou checkpoints.
+        """
+        try:
+            return self.get_page().url
+        except Exception:
+            return ""
+
     def human_delay(self, min_s: float = 0.25, max_s: float = 0.65) -> float:
         """
         Aplica um atraso estocastico imitando a variancia de tempo de reacao humana
@@ -554,3 +564,4 @@ class BrowserService:
     open_url = navigate
     element_exists = is_visible
     click = click_element
+    current_url = get_current_url

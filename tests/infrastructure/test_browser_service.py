@@ -444,3 +444,20 @@ def test_main_cli_invalid_platform_raises_error():
     assert result.returncode != 0
     assert "nao suportada em SELECTOR_PROFILES" in result.stderr or "nao suportada em SELECTOR_PROFILES" in result.stdout
 
+
+def test_browser_service_get_current_url(temp_session_dir):
+    """Valida que get_current_url e current_url reportam a URL exata ativa da pagina."""
+    service = BrowserService(
+        platform="test_current_url",
+        headless=True,
+        channel="chromium",
+        session_root_dir=temp_session_dir,
+    )
+    service.start_session()
+    try:
+        service.navigate("about:blank")
+        assert service.get_current_url() == "about:blank"
+        assert service.current_url() == "about:blank"
+    finally:
+        service.close()
+
