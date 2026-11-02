@@ -6,36 +6,10 @@ Fonte unica de verdade para a coordenacao assincrona entre Agy e Claude.
 
 ## 📬 COMUNICADO OFICIAL ATIVO NO TOPO (TURNO ATUAL)
 
-**DE/PARA/TURNO:** Nicolas -> Claude (copia: Gemini Argon, Maestro, Agy) | Turno: Claude | 2026-11-02
-**STATUS:** [PEDIDO] AUTORIZO: push, PR e tag da feat/v1.5. Revisao do ponto estavel '3276d90' aprovada (Nicolas, Argon, Maestro).
-**ACEITE/RESUMO:** Claude passa `Turno: Nicolas` no NOTAS, faz push da `feat/v1.5` e abre o PR para a `master`; o Nicolas faz o merge com o CI verde e avisa no chat; so entao o Claude cria e envia a tag `v1.5`.
+**DE/PARA/TURNO:** Claude -> Nicolas (copia: Gemini Argon, Maestro, Agy) | Turno: Nicolas | 2026-11-02
+**STATUS:** [PRONTO] v1.5 enviada: push da `feat/v1.5` e PR para a `master` abertos. Aguardo o merge do Nicolas (CI verde) para criar a tag `v1.5`.
+**ACEITE/RESUMO:** Ponto estavel '3276d90' (rapida 178, infra+real 28, mutation 95,1% = 562/591). Depois do merge o Nicolas avisa no chat; ai eu faco `git checkout master && git pull`, `git tag -a v1.5` e `git push origin v1.5`.
 
-**ASSUNTO:** Autorizacao de entrega da v1.5 | commit anterior: '3276d90'
-
-Claude (Dev), cc Gemini Argon (Tech Lead), Maestro (Revisor), Agy (QA/Infra),
-
-Contexto: a revisao do ponto estavel '3276d90' foi aprovada. Rapida 178 PASSED, infra+real 28 PASSED no Chromium, mutation do zero 95,1% (562 mortos / 29 sobreviventes de 591). O CI refaz a mutation numa maquina limpa a cada push, com a catraca de 29 sobreviventes.
-
-Itens (nesta ordem; o push so depois do commit do NOTAS, para o PR levar o NOTAS final):
-
-1. Atualize o Estado Atual e o Historico do NOTAS.md, passe `Turno: Nicolas` e commite so o NOTAS.md.
-
-2. Faca `git push -u origin feat/v1.5` (o terminal pede a confirmacao do Nicolas).
-
-3. Abra o PR da `feat/v1.5` para a `master` com `gh pr create`. Na descricao: o que a v1.5 entrega, o placar acima e as limitacoes conhecidas da lista abaixo.
-
-4. Nao crie a tag agora. Depois que o Nicolas fizer o merge com o CI verde, ele avisa no chat. Ai: `git checkout master && git pull`, `git tag -a v1.5` e `git push origin v1.5`.
-
-5. Se o CI falhar no GitHub, registre no PR e no chat e pare. A correcao entra na mesma branch, pelo dono do territorio, e nao consome versao (regra 8).
-
-Limitacoes conhecidas (para a descricao do PR; vao para o backlog da v2.0):
-
-* A parada estrita ao abrir uma VAGA so tem teste rapido (porta falsa). O teste real cobre so a listagem.
-* O teste hostil do clone aceita empresa vazia, porque o perfil `linkedin_clone` nao tem `job_card_company`.
-* "Modal que nao abre" como gatilho da parada estrita nao aparece em nenhuma entrega. Confirme no codigo e registre como esta.
-* Cards do OrangeHRM sem link: o perfil so le a listagem. A identidade sintetica e decisao do Nicolas e da Argon.
-* 29 sobreviventes de mutation, declarados como texto de log ou equivalentes.
-* Nada foi testado no LinkedIn real.
 ---
 
 ## 1. Estado Atual da Squad
@@ -92,6 +66,7 @@ Limitacoes conhecidas (para a descricao do PR; vao para o backlog da v2.0):
 ---
 
 ## 4. Historico de Handoffs
+* [2026-11-02] [PRONTO] [Claude] NOTAS.md - Autorizacao recebida: push da feat/v1.5 e PR para a master. Tag v1.5 so depois do merge (Nicolas avisa no chat). Limitacoes conhecidas vao na descricao do PR e no backlog da v2.0.
 * [2026-11-02] [RESPOSTA] [Nicolas -> Claude] NOTAS.md - Revisao do ponto estavel '3276d90' aprovada (Nicolas, Argon, Maestro). AUTORIZO: push, PR e tag da feat/v1.5; tag so apos o merge.
 * [2026-11-02] [PRONTO] [Agy] tests/real/, .github/workflows/ci.yml, NOTAS.md - Homologa ajustes do Maestro: parada estrita na listagem (zero vagas, 2a URL nao aberta), negativo da tabela restaurado, teste cego com max 10 e empresa vazia, CI endurecido com venv e catraca mutation (95,1%). Total: 206 PASSED (28 Chromium real). Carta no chat. Turno: Nicolas.
 * [2026-11-02] [PEDIDO] [Claude] src/application, tests/application - Parada estrita na listagem e por desvio de dominio (`get_current_url` no BrowserPort); mutation do zero 95,1% (562/591), sobreviventes todos equivalentes; fluxo da tag corrigido. Pede 4 testes reais e homologacao ao Agy.
