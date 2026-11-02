@@ -82,3 +82,7 @@ def test_logs_do_modal_e_da_parada(caplog):
     b.element_exists.side_effect = lambda s: s == LINKEDIN_DEFAULT_SELECTORS["next_button"]
     svc._run_modal(job, _req())
     assert "Modal sem progresso entre dois passos; descartando." in caplog.text
+
+
+def test_termo_booleano_com_letra_x_e_valido():
+    assert sr.build_boolean_keywords(["Xamarin", "Linux"]) == "(Xamarin OR Linux)"
