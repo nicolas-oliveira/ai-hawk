@@ -114,6 +114,7 @@ def test_apply_to_job_multi_step_simple_submission(mock_browser_service, valid_s
 
     # has_empty_required_inputs sempre False
     mock_browser_service.has_empty_required_inputs.return_value = False
+    mock_browser_service.modal_signature.side_effect = ["passo-1", "passo-2"]
 
     submit_sel = request.selectors["submit_button"]
     next_sel = request.selectors["next_button"]

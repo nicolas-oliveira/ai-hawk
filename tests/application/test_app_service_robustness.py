@@ -48,6 +48,9 @@ class FakeBrowser:
     def has_empty_required_inputs(self, sel):
         return self.empty
 
+    def modal_signature(self, sel):
+        return ""
+
     def dismiss_overlay_if_present(self, sel, timeout):
         self.dismissed.append((sel, timeout))
         return True

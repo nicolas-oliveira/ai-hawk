@@ -66,6 +66,10 @@ class BrowserPort(Protocol):
         """Inspetor DOM 3C: True se o container tem `input[required]`,
         `aria-required="true"`, `textarea` ou `select` obrigatorios vazios."""
 
+    def modal_signature(self, container_selector: str) -> str:
+        """Hash estavel do texto visivel do container ('' se ausente/invisivel).
+        Dois passos seguidos com a mesma assinatura = modal travado."""
+
     def dismiss_overlay_if_present(self, dismiss_selector: str, timeout: int) -> bool:
         """Fecha overlays intrusivos (cookies, premium) se estiverem visiveis.
         True se clicou; False se nao havia nada. Nunca levanta por ausencia.
@@ -415,9 +419,19 @@ class AppService:
         sel = request.selectors
         modal = sel["modal_container"]
 
+        last_signature = ""
         for _ in range(MAX_MODAL_STEPS):
             if self._strict_abort(job, request):
                 return JobStatus.PENDING
+
+            # Guarda de progresso: o clique de avanco nao mudou o modal (validacao
+            # silenciosa, passo repetido). Descarta sem esperar os 15 passos.
+            signature = self._browser.modal_signature(modal)
+            if signature and signature == last_signature:
+                logger.warning("Modal sem progresso entre dois passos; descartando.")
+                self._discard(sel)
+                return JobStatus.ERROR
+            last_signature = signature
             if self._browser.has_empty_required_inputs(modal):
                 logger.info("Regra 3C: campo obrigatorio vazio no passo; descartando (%s).", modal)
                 self._discard(sel)
