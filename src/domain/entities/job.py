@@ -22,6 +22,8 @@ class JobStatus(StrEnum):
     SKIPPED_COMPLEX = "SKIPPED_COMPLEX"
     ALREADY_APPLIED = "ALREADY_APPLIED"
     ERROR = "ERROR"
+    # Shadow Mode: percorreu o modal ate o Submit, mas NAO enviou (dry-run).
+    SIMULATED = "SIMULATED"
 
 
 @dataclass(eq=False)

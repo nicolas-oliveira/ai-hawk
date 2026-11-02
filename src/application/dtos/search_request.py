@@ -24,6 +24,8 @@ OPTIONAL_SELECTOR_KEYS = (
     # espera o indicador sumir e dispensa o overlay (timeouts curtos, sem sleep).
     "loading_indicator",
     "overlay_dismiss",
+    # Tela inesperada (checkpoint, captcha): com `strict_abort` o lote para na hora.
+    "abort_indicator",
 )
 
 # Perfil de seletores do LinkedIn (Easy Apply). As chaves sao genericas e
@@ -116,6 +118,17 @@ QUOTES_TOSCRAPE_SELECTORS: Dict[str, str] = {
     **_LISTING_ONLY,
 }
 
+# OrangeHRM Recruitment PUBLICO (sem login), DOM conferido pelo Agy em 2026-11-02.
+# Os cards NAO tem <a>/href (o Apply e um botao SPA): sem URL a aplicacao os
+# descarta, entao hoje o perfil so prova a leitura. Identidade sintetica por
+# card depende de decisao do Nicolas. Somente listagem: nunca clica em Apply.
+ORANGEHRM_VAGAS_PUBLICAS_SELECTORS: Dict[str, str] = {
+    "jobs_list_container": "div.orangehrm-container",
+    "job_card": "div.orangehrm-card-container",
+    "job_card_title": "p.oxd-text--card-title",
+    **_LISTING_ONLY,
+}
+
 # Perfis por plataforma: a CLI escolhe por `PLATFORM`. As chaves sao genericas;
 # so os valores mudam por site (Decisao 2).
 SELECTOR_PROFILES: Dict[str, Dict[str, str]] = {
@@ -124,6 +137,7 @@ SELECTOR_PROFILES: Dict[str, Dict[str, str]] = {
     "linkedin_clone": LINKEDIN_CLONE_SELECTORS,
     "books_toscrape": BOOKS_TOSCRAPE_SELECTORS,
     "quotes_toscrape": QUOTES_TOSCRAPE_SELECTORS,
+    "orangehrm_vagas_publicas": ORANGEHRM_VAGAS_PUBLICAS_SELECTORS,
 }
 
 
@@ -268,6 +282,11 @@ class SearchRequest:
     # Freio de seguranca: apos N vagas seguidas com ERROR a sessao e interrompida
     # (insistir numa plataforma que esta falhando e como se queima uma conta).
     max_consecutive_errors: int = 3
+    # Shadow Mode (dry-run): percorre o modal mas NUNCA clica em Submit; a vaga
+    # vira SIMULATED e o modal e descartado.
+    shadow_mode: bool = False
+    # Parada estrita: se `selectors["abort_indicator"]` aparecer, aborta o LOTE.
+    strict_abort: bool = False
 
     def __post_init__(self) -> None:
         if not self.platform or not self.platform.strip():
@@ -278,6 +297,8 @@ class SearchRequest:
             raise ValueError("SearchRequest.max_applications deve ser >= 1.")
         if self.max_consecutive_errors < 1:
             raise ValueError("SearchRequest.max_consecutive_errors deve ser >= 1.")
+        if self.strict_abort and not self.selectors.get("abort_indicator"):
+            raise ValueError("strict_abort exige selectors['abort_indicator'].")
         missing = [key for key in REQUIRED_SELECTOR_KEYS if not self.selectors.get(key)]
         if missing:
             raise ValueError(
