@@ -264,11 +264,13 @@ class BrowserService:
 
                         const tSel = titleSel || '[class*="title"], h1, h2, h3, h4, .title';
                         const titleEl = card.querySelector(tSel);
-                        const title = titleEl ? titleEl.innerText.trim() : (linkEl ? linkEl.innerText.trim() : 'Vaga');
+                        const title = titleEl ? titleEl.innerText.trim() : (linkEl ? linkEl.innerText.trim() : '');
 
-                        const cSel = compSel || '[class*="company"], [class*="subtitle"], [class*="description"], .company, .subtitle, p, span';
-                        const companyEl = card.querySelector(cSel);
-                        const company = companyEl ? companyEl.innerText.trim() : 'Empresa';
+                        let company = '';
+                        if (compSel) {
+                            const companyEl = card.querySelector(compSel);
+                            company = companyEl ? companyEl.innerText.trim() : '';
+                        }
 
                         if (url) {
                             result.push({ url, title, company });

@@ -395,22 +395,35 @@ def test_browser_service_extract_job_cards_agnostic(temp_session_dir):
         </div>
         """)
 
-        # 1. Fallback semantico generico
+        # 1. Sem company_selector parametrizado, a empresa volta vazia por contrato
         cards_generic = service.extract_job_cards(".agnostic-card")
         assert len(cards_generic) == 2
         assert cards_generic[0]["url"] == "https://jobs.example.com/view/100"
         assert cards_generic[0]["title"] == "Senior Python Architect"
-        assert cards_generic[0]["company"] == "Global Tech"
+        assert cards_generic[0]["company"] == ""
+        assert cards_generic[1]["company"] == ""
 
-        # 2. Seletores customizados parametrizados
+        # 2. Seletores customizados parametrizados extraem corretamente
         cards_custom = service.extract_job_cards(
             ".agnostic-card",
             title_selector=".heading-title, .custom-title",
             company_selector=".company-name, .custom-org",
         )
         assert len(cards_custom) == 2
+        assert cards_custom[0]["company"] == "Global Tech"
         assert cards_custom[1]["title"] == "Lead QA Engineer"
         assert cards_custom[1]["company"] == "QualityCorp"
+
+        # 3. Card sem titulo explicito cai para o texto do link, ou vazio (nunca 'Vaga')
+        page.set_content("""
+        <div class="agnostic-card">
+            <a href="https://jobs.example.com/view/102"></a>
+        </div>
+        """)
+        cards_empty = service.extract_job_cards(".agnostic-card")
+        assert len(cards_empty) == 1
+        assert cards_empty[0]["title"] == ""
+        assert cards_empty[0]["company"] == ""
     finally:
         service.close()
 
