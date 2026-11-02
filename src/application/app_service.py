@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import time
+from urllib.parse import urlsplit
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Protocol, Set
@@ -65,6 +66,9 @@ class BrowserPort(Protocol):
     def has_empty_required_inputs(self, container_selector: str) -> bool:
         """Inspetor DOM 3C: True se o container tem `input[required]`,
         `aria-required="true"`, `textarea` ou `select` obrigatorios vazios."""
+
+    def get_current_url(self) -> str:
+        """URL corrente da pagina ativa (para detectar desvio de dominio)."""
 
     def modal_signature(self, container_selector: str) -> str:
         """Hash estavel do texto visivel do container ('' se ausente/invisivel).
@@ -246,6 +250,9 @@ class AppService:
         self.last_abort_reason = None
         self.timings.clear()
         jobs = self._collect_jobs(request)
+        if self.last_abort_reason:  # parada estrita ja na listagem: nada e processado
+            self._log_timing_summary()
+            return jobs
         self._apply_cache(jobs)
         applied = 0
         consecutive_errors = 0
@@ -349,6 +356,8 @@ class AppService:
             try:
                 self._browser.open_url(page_url)
                 self._prepare_page(sel)
+                if self._strict_abort(page_url, request):
+                    break
                 self._browser.scroll_container_to_end(sel["jobs_list_container"])
                 cards = self._browser.extract_job_cards(
                     sel["job_card"],
@@ -385,7 +394,7 @@ class AppService:
         try:
             self._browser.open_url(job.url)
             self._prepare_page(sel)
-            if self._strict_abort(job, request):
+            if self._strict_abort(job.url, request):
                 return
 
             if not self._browser.element_exists(sel["apply_button"]):
@@ -402,13 +411,26 @@ class AppService:
             job.status = JobStatus.ERROR
             self._discard_quietly(sel)
 
-    def _strict_abort(self, job: Job, request: SearchRequest) -> bool:
-        """Parada estrita: tela inesperada (checkpoint/captcha) encerra o LOTE.
-        Nao clica em nada (nem descarta): a vaga fica PENDING e o motivo registrado."""
-        indicator = request.selectors.get("abort_indicator")
-        if not (request.strict_abort and indicator and self._browser.element_exists(indicator)):
+    @staticmethod
+    def _host(url: str) -> str:
+        return urlsplit(url or "").netloc.lower().removeprefix("www.")
+
+    def _strict_abort(self, url: str, request: SearchRequest) -> bool:
+        """Parada estrita: tela inesperada (checkpoint/captcha) ou desvio de
+        dominio encerra o LOTE. Nao clica em nada (nem descarta): a vaga fica
+        PENDING e o motivo registrado. `url` = pagina que o motor tentou abrir."""
+        if not request.strict_abort:
             return False
-        self.last_abort_reason = f"parada estrita: tela inesperada ({indicator}) em {job.url}"
+        indicator = request.selectors["abort_indicator"]
+        if self._browser.element_exists(indicator):
+            self.last_abort_reason = f"parada estrita: tela inesperada ({indicator}) em {url}"
+        else:
+            expected, current = self._host(url), self._host(self._browser.get_current_url())
+            if not current or current == expected:
+                return False
+            self.last_abort_reason = (
+                f"parada estrita: desvio de dominio ({expected} -> {current}) em {url}"
+            )
         logger.error("Sessao interrompida: %s.", self.last_abort_reason)
         return True
 
@@ -421,7 +443,7 @@ class AppService:
 
         last_signature = ""
         for _ in range(MAX_MODAL_STEPS):
-            if self._strict_abort(job, request):
+            if self._strict_abort(job.url, request):
                 return JobStatus.PENDING
 
             # Guarda de progresso: o clique de avanco nao mudou o modal (validacao

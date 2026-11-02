@@ -62,7 +62,7 @@ def test_motivo_exato_da_parada_estrita():
     svc = AppService(b)
     sel = {**LINKEDIN_DEFAULT_SELECTORS, "abort_indicator": "#cap"}
     req = SearchRequest(platform="p", static_urls=["u"], selectors=sel, strict_abort=True)
-    assert svc._strict_abort(Job(url="https://x.com/1/", platform="p", title="", company=""), req)
+    assert svc._strict_abort("https://x.com/1/", req)
     assert svc.last_abort_reason == "parada estrita: tela inesperada (#cap) em https://x.com/1/"
 
 

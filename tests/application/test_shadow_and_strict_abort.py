@@ -14,6 +14,7 @@ class Fake:
         self.visible, self.clicks, self.opened = set(visible), [], []
 
     def open_url(self, url): self.opened.append(url)
+    def get_current_url(self): return self.opened[-1] if self.opened else ""
     def scroll_container_to_end(self, sel): pass
     def extract_job_cards(self, card_selector, title_selector=None, company_selector=None): return CARDS
     def element_exists(self, sel): return sel in self.visible
@@ -42,14 +43,53 @@ def test_sem_shadow_clica_submit():
     assert SEL["submit_button"] in b.clicks
 
 
+class NaVaga(Fake):
+    """Checkpoint so aparece ao abrir uma VAGA (a listagem carrega normal)."""
+    def element_exists(self, sel):
+        if sel == "[data-x=captcha]":
+            return "/jobs/" in (self.opened[-1] if self.opened else "")
+        return super().element_exists(sel)
+
+
 def test_strict_abort_na_pagina_para_o_lote():
-    b = Fake({"[data-x=captcha]"})
+    b = NaVaga(set())
     svc = AppService(b)
     jobs = svc.run(_req(strict_abort=True))
     assert b.opened == ["https://x.com/s", "https://x.com/jobs/1/"]  # nao tentou a vaga 2
     assert [j.status for j in jobs] == [JobStatus.PENDING] * 2
-    assert "parada estrita" in svc.last_abort_reason and "[data-x=captcha]" in svc.last_abort_reason
+    assert svc.last_abort_reason == (
+        "parada estrita: tela inesperada ([data-x=captcha]) em https://x.com/jobs/1/")
     assert b.clicks == []
+
+
+def test_strict_abort_na_listagem_sem_cards_nao_abre_a_segunda_url():
+    b = Fake({"[data-x=captcha]"})
+    b.extract_job_cards = lambda *a, **k: []
+    svc = AppService(b)
+    req = SearchRequest(platform="p", static_urls=["https://x.com/a", "https://x.com/b"],
+                        selectors=SEL, strict_abort=True)
+    assert svc.run(req) == []
+    assert b.opened == ["https://x.com/a"]
+    assert svc.last_abort_reason == "parada estrita: tela inesperada ([data-x=captcha]) em https://x.com/a"
+
+
+def test_strict_abort_por_desvio_de_dominio():
+    b = Fake(set())
+    b.get_current_url = lambda: "https://outro.com/login" if len(b.opened) > 1 else "https://www.x.com/s"
+    svc = AppService(b)
+    jobs = svc.run(_req(strict_abort=True))
+    assert b.opened == ["https://x.com/s", "https://x.com/jobs/1/"]
+    assert jobs[0].status == JobStatus.PENDING and b.clicks == []
+    assert svc.last_abort_reason == (
+        "parada estrita: desvio de dominio (x.com -> outro.com) em https://x.com/jobs/1/")
+
+
+def test_url_atual_vazia_nao_e_desvio():
+    b = Fake(set())
+    b.get_current_url = lambda: ""
+    svc = AppService(b)
+    svc.run(_req(strict_abort=True, max_applications=1))
+    assert svc.last_abort_reason is None
 
 
 def test_strict_abort_dentro_do_modal_nao_clica_nada():
