@@ -6,33 +6,37 @@ Fonte unica de verdade para a coordenacao assincrona entre Agy e Claude.
 
 ## 📬 COMUNICADO OFICIAL ATIVO NO TOPO (TURNO ATUAL)
 
-**DE/PARA/TURNO:** Nicolas -> Agy | Turno: Agy | 2026-11-02
-**STATUS:** [PEDIDO] Fase 2 (meta v1.5): validacao em mar aberto SOMENTE em sandboxes publicos de automacao (divididos em TREINO e PROVA).
-**ACEITE/RESUMO:** Sem LinkedIn/Gupy, sem conta real, sem login e sem envio real. TREINO: alvos e detalhes na carta abaixo (cenario, DOM observado, comportamento esperado, zero codigo de teste). PROVA: lista SO em arquivo dentro de `tests/real/external/` (o Claude nao le); aqui so a contagem passou/falhou. Ao terminar: carta nova + commit + `Turno: Claude` (que ajustara os perfis e atacara os 58 sobreviventes do `app_service.py`).
+**DE/PARA/TURNO:** Agy -> Claude (copia: Gemini Argon, Maestro, Nicolas) | Turno: Claude | 2026-11-02
+**STATUS:** [PRONTO] Mar aberto: TREINO 2 alvos (2 passaram); PROVA 4 alvos (4 passaram); infra+real 30 PASSED.
+**ACEITE/RESUMO:** Achado de realidade no motor (scroll em `body` nao rolava a janela) corrigido por mim em `browser_service.py`. Claude: ajustar perfis de seletores com base no TREINO abaixo e atacar os 58 sobreviventes de `app_service.py`.
 
-**ASSUNTO:** "Vai" do Nicolas para a validacao em mar aberto | commit anterior: 'f77acb0'
+**ASSUNTO:** Validacao em mar aberto: TREINO e contagem da PROVA | commit anterior: '6e12372'
 
-Agy,
+Claude (Dev), cc Gemini Argon (Tech Lead), Maestro (Revisor), Nicolas (PO),
 
-1. Alvos: so sandboxes publicos feitos para treinar automacao. Proibido LinkedIn, Gupy, qualquer site com conta real, login ou envio real de formulario.
-2. TREINO: liste os alvos na sua carta (aqui, abaixo das 3 linhas), cada um com cenario, DOM observado e comportamento esperado da aplicacao. Sem codigo de teste e sem dizer como implementar.
-3. PROVA: a lista de alvos fica so em um arquivo dentro de `tests/real/external/`. No NOTAS.md entra so a contagem (ex.: PROVA 5 alvos, 4 passaram, 1 falhou).
-4. Ao terminar: troque esta carta pela sua, endereçada ao Claude, atualize as 3 linhas do topo, commit e passe o turno ao Claude.
+1. Capacidades do motor: nenhuma assinatura mudou. `scroll_container` agora tambem rola a janela quando o alvo e `body`/`html` (antes, so rolava containers com overflow). Garantia: container interno continua igual.
 
-Nicolas
+2. TREINO (sandboxes publicos, somente leitura, sem login e sem envio):
+- books.toscrape.com (listagem paginada). Cenario: pagina de catalogo com cartoes. DOM observado: 20 cartoes `article.product_pod` por pagina, titulo e link em `h3 a`, links 100% unicos, sem conceito de empresa (so preco). Esperado: extrair 20 URLs unicas, sem duplicar, sem inventar empresa.
+- quotes.toscrape.com/scroll (scroll infinito na janela). Cenario: lazy loading que so dispara com rolagem do documento. DOM observado: 10 itens `div.quote` iniciais; apos rolagens sobem para 90; os itens nao tem link proprio. Esperado: a aplicacao rola ate o fim, conta itens novos e para quando a contagem estabiliza, sem travar e sem depender de container interno.
 
+3. PROVA: 4 alvos, 4 passaram, 0 falharam (lista so em arquivo dentro de `tests/real/external/`). Cobre cartoes/links unicos em lista AJAX, tabela paginada sem link falso, overlay modal intrusivo e carregamento dinamico com loader.
+
+4. Placar: `tests/domain` + `tests/application` 113 PASSED (nao rodei de novo, `src/` intocado fora da infra); infra+real 30 PASSED em 183 s (inclui os 6 de mar aberto).
+
+5. Realidade crua para a aplicacao: a vida real nao tem os seletores LinkedIn. Perfis precisam aceitar listas sem empresa, itens sem link proprio e rolagem de janela. A aplicacao deve se comportar sem dar erro nesses casos e sem tratar ausencia de empresa como falha. Como codificar e com os 58 sobreviventes de `app_service.py` e com voce.
 ---
 
 ## 1. Estado Atual da Squad
 
-* **Turno Atual:** Agy (mar aberto). Depois Claude (perfis de seletores + 58 sobreviventes de `app_service.py`). Nicolas so entra nas paradas (v1.5 e v2.0) ou em `[BLOQUEIO]`.
+* **Turno Atual:** Claude (perfis de seletores + 58 sobreviventes de `app_service.py`). Nicolas so entra nas paradas (v1.5 e v2.0) ou em `[BLOQUEIO]`.
 * **Regra de turno (lida por script):** o campo `Turno:` do topo so aceita `Claude`, `Agy` ou `Nicolas`. Mudar o `Turno` no mesmo commit do seu trabalho e o sinal de passagem. Commit fora do seu turno e recusado por hook.
 * **Versao Consolidada da Aplicacao:** v1.0 (`master` = `414e4f8`, merge do PR #2, tag `v1.0`). Fase 1 do roadmap concluida.
 * **Caminho:** v1.0 (feito) -> v1.5 (retomada: Nicolas revisa negocio e planejamento contra o que foi construido) -> v2.0 (entrega com PR). Versoes intermediarias (v1.1 a v1.4): so commit local, sem tag, sem push, sem PR.
 * **Versao Alvo da Squad:** `v1.5`. Escopo: mutation testing (Score > 80% na suite rapida) + validacao em mar aberto (sandboxes publicos sem WAF). Burner Run no LinkedIn real e bonus stealth ficam para depois da v1.5; o Burner Run so com o "vai" do Nicolas.
 * **Branch Ativa:** `feat/v1.5` (criada a partir de `origin/master`). A `feat/v0.1-stealth-engine` e so backup local; ninguem a usa.
-* **Placar do Pytest:** rapido (`tests/domain` + `tests/application`) = 113 PASSED. Suite infra+real homologada pelo QA = 24 PASSED (Chromium real, 151 s). Mutation Score = 81,2% (415 mortos / 96 sobreviventes; base 67,9%).
-* **Proxima Acao Esperada:** Agy conduz a validacao em mar aberto (TREINO na carta, PROVA so em `tests/real/external/`). Depois o Claude ajusta os perfis de seletores com base no TREINO e ataca os 58 sobreviventes de `app_service.py` (restam tambem 30 em `search_request.py`: seletores literais). So Nicolas faz: push, tag, PR, trocar de branch.
+* **Placar do Pytest:** rapido (`tests/domain` + `tests/application`) = 113 PASSED. Suite infra+real homologada pelo QA = 30 PASSED (Chromium real, 183 s; inclui 6 de mar aberto). Mutation Score = 81,2% (415 mortos / 96 sobreviventes; base 67,9%).
+* **Proxima Acao Esperada:** Claude ajusta os perfis de seletores com base no TREINO e ataca os 58 sobreviventes de `app_service.py` (restam tambem 30 em `search_request.py`: seletores literais). So Nicolas faz: push, tag, PR, trocar de branch.
 
 ---
 

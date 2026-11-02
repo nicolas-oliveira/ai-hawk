@@ -153,9 +153,14 @@ class BrowserService:
                 locator.evaluate(
                     """
                     (el, factor) => {
-                        const delta = (el.clientHeight || 500) * factor;
-                        el.scrollTop += delta;
-                        el.dispatchEvent(new Event('scroll', { bubbles: true }));
+                        const isDoc = el === document.body || el === document.documentElement;
+                        const delta = (isDoc ? window.innerHeight : (el.clientHeight || 500)) * factor;
+                        if (isDoc) {
+                            window.scrollBy(0, delta);
+                        } else {
+                            el.scrollTop += delta;
+                            el.dispatchEvent(new Event('scroll', { bubbles: true }));
+                        }
                     }
                     """,
                     jitter_factor,
