@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(./src/infrastructure/**)",
+      "Read(./tests/real/**)",
+      "Read(./tests/infrastructure/**)",
+      "Read(./src/main.py)",
+      "Edit(./.gemini/**)",
+      "Edit(./src/infrastructure/**)",
+      "Edit(./tests/real/**)",
+      "Edit(./tests/infrastructure/**)",
+      "Edit(./src/main.py)",
+      "Edit(./requirements.txt)",
+      "Edit(./Makefile)",
+      "Edit(./.gitignore)",
+      "Edit(./.env*)",
+      "Edit(./.claude/**)",
+      "Edit(./.git/**)",
+      "Bash(git push:*)",
+      "Bash(git tag:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(git commit *--no-verify*)",
+      "Bash(gh:*)",
+      "Bash(pip install:*)",
+      "Bash(pip3 install:*)",
+      "Bash(npm install:*)",
+      "Bash(rm -rf:*)"
+    ]
+  }
+}

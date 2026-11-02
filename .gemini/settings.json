@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "deny": [
+      "read_file(src/domain/**)",
+      "read_file(src/application/**)",
+      "read_file(tests/domain/**)",
+      "read_file(tests/application/**)",
+      "write_file(.gemini/**)",
+      "write_file(src/domain/**)",
+      "write_file(src/application/**)",
+      "write_file(tests/domain/**)",
+      "write_file(tests/application/**)",
+      "write_file(CLAUDE.md)",
+      "write_file(.claude/**)",
+      "write_file(.git/**)",
+      "command(git push *)",
+      "command(git tag *)",
+      "command(git reset --hard *)",
+      "command(git commit *--no-verify*)",
+      "command(gh *)",
+      "command(rm -rf *)",
+      "command(sudo *)"
+    ],
+    "ask": [
+      "command(pip install *)",
+      "command(pip3 install *)",
+      "command(npm install *)"
+    ]
+  }
+}

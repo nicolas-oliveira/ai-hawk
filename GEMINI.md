@@ -3,6 +3,8 @@
 ## Passagem de turno (lida por script — siga à risca)
 - No topo do NOTAS.md, o campo `Turno:` aceita SÓ: `Claude`, `Agy` ou `Nicolas`.
 - Mudar o `Turno` é o sinal de passagem. Só mude depois de terminar, no mesmo commit do seu trabalho.
+- Nunca commite fora do seu turno (um hook recusa).
+- Commite sempre nomeando seus arquivos: `git commit -m "..." -- <seus arquivos> NOTAS.md`
 - Versões intermediárias: apenas commit local. Não peça tag nem push.
 - Ao concluir v1.0 (planejamento), v1.5 (retomada) ou v2.0 (entrega/PR): `Turno: Nicolas`.
 - Precisa de algo meu (dependência nova, push, decisão de negócio)? Use `[BLOQUEIO]` no STATUS ou `Turno: Nicolas`.

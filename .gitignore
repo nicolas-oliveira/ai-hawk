@@ -48,7 +48,6 @@ out/
 build/
 
 # Ferramental de Agentes e IDEs
-.gemini/
 .idea/
 .vscode/
 *.swp

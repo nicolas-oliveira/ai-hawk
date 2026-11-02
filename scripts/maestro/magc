@@ -1,0 +1,172 @@
+#!/usr/bin/env fish
+# maestro.fish — passa o turno entre Claude e Agy lendo o NOTAS.md JÁ COMMITADO.
+#
+# Uso:
+#   magc [pasta-do-projeto]                 # só reage quando o Turno mudar
+#   magc [pasta-do-projeto] --chamar-agora  # também acorda quem está com o turno agora
+#
+# Regras:
+#   - Lê só o NOTAS.md do último commit (recado sem commit não vale).
+#   - Turno mudou para Claude ou Agy  -> digita na janela dele.
+#   - Turno mudou para qualquer outra coisa (ex.: Nicolas) -> para e te avisa.
+#   - [BLOQUEIO] no STATUS do topo    -> para e te avisa.
+#   - Muito tempo sem commit          -> te avisa (pode estar esperando aprovação na janela).
+#   - Limite de passagens             -> para (proteção contra loop).
+#
+# Log: tudo vai para a tela e para .git/maestro.log (ver depois: tail -f .git/maestro.log)
+
+argparse 'c/chamar-agora' -- $argv; or exit 1
+
+set INTERVALO 10           # segundos entre cada checagem
+set ALERTA_PARADO_MIN 30   # minutos sem commit antes de avisar
+set SINAL_DE_VIDA_MIN 5    # de quantos em quantos minutos dizer "estou vivo"
+set MAX_PASSAGENS 20       # passagens de turno antes de parar
+
+if set -q argv[1]
+    set PROJETO $argv[1]
+else
+    set PROJETO .
+end
+
+if not test -f "$PROJETO/NOTAS.md"
+    echo "Erro: não achei NOTAS.md em $PROJETO"
+    exit 1
+end
+
+set GITDIR (git -C $PROJETO rev-parse --absolute-git-dir)
+set LOG $GITDIR/maestro.log
+
+# Trava: só um maestro por projeto
+set TRAVA $GITDIR/maestro.pid
+if test -f $TRAVA; and kill -0 (cat $TRAVA) 2>/dev/null
+    echo "Já existe um maestro rodando neste projeto (PID "(cat $TRAVA)"). Feche-o antes."
+    exit 1
+end
+echo %self > $TRAVA
+function _soltar_trava --on-event fish_exit
+    log "Maestro encerrado."
+    rm -f $TRAVA
+end
+
+# log: só registra (tela + arquivo). avisar: registra + bip + notificação (precisa de você).
+function log
+    set linha (date '+%Y-%m-%d %H:%M:%S')"  $argv"
+    echo $linha
+    echo $linha >> $LOG
+end
+
+function avisar
+    log "🔔 $argv"
+    printf '\a'
+    if type -q notify-send
+        notify-send "Maestro" "$argv"
+    end
+end
+
+function topo_turno
+    git -C $PROJETO show HEAD:NOTAS.md 2>/dev/null \
+        | string match -r '^\*\*DE/PARA/TURNO:\*\*.*' | head -n1 \
+        | string match -r -g 'Turno:\s*([A-Za-z]+)'
+end
+
+function topo_status
+    git -C $PROJETO show HEAD:NOTAS.md 2>/dev/null \
+        | string match -r '^\*\*STATUS:\*\*.*' | head -n1 \
+        | string replace '**STATUS:** ' ''
+end
+
+function acordar -a sessao
+    if not tmux -L $sessao has-session -t $sessao 2>/dev/null
+        avisar "A janela do $sessao não está aberta. Abra o kiosk e rode o maestro de novo."
+        exit 1
+    end
+    set instrucoes CLAUDE.md
+    if test $sessao = agy
+        set instrucoes GEMINI.md
+    end
+    tmux -L $sessao send-keys -l -t $sessao "Seu turno. Leia o topo do NOTAS.md e o $instrucoes e execute seu turno. Ao terminar: commite e passe o Turno."
+    sleep 0.5
+    tmux -L $sessao send-keys -t $sessao Enter
+    log "➡️  Mensagem enviada para a janela do $sessao. Aguardando o commit dele."
+end
+
+set ultimo_turno (string lower -- (topo_turno))
+set ultimo_head (git -C $PROJETO rev-parse HEAD)
+set ultimo_movimento (date +%s)
+set ultimo_sinal (date +%s)
+set passagens 0
+set alertou_parado 0
+
+log "────────────────────────────────────────────"
+log "🎼 Maestro iniciado em "(realpath $PROJETO)
+log "   Último commit: "(git -C $PROJETO log -1 --format='%h %s')
+log "   Turno atual: '$ultimo_turno' | STATUS: "(topo_status)
+log "   Checa a cada {$INTERVALO}s | sinal de vida a cada {$SINAL_DE_VIDA_MIN} min | alerta após {$ALERTA_PARADO_MIN} min parado | máx. $MAX_PASSAGENS passagens"
+log "   Log em: $LOG"
+
+if set -q _flag_chamar_agora
+    switch "$ultimo_turno"
+        case claude agy
+            log "--chamar-agora: acordando quem está com o turno."
+            acordar $ultimo_turno
+        case '*'
+            avisar "O turno é de '$ultimo_turno', não de um agente. Nada a fazer."
+            exit 0
+    end
+else
+    log "Sem --chamar-agora: só vou agir quando o Turno mudar."
+end
+
+while true
+    sleep $INTERVALO
+    set agora (date +%s)
+    set head (git -C $PROJETO rev-parse HEAD)
+
+    if test "$head" != "$ultimo_head"
+        set ultimo_head $head
+        set ultimo_movimento $agora
+        set ultimo_sinal $agora
+        set alertou_parado 0
+
+        set turno (string lower -- (topo_turno))
+        set st (topo_status)
+        log "📝 Commit novo: "(git -C $PROJETO log -1 --format='%h %s')
+        log "   Topo do NOTAS.md -> Turno: '$turno' | STATUS: $st"
+
+        if string match -q -- '*[BLOQUEIO]*' "$st"
+            avisar "[BLOQUEIO] no topo do NOTAS.md. Sua vez."
+            exit 0
+        end
+
+        if test "$turno" = "$ultimo_turno"
+            log "   Turno continua com '$turno'. Ele segue trabalhando; não vou interromper."
+            continue
+        end
+
+        log "   Turno mudou: '$ultimo_turno' -> '$turno'."
+        set ultimo_turno $turno
+        switch "$turno"
+            case claude agy
+                set passagens (math $passagens + 1)
+                if test $passagens -gt $MAX_PASSAGENS
+                    avisar "Limite de $MAX_PASSAGENS passagens atingido. Confira o andamento."
+                    exit 0
+                end
+                log "   Passagem $passagens de $MAX_PASSAGENS."
+                acordar $turno
+            case '*'
+                avisar "Turno passou para '$turno'. Sua vez."
+                exit 0
+        end
+    else
+        set parado_min (math "floor(($agora - $ultimo_movimento) / 60)")
+
+        if test $parado_min -ge $ALERTA_PARADO_MIN; and test $alertou_parado -eq 0
+            avisar "Nenhum commit há $parado_min min (turno: $ultimo_turno). Pode estar esperando aprovação na janela."
+            set alertou_parado 1
+        else if test (math "$agora - $ultimo_sinal") -ge (math "$SINAL_DE_VIDA_MIN * 60")
+            log "💤 Vivo. Esperando '$ultimo_turno' commitar (último commit há $parado_min min)."
+            set ultimo_sinal $agora
+        end
+    end
+end
