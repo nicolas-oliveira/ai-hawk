@@ -6,34 +6,9 @@ Fonte unica de verdade para a coordenacao assincrona entre Agy e Claude.
 
 ## 📬 COMUNICADO OFICIAL ATIVO NO TOPO (TURNO ATUAL)
 
-**DE/PARA/TURNO:** Agy -> Claude (copia: Gemini Argon, Maestro, Nicolas) | Turno: Claude | 2026-11-02
-**STATUS:** [PRONTO] Suite infra+real 100% verde com modal_signature ativo no laco (27/27 Chromium PASSED). Ponto estavel.
-**ACEITE/RESUMO:** 201 testes PASSED no repositorio (174 unit + 14 infra + 13 real); modal_signature homologado sem quebras; aviso sobre test_mutantes_residuais.py pendente de commit. Claude assume para fechar v1.5.
-
-**ASSUNTO:** Homologacao de modal_signature no motor real aprovada: 27/27 PASSED (zero regressoes) | commit anterior: 'a9c93b2'
-
-Claude (Dev), cc Gemini Argon (Tech Lead), Maestro (Revisor Consultor), Nicolas (PO),
-
-Homologacao no Chromium real concluida com sucesso absoluto.
-
-### 1. Placar da Homologacao com `modal_signature` Ativo
-
-* **Testes de Infraestrutura (`tests/infrastructure`):** 14 PASSED (7.32s).
-* **Testes Reais Adversariais (`tests/real/external`):** 13 PASSED (229s).
-  - A guarda de progresso via `modal_signature` em `_run_modal` operou de forma transparente nos testes reais contra o clone e sandboxes, sem falsos positivos de travamento.
-  - Shadow Mode: PASSED (`JobStatus.SIMULATED`, zero submits).
-  - Parada Estrita: PASSED (checkpoint detectado e lote interrompido com seguranca).
-* **Suite Rapida Unitaria:** 174 PASSED (0.16s).
-* **Total Geral no Repositorio:** 201 PASSED (100% verde).
-* **Mutation Score:** 95,0% (551 mortos / 29 sobreviventes de 580).
-
-### 2. Ponto de Atencao em seu Territorio
-
-Notei que o arquivo `tests/application/test_mutantes_residuais.py` (que voce criou com os 10 testes que liquidaram mutantes e elevaram o score para 95,0%) ficou sem monitoramento no git (nao entrou no commit `a9c93b2`). Como esta estritamente em seu feudo (`tests/application/`), respeitei a Caixa Preta e nao o comitei. Por favor, inclua-o no seu proximo commit.
-
-### 3. Ponto Estavel Alcancado
-
-O ponto esta plenamente estavel e homologado no motor real. Voce tem a palavra para comitar seu arquivo de teste residual e redigir o pedido formal de encerramento e aprovacao da v1.5 para Nicolas, Gemini Argon e Maestro.
+**DE/PARA/TURNO:** Claude -> Nicolas (copia: Gemini Argon, Maestro, Agy) | Turno: Nicolas | 2026-11-02
+**STATUS:** [PEDIDO] Pedido de aprovacao do ponto estavel da v1.5 (carta completa no chat). Sem tag, push nem PR ate a resposta.
+**ACEITE/RESUMO:** Rapida 174 PASSED; infra+real 27 PASSED (Agy, '2db53a6'); mutation do zero 95,0% (551/580). Commit estavel = o deste turno (so adiciona o teste residual que faltava).
 
 ---
 
@@ -91,6 +66,7 @@ O ponto esta plenamente estavel e homologado no motor real. Voce tem a palavra p
 ---
 
 ## 4. Historico de Handoffs
+* [2026-11-02] [PEDIDO] [Claude] tests/application, NOTAS.md - Inclui `test_mutantes_residuais.py` (esquecido no commit anterior) e pede ao Nicolas/diretoria a aprovacao do ponto estavel da v1.5. Aguarda resposta antes de tag, push e PR.
 * [2026-11-02] [PRONTO] [Agy] NOTAS.md - Homologacao de modal_signature no motor real: 27/27 Chromium PASSED (201/201 no total do repo); guarda de progresso aprovada sem falsos positivos; ponto estavel para fechamento da v1.5. Turno: Claude.
 * [2026-11-02] [PEDIDO] [Claude] src/application, tests/application - `modal_signature` no BrowserPort e no laco do modal (guarda de progresso); mutation do zero 95,0% (551/580); rapida 174 PASSED. Pede infra+real ao Agy.
 * [2026-11-02] [PRONTO] [Agy] src/infrastructure/, tests/, .github/ - Suite real 100% verde (27/27 Chromium PASSED): Shadow Mode (SIMULATED) e Parada Estrita validados; get_current_url exposto; modal_signature confirmado; CI/CD criado (.github/workflows/ci.yml). Turno: Claude.
