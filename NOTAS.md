@@ -6,9 +6,52 @@ Fonte unica de verdade para a coordenacao assincrona entre Agy e Claude.
 
 ## 📬 COMUNICADO OFICIAL ATIVO NO TOPO (TURNO ATUAL)
 
-**DE/PARA/TURNO:** Claude -> Nicolas (copia: Gemini Argon, Maestro, Agy) | Turno: Nicolas | 2026-11-02
-**STATUS:** [PEDIDO] Pedido de aprovacao do ponto estavel da v1.5 (carta completa no chat). Sem tag, push nem PR ate a resposta.
-**ACEITE/RESUMO:** Rapida 174 PASSED; infra+real 27 PASSED (Agy, '2db53a6'); mutation do zero 95,0% (551/580). Commit estavel = o deste turno (so adiciona o teste residual que faltava).
+**DE/PARA/TURNO:** Nicolas -> Claude (copia: Gemini Argon, Maestro, Agy) | Turno: Claude | 2026-11-02
+**STATUS:** [PEDIDO] Ponto estavel da v1.5 ainda NAO aprovado: ajustes da revisao do Maestro antes do PR. Mutation Score informado: 95,0%.
+**ACEITE/RESUMO:** Claude commita o teste residual, fecha a parada estrita na listagem e corrige o fluxo da tag, e repassa ao Agy a lista de PROVA, testes reais e CI; o Agy homologa no commit exato e passa `Turno: Nicolas`.
+
+**ASSUNTO:** Ajustes da revisao do Maestro antes do PR da v1.5 | commit anterior: 'd6732df'
+
+Claude (Dev), cc Gemini Argon (Tech Lead), Maestro (Revisor), Agy (QA/Infra),
+
+Contexto: o Maestro leu o seu pedido de aprovacao ('d6732df'). O avanco e real: mutation 89,3% -> 95,0%, rapida 174, infra+real 27/27 no commit '2db53a6'. Mesmo assim ainda nao aprovamos. O nome da versao segue v1.5 e a linha `AUTORIZO` so entra quando tudo abaixo fechar.
+
+O que a revisao encontrou:
+
+* O 'd6732df' nao contem o `test_mutantes_residuais.py` (esta staged). Os 174 testes e os 95,0% nao se reproduzem nesse hash.
+* A parada estrita so checa o `abort_indicator` na pagina da vaga e no modal, nao na listagem. O teste real atual so passa porque o `/checkpoint` do clone tem um link para si mesmo.
+* O contrato "nenhuma vaga subsequente" esta so no docstring do teste real, sem assercao.
+* A PROVA perdeu o teste negativo da tabela, e o teste cego mede o teto (`max_applications=3`).
+* O CI vai ficar verde sem testar nada.
+* O seu pedido diz que voce cria a tag antes do PR; pela regra 8 a tag so existe depois do merge.
+
+Regras deste pedido: so sandboxes publicos e o clone local, sem LinkedIn real. Cada um escreve so no seu territorio (regra 6).
+
+Itens do Claude (um commit por entrega, nomeando os arquivos; nao passe o turno antes de todos):
+
+1. Commite `tests/application/test_mutantes_residuais.py` como PRIMEIRO commit, nomeando so esse arquivo. Os numeros do pedido anterior so valem com ele.
+
+2. Parada estrita na listagem: checar o `abort_indicator` logo apos navegar para cada URL de listagem, inclusive quando ela traz zero cards. Hoje um checkpoint na busca nao para o lote. Cubra com teste rapido (porta falsa).
+
+3. Desvio de dominio: o Agy ja expos `get_current_url()` e `current_url` no `BrowserService`. Leve ao `BrowserPort`, use na parada estrita e cubra com teste rapido.
+
+4. Corrija o fluxo da tag no seu pedido: Agy homologa, Nicolas escreve `AUTORIZO`, Claude faz push e abre o PR, Nicolas faz o merge, e so entao Claude cria a tag.
+
+5. Reporte a Mutation Score do zero no commit exato (regra 7), por status e por arquivo, listando os sobreviventes por arquivo e dizendo quais sao texto de log ou decorador equivalente e quais nao. Entrega: carta para o Agy com a lista abaixo, commit nomeando seus arquivos, `Turno: Agy`.
+
+O que vem depois (para voce repassar ao Agy na sua carta, descrevendo o comportamento esperado):
+
+1. Teste real novo: pagina de checkpoint SEM link (rota nova no clone, sem depender de link para si mesma) como primeira URL da fila e a URL do clone como segunda. Esperado: zero vagas, `last_abort_reason` preenchido e a segunda URL nunca aberta.
+
+2. No teste atual de parada estrita, afirmar que nenhuma vaga da segunda URL existe (`len(jobs) == 1`).
+
+3. Restaurar `test_prova_tabela_paginada_nao_vira_link_falso` (seletor inexistente devolve lista vazia) e manter o de paginacao como teste adicional.
+
+4. Teste cego do `AppService`: `max_applications` maior que a contagem da pagina (ex: 10), com `len(jobs)` igual a contagem real e `company == ""`.
+
+5. CI (`.github/workflows/ci.yml`): criar a venv em `.venv` (o `setup.cfg` usa `.venv/bin/python`), tirar o `|| true`, catraca de sobreviventes (falha se passar do numero do placar do Claude), mesma versao de Python da venv, e confirmar que o `requirements.txt` traz `pytest` e `mutmut`.
+
+6. Homologar infra+real no commit exato, sem tocar em `src/domain`, `src/application`, `tests/domain` nem `tests/application` (mostrar o `git diff --stat` na carta), e passar `Turno: Nicolas` com a carta pedindo a aprovacao final.
 
 ---
 
@@ -66,6 +109,7 @@ Fonte unica de verdade para a coordenacao assincrona entre Agy e Claude.
 ---
 
 ## 4. Historico de Handoffs
+* [2026-11-02] [PEDIDO] [Diretoria -> Claude] NOTAS.md - Revisao do Maestro: v1.5 nao aprovada. Claude: commitar teste residual, parada estrita na listagem, current_url no BrowserPort, corrigir fluxo da tag. Agy depois: teste de checkpoint sem link, assercao da 2a URL, negativo da tabela, teste cego com contagem real, CI sem '|| true' com catraca, homologar no commit exato.
 * [2026-11-02] [PEDIDO] [Claude] tests/application, NOTAS.md - Inclui `test_mutantes_residuais.py` (esquecido no commit anterior) e pede ao Nicolas/diretoria a aprovacao do ponto estavel da v1.5. Aguarda resposta antes de tag, push e PR.
 * [2026-11-02] [PRONTO] [Agy] NOTAS.md - Homologacao de modal_signature no motor real: 27/27 Chromium PASSED (201/201 no total do repo); guarda de progresso aprovada sem falsos positivos; ponto estavel para fechamento da v1.5. Turno: Claude.
 * [2026-11-02] [PEDIDO] [Claude] src/application, tests/application - `modal_signature` no BrowserPort e no laco do modal (guarda de progresso); mutation do zero 95,0% (551/580); rapida 174 PASSED. Pede infra+real ao Agy.
@@ -75,14 +119,3 @@ Fonte unica de verdade para a coordenacao assincrona entre Agy e Claude.
 * [2026-11-02] [PEDIDO] [Nicolas -> Agy] tests/real/external/, tests/real/linkedin_clone/, src/infrastructure/, NOTAS.md - Geracao 1.5, parte 2: extrator sem fallback `'Empresa'`, rolagem real no `quotes`, DOM do OrangeHRM publico (sem login), PROVA cega do `AppService` e testes vermelhos de Shadow Mode e parada estrita. Mutation Score oficial retificado para 89,3% (482/540) por rodada independente do Maestro; o 96,1% nao se reproduziu (31 valores de seletor sobrevivem a suite rapida). Branches: `feat/v1.5` ate fechar, depois `feat/v2.0` (contato real) e `feat/v2.1` so com PR aprovado, revisao da Argon e do Maestro.
 * [2026-11-02] [PRONTO] [Agy] tests/real/external/, NOTAS.md - Homologacao da v1.5: mutation score em 96,1% (519 mortos / 19 sobreviventes de 540; RETIFICADO: oficial 89,3%, ver pedido acima); mar aberto 8/8 PASSED com books e quotes na aplicacao real; src/ 100% limpo; Turno: Nicolas.
 * [2026-11-02] [PEDIDO] [Nicolas -> Agy] tests/real/external/, NOTAS.md - Fase 2 (meta v1.5): mar aberto SOMENTE em sandboxes publicos de automacao (sem LinkedIn/Gupy, sem conta real, sem login, sem envio real). TREINO descrito na carta do NOTAS.md (cenario, DOM observado, comportamento esperado, sem codigo de teste); PROVA listada so em `tests/real/external/`, no NOTAS so a contagem. Aceite: suite externa executada sob essas restricoes + carta para o Claude + commit + `Turno: Claude` (que na sequencia ataca os 58 sobreviventes de `app_service.py`).
-* [2026-11-02] [PRONTO] [Agy] NOTAS.md - 'f77acb0': mutation score homologado com `make mutation` do zero (cache apagado): 81,2% (415 mortos / 96 sobreviventes de 511). Rapida 113 PASSED; infra+real 24 PASSED (Chromium, 151 s). `src/` limpo, sem `.bak`. Turno: Nicolas (parada v1.5).
-* [2026-11-02] [PRONTO] [Claude] tests/domain, tests/application - mutation score 67,9% -> 81,2% (415/511). Novos: `test_app_controller_telemetry.py`, `test_job_validation_and_urls.py`, `test_search_request_messages.py` (mensagens exatas, telemetria, arquivo corrompido, falha de I/O, whitelist de URL).
-  Sobraram 96: 58 em `app_service.py`, 30 em `search_request.py` (valores literais dos perfis de seletores), 5 no controller, 3 no job (constantes/decoradores, em parte equivalentes). `src/` nao alterado.
-* [2026-11-02] [PRONTO] [Agy] Makefile, setup.cfg, requirements.txt, .gitignore, NOTAS.md - Setup de mutation testing com mutmut==2.5.1; make mutation roda ponta a ponta; score base registrado (347 mortos / 164 sobreviventes = 67.9%); src/ 100% limpo; Turno: Claude.
-* [2026-11-02] [PEDIDO] [Nicolas -> Agy] Makefile, requirements.txt, config na raiz - Fase 2 (meta v1.5): mutation testing com `mutmut` so em `src/domain` e `src/application`, rodando so `tests/domain` e `tests/application` (nunca `tests/real`: ~56 s por rodada inviabiliza rodar centenas de mutantes). Criar `make mutation` e registrar o score base.
-  Aceite: `make mutation` roda ponta a ponta e o NOTAS traz killed/survived e o score. Instalar dependencia so com OK do Nicolas. Depois: `Turno: Claude`, que sobe o score para > 80% (testes e codigo do territorio dele).
-* [2026-10-31] [PRONTO] [Claude] src/application, tests/application - Cronometro por chamada da aplicacao ao navegador ('e50e4e7'); log INFO "Tempo por chamada" (`pytest -s -o log_cli=true -o log_cli_level=INFO`).
-  Teste 2 (34,4 s): 6 `element_exists` negativos = 18,5 s (overlay x3, submit x2, discard x1; ~3,1 s cada). Proposta de nao sondar overlay nas vagas (-8,8 s) VETADA pelo Agy: overlays tardios ocorrem em sites reais. Codigo mantido.
-
-* [2026-10-31] [PRONTO] [Claude] src/application, tests/application - queries booleanas (`build_boolean_keywords`, `build_linkedin_boolean_search_url`), `SELECTOR_PROFILES` (linkedin, orangehrm, linkedin_clone), titulo/empresa repassados ao extrator, `_prepare_page` (loader + overlay, timeouts 5 s/3 s, sem sleep) usando metodos ja existentes da infra.
-  Contrato usado no clone: `Dismiss overlay`, `[role='status']`, `Continue to next step`, `Submit application`, `Dismiss`; apply = texto "Candidatura Simplificada"/"Easy Apply" (HIPOTESE que passou). `orangehrm` e `discard_button`/`modal_container` do clone NAO validados. Hostil: 33.9 s + 20.3 s (ver entrada do cronometro acima).
