@@ -4,9 +4,12 @@
 - No topo do NOTAS.md, o campo `Turno:` aceita SÓ: `Claude`, `Agy` ou `Nicolas`.
 - Mudar o `Turno` é o sinal de passagem. Só mude depois de terminar, no mesmo commit do seu trabalho.
 - Nunca commite fora do seu turno (um hook recusa).
-- Commite sempre nomeando seus arquivos: `git commit -m "..." -- <seus arquivos> NOTAS.md`
+- Commite sempre nomeando seus arquivos: `git commit -m "[Claude] ..." -- <seus arquivos> NOTAS.md`
+- Ao passar o turno: escreva sua carta no NOTAS.md, logo abaixo das 3 linhas do topo, no lugar da carta anterior (formato: ASSUNTO, commit anterior, corpo). No chat, so um resumo de 2 linhas.
+- Excecao: quando passar o turno para o Nicolas (`Turno: Nicolas`), a carta completa vai no chat; no NOTAS.md ficam as 3 linhas do topo e a entrada do Historico.
+- Caixa Preta: nunca leia `src/infrastructure/`, `src/main.py`, `tests/infrastructure/` nem `tests/real/` (inclui a lista de PROVA do mar aberto), nem por shell (`cat`, `grep`, `python`). DOM, screenshots e o que o Agy escreve no NOTAS.md voce pode ler.
 - Procure só dentro da pasta do projeto e use sempre `.venv/bin/python`. Nunca leia arquivos da home (históricos, configs).
-- Se tentar a mesma coisa 3 vezes sem sucesso, ou faltar algo que o NOTAS.md diz que existe: pare, escreva `[BLOQUEIO]` no STATUS, `Turno: Nicolas e Revisores` e commite.
+- Se tentar a mesma coisa 3 vezes sem sucesso, ou faltar algo que o NOTAS.md diz que existe: pare, escreva `[BLOQUEIO]` no STATUS, `Turno: Nicolas` e commite.
 - Versões intermediárias: apenas commit local. Não peça tag nem push.
 - Ao concluir v1.0 (planejamento), v1.5 (retomada) ou v2.0 (entrega/PR): `Turno: Nicolas`.
 - Precisa de algo meu (dependência nova, push, decisão de negócio)? Use `[BLOQUEIO]` no STATUS ou `Turno: Nicolas`.
@@ -21,6 +24,9 @@ NUNCA crie pastas fora desta estrutura sem autorizacao explicita:
 ```text
 ├── .env
 ├── requirements.txt
+├── tests/
+│   ├── domain/          (seus testes)
+│   └── application/     (seus testes)
 └── src/
     ├── application/
     │   ├── __init__.py
@@ -55,12 +61,15 @@ Voce trabalha em conjunto com o agente **Antigravity** (responsavel por Infraest
 * `src/application/app_service.py`
 * `src/application/dtos/__init__.py`
 * `src/application/dtos/search_request.py`
+* `tests/domain/**` e `tests/application/**` (seus testes unitarios)
+* `NOTAS.md` (topo, carta e historico, so no seu turno)
 
 ### PROIBIDO ESCREVER OU MODIFICAR (Territorio Exclusivo Antigravity - READ ONLY):
 
 * NEVER modify `src/infrastructure/browser_service.py`.
 * NEVER modify `src/main.py`.
 * NEVER modify `requirements.txt` or `.env`.
+* NEVER modify `tests/conftest.py`, `tests/infrastructure/`, `tests/real/`, `Makefile`, `setup.cfg` or `.gitignore` (territorio do Agy).
 * WHEN `app_service.py` needs a new browser capability from `browser_service.py` -> DO NOT edit `browser_service.py`. Define the expected method signature/contract and output a clear request for Antigravity to implement it in the infrastructure layer.
 
 ## 4. Regras de Engenharia e Decisoes Consolidadas (Trigger -> Action)
@@ -98,25 +107,26 @@ Voce trabalha em conjunto com o agente **Antigravity** (responsavel por Infraest
 * **v0.5:** Loop completo do modal (abertura, avanco linear, submissao ou descarte seguro via Fechar -> Descartar).
 * **v0.6:** Implementacao do filtro e persistencia em cache local de links ja aplicados ou descartados.
 * **v1.0:** Consolidacao do MVP, blindagem de `try/except` por card e relatorio final de execucao.
+* **Situacao atual:** v1.0 consolidada (`master`, tag `v1.0`). Alvo: v1.5 (mutation testing + mar aberto); depois v2.0 (PR). Detalhes no `NOTAS.md`.
 
 
 ## 7. Protocolo Definitivo de Git, Branches e Esteira de Trabalho (Agy + Claude)
 
-Fonte canonica: Secao 7 do `AGENTS.md`. Em caso de divergencia, vale o `AGENTS.md`.
+Fonte canonica: o topo e a secao 2 do `NOTAS.md`, e este arquivo. Em caso de divergencia com o `AGENTS.md`, vale o `NOTAS.md`.
 
-1. **Branch compartilhada unica por versao:** `feat/v0.1-stealth-engine`, `feat/v0.2-contracts`, etc.
-   * NEVER create `claude/*` or `agy/*` branches. Apenas o Agy executa `git checkout -b feat/v0.x-...` a partir da `master`. O Claude trabalha direto na branch ativa.
+1. **Branch:** trabalhe na branch que o Nicolas deixou ativa (hoje `feat/v1.5`).
+   * NEVER create, switch or checkout branches (`git switch`, `git checkout`). So o Nicolas cria e troca branches.
 2. **`git add` restrito:**
-   * Claude so pode executar `git add` em: `src/domain/`, `src/application/` e `NOTAS.md`.
-   * Agy so pode executar `git add` em: `.gitignore`, `.env.example` (nunca `.env`), `requirements.txt`, `src/main.py`, `src/infrastructure/` e `NOTAS.md`.
+   * Claude so pode executar `git add` em: `src/domain/`, `src/application/`, `tests/domain/`, `tests/application/` e `NOTAS.md`.
+   * O Agy tem o territorio dele (tabela da secao 3 do `NOTAS.md`).
    * NEVER use `git add .` or `git commit -a`. ALWAYS run `git status` before committing.
-   * Prefixo obrigatorio de commit: `[Claude] v0.x: <descricao>` (Agy usa `[Agy] v0.x: <descricao>`).
+   * Prefixo obrigatorio de commit: `[Claude] <descricao>`, sem versao na mensagem (Agy usa `[Agy] <descricao>`).
 3. **Esteira TDD/QA-First (QA -> Dev -> QA -> PR), sequencial e sem concorrencia simultanea:**
-   * **Passo 1 (Agy):** recebe a demanda da versao primeiro, cria a branch a partir da `master` e registra o plano de testes no `NOTAS.md` ou em scripts de infraestrutura.
+   * **Passo 1 (Agy):** recebe a demanda da versao primeiro (na branch que o Nicolas criou) e registra o plano de testes no `NOTAS.md` ou em scripts de infraestrutura.
    * **Passo 2 (Claude):** WHEN the test plan exists -> READ it and write the first version of `domain/` and `application/` strictly to make the tests pass. Registrar o handoff no `NOTAS.md`. Na v0.1 (infra pura), o codigo e do Agy.
    * **Passo 3 (Agy):** executa o codigo no ambiente real (Ubuntu/Patchright).
    * **Passo 4 (Loop QA vs Dev):** o Agy relata o traceback no `NOTAS.md`. Se o erro esta no design do teste ou na infraestrutura, o Agy corrige. Se o teste esta correto e o erro e de logica de negocio, o Claude corrige. O Agy retesta ate 100%.
    * **Passo 5 (Revisao humana):** Nicolas e Argon verificam os arquivos e fazem testes manuais.
-   * **Passo 6 (Entrega final - Claude):** SOMENTE APOS a aprovacao de Nicolas e Argon, o Claude cria o Pull Request para a `master` (via `gh pr create` ou instrucoes passo a passo), aguarda o merge manual do Nicolas, executa `git checkout master && git pull` e cria `git tag -a v0.x -m "Release v0.x"`. NEVER open the PR or tag before the human approval.
+   * **Passo 6 (Entrega final - Nicolas):** so na v2.0, o Nicolas abre o Pull Request para a `master`, faz o merge e cria a tag. O Claude nunca faz push, PR (`gh`), tag nem checkout da `master`; pode deixar no `NOTAS.md` o texto sugerido para o PR.
 4. **Decisao de infraestrutura v0.1:** Chromium stealth nativo do Patchright (`BROWSER_CHANNEL=chromium`, fallback `chrome`), conforme diagnostico do Agy no Ubuntu 24.04.
 5. **Governanca:** `AGENTS.md` e `CLAUDE.md` so sao editados por ordem explicita do Nicolas (ou comunicado do Argon repassado por ele). Duvidas e furos de regra vao para o `NOTAS.md`.

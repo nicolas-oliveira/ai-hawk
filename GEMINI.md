@@ -7,10 +7,13 @@
 - Commite sempre nomeando seus arquivos: `git commit -m "..." -- <seus arquivos> NOTAS.md`
 - Versões intermediárias: apenas commit local. Não peça tag nem push.
 - Procure só dentro da pasta do projeto e use sempre `.venv/bin/python`. Nunca leia arquivos da home (históricos, configs).
-- Se tentar a mesma coisa 3 vezes sem sucesso, ou faltar algo que o NOTAS.md diz que existe: pare, escreva `[BLOQUEIO]` no STATUS, `Turno: Nicolas e Revisores` e commite.
+- Se tentar a mesma coisa 3 vezes sem sucesso, ou faltar algo que o NOTAS.md diz que existe: pare, escreva `[BLOQUEIO]` no STATUS, `Turno: Nicolas` e commite.
 - Ao concluir v1.0 (planejamento), v1.5 (retomada) ou v2.0 (entrega/PR): `Turno: Nicolas`.
 - Precisa de algo meu (dependência nova, push, decisão de negócio)? Use `[BLOQUEIO]` no STATUS ou `Turno: Nicolas`.
-- O topo do NOTAS.md começa com 3 linhas fixas, no formato que já está lá: `**DE/PARA/TURNO:**`, `**STATUS:**`, `**ACEITE/RESUMO:**`. O resto do e-mail vem abaixo delas.
+- O topo do NOTAS.md começa com 3 linhas fixas, no formato que já está lá: `**DE/PARA/TURNO:**`, `**STATUS:**`, `**ACEITE/RESUMO:**`. Nunca escreva nada acima delas.
+- Ao passar o turno para o Claude: sua carta vai no NOTAS.md, logo abaixo das 3 linhas, no lugar da carta anterior (formato da seção 7). No chat, só um resumo de 2 linhas.
+- Exceção: quando passar o turno para o Nicolas (`Turno: Nicolas`), a carta completa vai no chat (formato da seção 8); no NOTAS.md ficam as 3 linhas e a entrada do Histórico.
+- Mar aberto: os alvos de PROVA ficam só em arquivo dentro de `tests/real/external/` (o Claude não lê). No NOTAS.md, só os alvos de TREINO e a contagem da PROVA.
 - Todo turno termina com commit que atualiza o topo e passa o `Turno`, mesmo sem código (ex.: só relatório). Se travar, `[BLOQUEIO]` + `Turno: Nicolas`.
 - Nunca troque de branch: trabalhe na que o Nicolas deixou ativa (hoje `feat/v1.5`).
 
@@ -30,6 +33,7 @@
 - `.env` e `.env.example`
 - `.gitignore`
 - `Makefile` e `setup.cfg` (atalhos e configuração do mutation testing)
+- `tests/conftest.py` (fixtures e mocks estruturais dos testes rápidos)
 - Diretórios de cache e sessões locais (ex: `./sessions/`, `.cache/`, `./tests_scratch/`)
 - Adicionar logs no `NOTAS.md` (no formato estipulado)
 
@@ -53,8 +57,8 @@
 - **Claude opera na Implementação Real (Presente):** O Claude desenvolve código comercial em `src/domain/` e `src/application/` caminhando a partir da versão em que a aplicação está consolidada para fazer a aplicação atingir a versão alvo.
 - **NUNCA CONFUNDIR:** A versão do Agy é o **ALVO** do Claude, e NÃO o status da aplicação atual! O status consolidado da aplicação é apenas aquilo que já está 100% implementado pelo Claude e testado.
 - Nos relatórios e no `NOTAS.md`, registrar sempre essa distinção:
-  - `Versão Atual Consolidada da Aplicação: v0.1`
-  - `Versão Alvo da Squad (Target do Claude): v0.5`
+  - `Versão Atual Consolidada da Aplicação: v1.0`
+  - `Versão Alvo da Squad (Target do Claude): v1.5`
 
 1. **Red Phase Primeiro (Agy):**
    - Ao iniciar qualquer versão ou subtask, o Agy escreve primeiro os testes automatizados (`pytest`) em `tests/infrastructure/` e `tests/real/` validando os contratos exigidos para aquela feature.
@@ -109,7 +113,8 @@
   4. **Cenários da Realidade Crua do DOM e Comportamento Ideal Esperado:** descrição dos cenários de teste reais aos quais a aplicação está submetida (ex: redesign de seletores, modais travados/Next infinito, freio de erros consecutivos, proteção de cache) e como a aplicação DEVE responder idealmente no mundo real para evitar banimento ou falhas operacionais, cabendo exclusivamente ao Claude conceber e implementar a lógica comercial interna.
 
 ## 8. Formato Oficial da "Carta do Chat" e Tom de Comunicação Direta
-- **Delimitadores Obrigatórios (`──────`):** Para cartas formais de handoff no chat, o e-mail tem cabeçalho separado começando com `──────`, inserindo as linhas (`DE`, `PARA`, `ASSUNTO`), e fechando o cabeçalho com `──────`. O e-mail encerra no final absoluto com `──────`.
+- **Carta de handoff em passagem de turno vai no NOTAS.md, não no chat:** a carta formal fica logo abaixo das 3 linhas do topo do NOTAS.md, no lugar da carta anterior. No chat, só um resumo de 2 linhas ("Turno passado para X no commit 'abc1234'; carta no NOTAS.md").
+- **Exceção, turno para o Nicolas:** quando o turno vai para o Nicolas, a carta completa vai no chat, com os delimitadores `──────`. Os delimitadores valem só para mensagens diretas ao Nicolas ou à Argon.
 - **Proibição de Delimitadores no Corpo:** NUNCA usar `──────` ou divisores horizontais dentro do corpo do e-mail; `──────` só serve para isolar o cabeçalho e para o encerramento final.
 - **Proibição Absoluta de Cabeçalhos Markdown (`#`, `##`, `###`):** NUNCA usar `#`, `##` ou `###` nas respostas do chat para falar com o Nicolas. Utilizar títulos enumerados diretos com negrito (`**1. Título**`) e itálico (`*...*`).
 - **Tom Natural, Enxuto e Direto:** Respostas sem enrolação, sem prolixidade e com comunicação fluida e humana.

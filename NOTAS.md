@@ -6,30 +6,41 @@ Fonte unica de verdade para a coordenacao assincrona entre Agy e Claude.
 
 ## 📬 COMUNICADO OFICIAL ATIVO NO TOPO (TURNO ATUAL)
 
-**DE/PARA/TURNO:** Agy -> Nicolas | Turno: Nicolas | 2026-11-02
-**STATUS:** [PRONTO] Mutation score homologado: 81,2% (415 mortos / 96 sobreviventes de 511); rapida 113 PASSED; infra+real 24 PASSED.
-**ACEITE/RESUMO:** `make mutation` reexecutado do zero (cache apagado) e confirmou os numeros do Claude; `git status --short src/` limpo, sem `.bak`. Falta a validacao em mar aberto (sandboxes publicos): preciso do seu "vai" para escolher alvos e rodar. Sobreviventes restantes: app_service 58, search_request 30, app_controller 5, job 3.
+**DE/PARA/TURNO:** Nicolas -> Agy | Turno: Agy | 2026-11-02
+**STATUS:** [PEDIDO] Fase 2 (meta v1.5): validacao em mar aberto SOMENTE em sandboxes publicos de automacao (divididos em TREINO e PROVA).
+**ACEITE/RESUMO:** Sem LinkedIn/Gupy, sem conta real, sem login e sem envio real. TREINO: alvos e detalhes na carta abaixo (cenario, DOM observado, comportamento esperado, zero codigo de teste). PROVA: lista SO em arquivo dentro de `tests/real/external/` (o Claude nao le); aqui so a contagem passou/falhou. Ao terminar: carta nova + commit + `Turno: Claude` (que ajustara os perfis e atacara os 58 sobreviventes do `app_service.py`).
+
+**ASSUNTO:** "Vai" do Nicolas para a validacao em mar aberto | commit anterior: 'f77acb0'
+
+Agy,
+
+1. Alvos: so sandboxes publicos feitos para treinar automacao. Proibido LinkedIn, Gupy, qualquer site com conta real, login ou envio real de formulario.
+2. TREINO: liste os alvos na sua carta (aqui, abaixo das 3 linhas), cada um com cenario, DOM observado e comportamento esperado da aplicacao. Sem codigo de teste e sem dizer como implementar.
+3. PROVA: a lista de alvos fica so em um arquivo dentro de `tests/real/external/`. No NOTAS.md entra so a contagem (ex.: PROVA 5 alvos, 4 passaram, 1 falhou).
+4. Ao terminar: troque esta carta pela sua, endereçada ao Claude, atualize as 3 linhas do topo, commit e passe o turno ao Claude.
+
+Nicolas
 
 ---
 
 ## 1. Estado Atual da Squad
 
-* **Turno Atual:** Nicolas (parada v1.5). Nicolas so entra nas paradas (v1.5 e v2.0) ou em `[BLOQUEIO]`.
+* **Turno Atual:** Agy (mar aberto). Depois Claude (perfis de seletores + 58 sobreviventes de `app_service.py`). Nicolas so entra nas paradas (v1.5 e v2.0) ou em `[BLOQUEIO]`.
 * **Regra de turno (lida por script):** o campo `Turno:` do topo so aceita `Claude`, `Agy` ou `Nicolas`. Mudar o `Turno` no mesmo commit do seu trabalho e o sinal de passagem. Commit fora do seu turno e recusado por hook.
 * **Versao Consolidada da Aplicacao:** v1.0 (`master` = `414e4f8`, merge do PR #2, tag `v1.0`). Fase 1 do roadmap concluida.
 * **Caminho:** v1.0 (feito) -> v1.5 (retomada: Nicolas revisa negocio e planejamento contra o que foi construido) -> v2.0 (entrega com PR). Versoes intermediarias (v1.1 a v1.4): so commit local, sem tag, sem push, sem PR.
 * **Versao Alvo da Squad:** `v1.5`. Escopo: mutation testing (Score > 80% na suite rapida) + validacao em mar aberto (sandboxes publicos sem WAF). Burner Run no LinkedIn real e bonus stealth ficam para depois da v1.5; o Burner Run so com o "vai" do Nicolas.
 * **Branch Ativa:** `feat/v1.5` (criada a partir de `origin/master`). A `feat/v0.1-stealth-engine` e so backup local; ninguem a usa.
 * **Placar do Pytest:** rapido (`tests/domain` + `tests/application`) = 113 PASSED. Suite infra+real homologada pelo QA = 24 PASSED (Chromium real, 151 s). Mutation Score = 81,2% (415 mortos / 96 sobreviventes; base 67,9%).
-* **Proxima Acao Esperada:** Agy homologa o score (`make mutation`) e conduz a validacao em mar aberto. Restam 58 sobreviventes em `app_service.py` (30 em `search_request.py`: seletores literais), caso se queira ir alem de 80%. So Nicolas faz: push, tag, PR, trocar de branch.
+* **Proxima Acao Esperada:** Agy conduz a validacao em mar aberto (TREINO na carta, PROVA so em `tests/real/external/`). Depois o Claude ajusta os perfis de seletores com base no TREINO e ataca os 58 sobreviventes de `app_service.py` (restam tambem 30 em `search_request.py`: seletores literais). So Nicolas faz: push, tag, PR, trocar de branch.
 
 ---
 
 ## 2. Regras de Governanca e Etiquetas do NOTAS.md
 
 1. **Leitura Obrigatoria do Topo:** Cada agente deve ler o e-mail ativo no topo e o Estado Atual antes de qualquer acao.
-2. **Regra do Topo Vivo:** o topo tem SEMPRE 3 linhas, do turno corrente: (1) DE / PARA / TURNO + data-hora; (2) STATUS (PRONTO | BLOQUEIO | PEDIDO); (3) ACEITE / RESUMO TECNICO. Detalhe vai para o Historico e para a mensagem do commit.
-   Commit OBRIGATORIO entre turnos: o recado anterior e removido do topo (o git guarda o historico).
+2. **Regra do Topo Vivo:** o topo comeca SEMPRE com 3 linhas fixas, lidas por script: (1) DE / PARA / TURNO + data; (2) STATUS (PRONTO | BLOQUEIO | PEDIDO); (3) ACEITE / RESUMO TECNICO. Logo ABAIXO delas vem a carta do turno para o proximo agente (formato da secao 7 do GEMINI.md: ASSUNTO, commit anterior, corpo). Nunca escreva nada acima das 3 linhas. Excecao: quando o turno vai para o Nicolas, a carta completa vai no chat (no NOTAS.md, so as 3 linhas e o Historico).
+   Commit OBRIGATORIO entre turnos: as 3 linhas e a carta anteriores sao substituidas pelas novas (o git guarda o historico). Um resumo de ate 5 linhas vai para o Historico.
 3. **Formato Padrao de Linha de Evento no Historico:**
    `* [AAAA-MM-DD] [ETIQUETA] [autor] [arquivos] - descricao do evento`
    **Limite do Historico (automatico):** teto de 15 entradas, minimo de 10, cada uma com ate 5 linhas. Um hook de pre-commit
@@ -45,7 +56,7 @@ Fonte unica de verdade para a coordenacao assincrona entre Agy e Claude.
 6. **Governanca de Git:**
    - NUNCA usar `git add .` ou `git commit -a`. Sempre usar `git add NOTAS.md` explicitamente com seus arquivos de territorio.
    - Commitar com caminhos explicitos: `git commit -m "..." -- <seus arquivos> NOTAS.md` (nao leva o que o outro agente deixou preparado).
-   - Prefixos de commit obrigatorios: `[Agy] v1.x: ...` ou `[Claude] v1.x: ...`.
+   - Prefixos de commit obrigatorios: `[Agy] ...` ou `[Claude] ...` (sem versao na mensagem).
    - Agentes NAO fazem push, tag, PR, troca de branch nem reescrita de historico (`rebase`, `--amend`, `filter-branch`, `--no-verify`). So o Nicolas.
 
 ---
@@ -56,13 +67,14 @@ Fonte unica de verdade para a coordenacao assincrona entre Agy e Claude.
 |---|---|---|
 | Decisor / Merge PR / Tag / Push | Nicolas | `master` (PR manual via GitHub), `.claude/`, `.gemini/`, `scripts/maestro/` |
 | DEV (Arquitetura e Contratos) | Claude | `src/domain/`, `src/application/`, `tests/domain/`, `tests/application/`, `NOTAS.md` |
-| QA, Runtime e Infraestrutura | Antigravity (Agy) | `src/infrastructure/`, `src/main.py`, `tests/infrastructure/`, `tests/real/`, `Makefile`, `requirements.txt`, configs de ferramentas na raiz, `.env*`, `.gitignore`, `NOTAS.md` |
+| QA, Runtime e Infraestrutura | Antigravity (Agy) | `src/infrastructure/`, `src/main.py`, `tests/infrastructure/`, `tests/real/`, `tests/conftest.py`, `Makefile`, `requirements.txt`, configs de ferramentas na raiz, `.env*`, `.gitignore`, `NOTAS.md` |
 | Auditoria e Revisao | Argon | Somente leitura |
 
 ---
 
 ## 4. Historico de Handoffs
-
+* [2026-11-02] [PEDIDO] [Nicolas -> Agy] tests/real/external/, NOTAS.md - Fase 2 (meta v1.5): mar aberto SOMENTE em sandboxes publicos de automacao (sem LinkedIn/Gupy, sem conta real, sem login, sem envio real). TREINO descrito na carta do NOTAS.md (cenario, DOM observado, comportamento esperado, sem codigo de teste); PROVA listada so em `tests/real/external/`, no NOTAS so a contagem. Aceite: suite externa executada sob essas restricoes + carta para o Claude + commit + `Turno: Claude` (que na sequencia ataca os 58 sobreviventes de `app_service.py`).
+* [2026-11-02] [PRONTO] [Agy] NOTAS.md - 'f77acb0': mutation score homologado com `make mutation` do zero (cache apagado): 81,2% (415 mortos / 96 sobreviventes de 511). Rapida 113 PASSED; infra+real 24 PASSED (Chromium, 151 s). `src/` limpo, sem `.bak`. Turno: Nicolas (parada v1.5).
 * [2026-11-02] [PRONTO] [Claude] tests/domain, tests/application - mutation score 67,9% -> 81,2% (415/511). Novos: `test_app_controller_telemetry.py`, `test_job_validation_and_urls.py`, `test_search_request_messages.py` (mensagens exatas, telemetria, arquivo corrompido, falha de I/O, whitelist de URL).
   Sobraram 96: 58 em `app_service.py`, 30 em `search_request.py` (valores literais dos perfis de seletores), 5 no controller, 3 no job (constantes/decoradores, em parte equivalentes). `src/` nao alterado.
 * [2026-11-02] [PRONTO] [Agy] Makefile, setup.cfg, requirements.txt, .gitignore, NOTAS.md - Setup de mutation testing com mutmut==2.5.1; make mutation roda ponta a ponta; score base registrado (347 mortos / 164 sobreviventes = 67.9%); src/ 100% limpo; Turno: Claude.
@@ -73,8 +85,6 @@ Fonte unica de verdade para a coordenacao assincrona entre Agy e Claude.
 
 * [2026-10-31] [PRONTO] [Claude] src/application, tests/application - queries booleanas (`build_boolean_keywords`, `build_linkedin_boolean_search_url`), `SELECTOR_PROFILES` (linkedin, orangehrm, linkedin_clone), titulo/empresa repassados ao extrator, `_prepare_page` (loader + overlay, timeouts 5 s/3 s, sem sleep) usando metodos ja existentes da infra.
   Contrato usado no clone: `Dismiss overlay`, `[role='status']`, `Continue to next step`, `Submit application`, `Dismiss`; apply = texto "Candidatura Simplificada"/"Easy Apply" (HIPOTESE que passou). `orangehrm` e `discard_button`/`modal_container` do clone NAO validados. Hostil: 33.9 s + 20.3 s (ver entrada do cronometro acima).
-
-
 * [2026-10-31] [PRONTO] [Agy] tests/real/external/, src/main.py, .env.example, NOTAS.md - Suite externa blindada contra falsos positivos e amarra entrypoint.
   Assercoes negativas anti-trapaca ativas (zero honeypots). Validado E2E real no Chromium (2 passed). Turno: Claude.
 * [2026-10-31] [PRONTO] [Agy] tests/real/linkedin_clone/app/page.js, NOTAS.md - Polimento do clone Next.js com lazy loading, overlays, honeypots e mutacao de wrappers.
