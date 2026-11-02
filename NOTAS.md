@@ -6,48 +6,22 @@ Fonte unica de verdade para a coordenacao assincrona entre Agy e Claude.
 
 ## 📬 COMUNICADO OFICIAL ATIVO NO TOPO (TURNO ATUAL)
 
-**DE/PARA/TURNO:** Agy -> Claude | Turno: Claude | 2026-11-02
-**STATUS:** [PRONTO] Mutation testing preparado (mutmut); score base 67.9% registrado.
-**ACEITE/RESUMO:** setup.cfg e make mutation configurados (restritos a src/domain e src/application); mutmut==2.5.1 integrado; .mutmut-cache ignorado; score base: 347 mortos, 164 sobreviventes (total 511, 67.9%). src/ limpo sem .bak. Alvo do Claude: elevar score para > 80% cobrindo os 164 sobreviventes.
-
-ASSUNTO: Entrega do Mutation Testing e Handoff para Claude (meta v1.5)
-Hash anterior: '8011c42'
-
-1. Capacidades e Contratos de Infraestrutura Entregues:
-- `setup.cfg`: Criado na raiz definindo paths_to_mutate=src/domain,src/application, runner=.venv/bin/python -m pytest tests/domain tests/application -x -q --tb=no e tests_dir=tests/domain,tests/application.
-- `Makefile`: Adicionado alvo `mutation` que executa ponta a ponta sem abortar prematuramente e exibe o resumo completo (`@$(PY) -m mutmut run || true` e `@$(PY) -m mutmut results`).
-- `.gitignore`: Atualizado para ignorar o banco de dados local `.mutmut-cache` e artefatos de teste.
-- `requirements.txt`: Atualizado fixando `mutmut==2.5.1`.
-
-2. Placar da Suite e Score Base de Mutacao:
-- Suite rapida (`tests/domain` + `tests/application`): 81 PASSED (0.08s).
-- Mutantes testados na suite rapida: 511 total.
-- Mutantes mortos (Killed): 347 (67.91%).
-- Mutantes sobreviventes (Survived): 164 (32.09%).
-- Timeout / Suspicious / Skipped: 0.
-- Distribuicao dos 164 mutantes sobreviventes:
-  - `src/application/app_service.py`: 58 sobreviventes
-  - `src/application/dtos/search_request.py`: 54 sobreviventes
-  - `src/application/app_controller.py`: 37 sobreviventes
-  - `src/domain/entities/job.py`: 15 sobreviventes
-
-3. Cenario da Realidade Crua e Handoff para o Claude:
-- O Claude agora atua no desenvolvimento de testes comerciais em `tests/domain/` e `tests/application/` (e ajustes correspondentes em seu feudo) para elevar a resistencia da aplicacao alcancando Mutation Score > 80% (matando pelo menos 62 dos 164 sobreviventes).
-- Comandos disponiveis para inspecao de mutantes: `make mutation`, `.venv/bin/python -m mutmut results` e `.venv/bin/python -m mutmut show <id>`.
-- A integridade da arvore foi mantida rigorosamente: `git status --short src/` permaneceu limpo, com zero alteracoes em domain/application e sem arquivos `.bak`.
+**DE/PARA/TURNO:** Claude -> Agy | Turno: Agy | 2026-11-02
+**STATUS:** [PRONTO] Mutation score 67,9% -> 81,2% (415 mortos / 96 sobreviventes de 511) na suite rapida: 113 PASSED.
+**ACEITE/RESUMO:** 32 testes novos em tests/domain e tests/application (controller/telemetria, Job, SearchRequest); src/ intocado. Agy: homologar com `make mutation` e seguir para a validacao em mar aberto (sandboxes publicos).
 
 ---
 
 ## 1. Estado Atual da Squad
 
-* **Turno Atual:** Claude (DEV). Nicolas so entra nas paradas (v1.5 e v2.0) ou em `[BLOQUEIO]`.
+* **Turno Atual:** Agy (QA/Infra). Nicolas so entra nas paradas (v1.5 e v2.0) ou em `[BLOQUEIO]`.
 * **Regra de turno (lida por script):** o campo `Turno:` do topo so aceita `Claude`, `Agy` ou `Nicolas`. Mudar o `Turno` no mesmo commit do seu trabalho e o sinal de passagem. Commit fora do seu turno e recusado por hook.
 * **Versao Consolidada da Aplicacao:** v1.0 (`master` = `414e4f8`, merge do PR #2, tag `v1.0`). Fase 1 do roadmap concluida.
 * **Caminho:** v1.0 (feito) -> v1.5 (retomada: Nicolas revisa negocio e planejamento contra o que foi construido) -> v2.0 (entrega com PR). Versoes intermediarias (v1.1 a v1.4): so commit local, sem tag, sem push, sem PR.
 * **Versao Alvo da Squad:** `v1.5`. Escopo: mutation testing (Score > 80% na suite rapida) + validacao em mar aberto (sandboxes publicos sem WAF). Burner Run no LinkedIn real e bonus stealth ficam para depois da v1.5; o Burner Run so com o "vai" do Nicolas.
 * **Branch Ativa:** `feat/v1.5` (criada a partir de `origin/master`). A `feat/v0.1-stealth-engine` e so backup local; ninguem a usa.
-* **Placar do Pytest:** rapido (`tests/domain` + `tests/application`) = 81 PASSED. Suite geral homologada pelo QA = 98 PASSED (inclui 2 hostil E2E no Chromium). Mutation Score base = 67.9% (347 mortos / 164 sobreviventes).
-* **Proxima Acao Esperada:** Claude eleva o mutation score para > 80% nos testes de seu territorio (`tests/domain`, `tests/application`). So Nicolas faz: push, tag, PR, trocar de branch.
+* **Placar do Pytest:** rapido (`tests/domain` + `tests/application`) = 113 PASSED. Suite geral homologada pelo QA = 98 PASSED (inclui 2 hostil E2E no Chromium; reexecutar). Mutation Score = 81,2% (415 mortos / 96 sobreviventes; base 67,9%).
+* **Proxima Acao Esperada:** Agy homologa o score (`make mutation`) e conduz a validacao em mar aberto. Restam 58 sobreviventes em `app_service.py` (30 em `search_request.py`: seletores literais), caso se queira ir alem de 80%. So Nicolas faz: push, tag, PR, trocar de branch.
 
 ---
 
@@ -89,6 +63,8 @@ Hash anterior: '8011c42'
 
 ## 4. Historico de Handoffs
 
+* [2026-11-02] [PRONTO] [Claude] tests/domain, tests/application - mutation score 67,9% -> 81,2% (415/511). Novos: `test_app_controller_telemetry.py`, `test_job_validation_and_urls.py`, `test_search_request_messages.py` (mensagens exatas, telemetria, arquivo corrompido, falha de I/O, whitelist de URL).
+  Sobraram 96: 58 em `app_service.py`, 30 em `search_request.py` (valores literais dos perfis de seletores), 5 no controller, 3 no job (constantes/decoradores, em parte equivalentes). `src/` nao alterado.
 * [2026-11-02] [PRONTO] [Agy] Makefile, setup.cfg, requirements.txt, .gitignore, NOTAS.md - Setup de mutation testing com mutmut==2.5.1; make mutation roda ponta a ponta; score base registrado (347 mortos / 164 sobreviventes = 67.9%); src/ 100% limpo; Turno: Claude.
 * [2026-11-02] [PEDIDO] [Nicolas -> Agy] Makefile, requirements.txt, config na raiz - Fase 2 (meta v1.5): mutation testing com `mutmut` so em `src/domain` e `src/application`, rodando so `tests/domain` e `tests/application` (nunca `tests/real`: ~56 s por rodada inviabiliza rodar centenas de mutantes). Criar `make mutation` e registrar o score base.
   Aceite: `make mutation` roda ponta a ponta e o NOTAS traz killed/survived e o score. Instalar dependencia so com OK do Nicolas. Depois: `Turno: Claude`, que sobe o score para > 80% (testes e codigo do territorio dele).
