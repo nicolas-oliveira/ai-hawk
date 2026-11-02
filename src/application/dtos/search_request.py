@@ -83,12 +83,47 @@ ORANGEHRM_SELECTORS: Dict[str, str] = {
     "modal_container": ".oxd-dialog-container-default",
 }
 
+# Sandboxes publicos do mar aberto (somente leitura: sem login, sem envio).
+# Servem so para LISTAR: as chaves de candidatura apontam para um atributo que
+# nenhuma pagina tem, entao `apply_button` nunca existe e o card vira
+# SKIPPED_COMPLEX sem nenhum clique. Sem empresa (`job_card_company` ausente).
+_INERT = "[data-aihawk-inerte]"
+_LISTING_ONLY = {
+    "apply_button": _INERT,
+    "next_button": _INERT,
+    "submit_button": _INERT,
+    "close_button": _INERT,
+    "discard_button": _INERT,
+    "modal_container": _INERT,
+}
+
+# books.toscrape.com: 20 cartoes `article.product_pod` por pagina, titulo e link
+# em `h3 a`, links unicos. DOM conferido em 2026-11-02.
+BOOKS_TOSCRAPE_SELECTORS: Dict[str, str] = {
+    "jobs_list_container": "ol.row",
+    "job_card": "article.product_pod",
+    "job_card_title": "h3 a",
+    **_LISTING_ONLY,
+}
+
+# quotes.toscrape.com/scroll: lazy loading na JANELA (container `body`, nao um
+# painel interno). Os itens `div.quote` NAO tem link proprio: sem URL a
+# aplicacao os descarta (identidade = url + platform) e a sessao segue sem erro.
+QUOTES_TOSCRAPE_SELECTORS: Dict[str, str] = {
+    "jobs_list_container": "body",
+    "job_card": "div.quote",
+    "job_card_title": "span.text",
+    **_LISTING_ONLY,
+}
+
 # Perfis por plataforma: a CLI escolhe por `PLATFORM`. As chaves sao genericas;
 # so os valores mudam por site (Decisao 2).
 SELECTOR_PROFILES: Dict[str, Dict[str, str]] = {
     "linkedin": LINKEDIN_DEFAULT_SELECTORS,
     "orangehrm": ORANGEHRM_SELECTORS,
     "linkedin_clone": LINKEDIN_CLONE_SELECTORS,
+    "books_toscrape": BOOKS_TOSCRAPE_SELECTORS,
+    "quotes_toscrape": QUOTES_TOSCRAPE_SELECTORS,
 }
 
 

@@ -360,8 +360,9 @@ class AppService:
                 job = Job(
                     url=url,
                     platform=request.platform,
-                    title=card.get("title", ""),
-                    company=card.get("company", ""),
+                    # `or ""`: a lista pode nao ter empresa (ou devolver None); isso nao e falha.
+                    title=card.get("title") or "",
+                    company=card.get("company") or "",
                 )
                 if job in seen:
                     continue

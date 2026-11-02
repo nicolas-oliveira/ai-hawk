@@ -6,37 +6,40 @@ Fonte unica de verdade para a coordenacao assincrona entre Agy e Claude.
 
 ## 📬 COMUNICADO OFICIAL ATIVO NO TOPO (TURNO ATUAL)
 
-**DE/PARA/TURNO:** Agy -> Claude (copia: Gemini Argon, Maestro, Nicolas) | Turno: Claude | 2026-11-02
-**STATUS:** [PRONTO] Mar aberto: TREINO 2 alvos (2 passaram); PROVA 4 alvos (4 passaram); infra+real 30 PASSED.
-**ACEITE/RESUMO:** Achado de realidade no motor (scroll em `body` nao rolava a janela) corrigido por mim em `browser_service.py`. Claude: ajustar perfis de seletores com base no TREINO abaixo e atacar os 58 sobreviventes de `app_service.py`.
+**DE/PARA/TURNO:** Claude -> Agy (copia: Gemini Argon, Maestro, Nicolas) | Turno: Agy | 2026-11-02
+**STATUS:** [PRONTO] Mutation score 81,2% -> 89,3% (482 mortos / 58 sobreviventes de 540); suite rapida 150 PASSED; 2 perfis de sandbox e 1 correcao.
+**ACEITE/RESUMO:** `AppService` aceita lista sem empresa/titulo (None virava None no Job); perfis `books_toscrape` e `quotes_toscrape` criados. Agy: homologar com `make mutation` e rodar os sandboxes com esses perfis.
 
-**ASSUNTO:** Validacao em mar aberto: TREINO e contagem da PROVA | commit anterior: '6e12372'
+**ASSUNTO:** Mar aberto na aplicacao: perfis de sandbox, correcao de None e 58 -> 19 sobreviventes em `app_service.py` | commit anterior: '4fe3d99'
 
-Claude (Dev), cc Gemini Argon (Tech Lead), Maestro (Revisor), Nicolas (PO),
+Agy (QA/Infra), cc Gemini Argon (Tech Lead), Maestro (Revisor), Nicolas (PO),
 
-1. Capacidades do motor: nenhuma assinatura mudou. `scroll_container` agora tambem rola a janela quando o alvo e `body`/`html` (antes, so rolava containers com overflow). Garantia: container interno continua igual.
+1. Achado real corrigido (`app_service.py`, `_collect_jobs`): o extrator pode devolver `title`/`company` como `None`; o `Job` ficava com `None` (quebraria cache/telemetria). Agora `card.get(...) or ""`: lista sem empresa vira `""`, sem erro.
 
-2. TREINO (sandboxes publicos, somente leitura, sem login e sem envio):
-- books.toscrape.com (listagem paginada). Cenario: pagina de catalogo com cartoes. DOM observado: 20 cartoes `article.product_pod` por pagina, titulo e link em `h3 a`, links 100% unicos, sem conceito de empresa (so preco). Esperado: extrair 20 URLs unicas, sem duplicar, sem inventar empresa.
-- quotes.toscrape.com/scroll (scroll infinito na janela). Cenario: lazy loading que so dispara com rolagem do documento. DOM observado: 10 itens `div.quote` iniciais; apos rolagens sobem para 90; os itens nao tem link proprio. Esperado: a aplicacao rola ate o fim, conta itens novos e para quando a contagem estabiliza, sem travar e sem depender de container interno.
+2. Perfis novos em `search_request.py` (`SELECTOR_PROFILES`), DOM conferido por mim no HTML publico em 02/11:
+- `books_toscrape`: container `ol.row`, card `article.product_pod`, titulo `h3 a`; sem `job_card_company`.
+- `quotes_toscrape`: container `body` (rola a JANELA), card `div.quote`, titulo `span.text`. Os itens nao tem link: a aplicacao os descarta (identidade = url + platform) e a sessao termina sem erro e com 0 vagas. Se voce precisa contar itens, e na infra.
+- Chaves de candidatura apontam para `[data-aihawk-inerte]` (nunca existe): se algum card for processado, vira SKIPPED_COMPLEX sem clique. Somente leitura garantido por contrato.
+- `quotes.toscrape.com/scroll` monta os itens por JavaScript; o HTML bruto so tem `div.quotes` vazio. Nao validei o DOM renderizado (e seu).
 
-3. PROVA: 4 alvos, 4 passaram, 0 falharam (lista so em arquivo dentro de `tests/real/external/`). Cobre cartoes/links unicos em lista AJAX, tabela paginada sem link falso, overlay modal intrusivo e carregamento dinamico com loader.
+3. Testes novos (37, `tests/application`): `test_app_service_robustness.py` (listas sem empresa/link, scroll em `body`, falha numa URL, limite de candidaturas, freio, modal de 15 passos, `review_button`, descarte, cache JSON, cronometro) e `dtos/test_selector_profiles_sandbox.py`.
 
-4. Placar: `tests/domain` + `tests/application` 113 PASSED (nao rodei de novo, `src/` intocado fora da infra); infra+real 30 PASSED em 183 s (inclui os 6 de mar aberto).
+4. Placar: `tests/domain` + `tests/application` = 150 PASSED. Mutation: 482/540 = 89,3% (base 67,9%). Restam 58: 31 em `search_request.py` (valores literais de seletores), 19 em `app_service.py`, 5 no controller, 3 no job. Nao rodei infra+real nem Chromium.
 
-5. Realidade crua para a aplicacao: a vida real nao tem os seletores LinkedIn. Perfis precisam aceitar listas sem empresa, itens sem link proprio e rolagem de janela. A aplicacao deve se comportar sem dar erro nesses casos e sem tratar ausencia de empresa como falha. Como codificar e com os 58 sobreviventes de `app_service.py` e com voce.
+5. Pedido ao Agy: (a) `make mutation` para homologar; (b) rodar `books_toscrape` e `quotes_toscrape` contra os sandboxes e me devolver o traceback se algo quebrar; (c) concluida a validacao, fechar a v1.5 com `Turno: Nicolas`.
+
 ---
 
 ## 1. Estado Atual da Squad
 
-* **Turno Atual:** Claude (perfis de seletores + 58 sobreviventes de `app_service.py`). Nicolas so entra nas paradas (v1.5 e v2.0) ou em `[BLOQUEIO]`.
+* **Turno Atual:** Agy (homologar mutation e rodar os sandboxes com os perfis novos). Nicolas so entra nas paradas (v1.5 e v2.0) ou em `[BLOQUEIO]`.
 * **Regra de turno (lida por script):** o campo `Turno:` do topo so aceita `Claude`, `Agy` ou `Nicolas`. Mudar o `Turno` no mesmo commit do seu trabalho e o sinal de passagem. Commit fora do seu turno e recusado por hook.
 * **Versao Consolidada da Aplicacao:** v1.0 (`master` = `414e4f8`, merge do PR #2, tag `v1.0`). Fase 1 do roadmap concluida.
 * **Caminho:** v1.0 (feito) -> v1.5 (retomada: Nicolas revisa negocio e planejamento contra o que foi construido) -> v2.0 (entrega com PR). Versoes intermediarias (v1.1 a v1.4): so commit local, sem tag, sem push, sem PR.
 * **Versao Alvo da Squad:** `v1.5`. Escopo: mutation testing (Score > 80% na suite rapida) + validacao em mar aberto (sandboxes publicos sem WAF). Burner Run no LinkedIn real e bonus stealth ficam para depois da v1.5; o Burner Run so com o "vai" do Nicolas.
 * **Branch Ativa:** `feat/v1.5` (criada a partir de `origin/master`). A `feat/v0.1-stealth-engine` e so backup local; ninguem a usa.
-* **Placar do Pytest:** rapido (`tests/domain` + `tests/application`) = 113 PASSED. Suite infra+real homologada pelo QA = 30 PASSED (Chromium real, 183 s; inclui 6 de mar aberto). Mutation Score = 81,2% (415 mortos / 96 sobreviventes; base 67,9%).
-* **Proxima Acao Esperada:** Claude ajusta os perfis de seletores com base no TREINO e ataca os 58 sobreviventes de `app_service.py` (restam tambem 30 em `search_request.py`: seletores literais). So Nicolas faz: push, tag, PR, trocar de branch.
+* **Placar do Pytest:** rapido (`tests/domain` + `tests/application`) = 150 PASSED. Suite infra+real homologada pelo QA = 30 PASSED (Chromium real, 183 s; inclui 6 de mar aberto). Mutation Score = 89,3% (482 mortos / 58 sobreviventes de 540; base 67,9%).
+* **Proxima Acao Esperada:** Agy homologa o score (`make mutation`), roda os perfis `books_toscrape`/`quotes_toscrape` nos sandboxes e fecha a v1.5 com `Turno: Nicolas`. So Nicolas faz: push, tag, PR, trocar de branch.
 
 ---
 
