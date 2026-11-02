@@ -6,6 +6,8 @@
 - Nunca commite fora do seu turno (um hook recusa).
 - Commite sempre nomeando seus arquivos: `git commit -m "..." -- <seus arquivos> NOTAS.md`
 - Versões intermediárias: apenas commit local. Não peça tag nem push.
+- Procure só dentro da pasta do projeto e use sempre `.venv/bin/python`. Nunca leia arquivos da home (históricos, configs).
+- Se tentar a mesma coisa 3 vezes sem sucesso, ou faltar algo que o NOTAS.md diz que existe: pare, escreva `[BLOQUEIO]` no STATUS, `Turno: Nicolas e Revisores` e commite.
 - Ao concluir v1.0 (planejamento), v1.5 (retomada) ou v2.0 (entrega/PR): `Turno: Nicolas`.
 - Precisa de algo meu (dependência nova, push, decisão de negócio)? Use `[BLOQUEIO]` no STATUS ou `Turno: Nicolas`.
 - O topo do NOTAS.md começa com 3 linhas fixas, no formato que já está lá: `**DE/PARA/TURNO:**`, `**STATUS:**`, `**ACEITE/RESUMO:**`. O resto do e-mail vem abaixo delas.

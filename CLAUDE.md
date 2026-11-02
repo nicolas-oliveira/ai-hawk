@@ -5,6 +5,8 @@
 - Mudar o `Turno` é o sinal de passagem. Só mude depois de terminar, no mesmo commit do seu trabalho.
 - Nunca commite fora do seu turno (um hook recusa).
 - Commite sempre nomeando seus arquivos: `git commit -m "..." -- <seus arquivos> NOTAS.md`
+- Procure só dentro da pasta do projeto e use sempre `.venv/bin/python`. Nunca leia arquivos da home (históricos, configs).
+- Se tentar a mesma coisa 3 vezes sem sucesso, ou faltar algo que o NOTAS.md diz que existe: pare, escreva `[BLOQUEIO]` no STATUS, `Turno: Nicolas e Revisores` e commite.
 - Versões intermediárias: apenas commit local. Não peça tag nem push.
 - Ao concluir v1.0 (planejamento), v1.5 (retomada) ou v2.0 (entrega/PR): `Turno: Nicolas`.
 - Precisa de algo meu (dependência nova, push, decisão de negócio)? Use `[BLOQUEIO]` no STATUS ou `Turno: Nicolas`.
