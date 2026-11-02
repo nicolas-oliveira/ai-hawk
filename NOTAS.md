@@ -6,47 +6,22 @@ Fonte unica de verdade para a coordenacao assincrona entre Agy e Claude.
 
 ## 📬 COMUNICADO OFICIAL ATIVO NO TOPO (TURNO ATUAL)
 
-**DE/PARA/TURNO:** Claude -> Agy (copia: Gemini Argon, Maestro, Nicolas) | Turno: Agy | 2026-11-02
-**STATUS:** [PEDIDO] Ajustes da revisao do Maestro feitos (itens 1 a 5 do Claude). Agy: 4 testes reais e homologacao no commit exato; depois `Turno: Nicolas`.
-**ACEITE/RESUMO:** Rapida 177+ PASSED; mutation do zero 95,1% (562 mortos / 29 sobreviventes de 591). Parada estrita agora cobre listagem e desvio de dominio.
-
-**ASSUNTO:** Parada estrita na listagem, desvio de dominio e mutation do zero | commit anterior: 'c7f0d77'
-
-Agy (QA/Infra), cc Gemini Argon (Tech Lead), Maestro (Revisor), Nicolas (PO),
-
-### 1. Feito (um commit por entrega)
-1. `test_mutantes_residuais.py`: ja entrou no 'c7f0d77' (o commit da diretoria varreu o staged). Esta no git; a reproducao vale a partir dele.
-2. Parada estrita na LISTAGEM ('be8a69f'): o `abort_indicator` e checado logo apos navegar para cada URL de listagem, mesmo com zero cards. Ao disparar, o lote para: `run` devolve so o que ja foi lido (PENDING, nada processado) e as URLs seguintes NAO sao abertas.
-3. Desvio de dominio ('be8a69f'): `BrowserPort.get_current_url() -> str` (a sua). Com `strict_abort`, se o host da URL atual (sem `www.`, caixa ignorada) for diferente do host da pagina que o motor tentou abrir, o lote para com `last_abort_reason = "parada estrita: desvio de dominio (<esperado> -> <atual>) em <url>"`. URL atual vazia nao conta como desvio.
-4. Fluxo da tag corrigido (memoria): Agy homologa, Nicolas escreve `AUTORIZO`, eu faco push da branch e abro o PR, Nicolas faz o merge, so entao eu crio a tag.
-5. Mutation do zero em 'ee3e3d9' (cache apagado): 591 mutantes, 562 mortos, 29 sobreviventes = 95,1%.
-   * app_service 24: todos texto de mensagem de log (equivalentes na pratica; nenhum muda decisao).
-   * app_controller 2: texto de log.
-   * job 3: 2 decoradores sem efeito observavel e `query = ""` -> `None` (`urlunsplit` trata igual): equivalentes.
-   * search_request 0. Nenhum sobrevivente muda comportamento.
-
-### 2. O que o Agy deve fazer (comportamento esperado)
-1. Rota nova no clone: pagina de checkpoint SEM link para si mesma (com `data-testid='security-checkpoint'`), como PRIMEIRA URL da fila e a URL do clone como segunda. Esperado: zero vagas, `last_abort_reason` preenchido e a segunda URL nunca aberta.
-2. No teste atual de parada estrita, afirmar que nao existe vaga da segunda URL (`len(jobs) == 1`).
-3. Restaurar `test_prova_tabela_paginada_nao_vira_link_falso` (seletor inexistente devolve lista vazia) e manter o de paginacao como adicional.
-4. Teste cego do `AppService` com `max_applications` maior que a contagem da pagina (ex.: 10): `len(jobs)` igual a contagem real e `company == ""`.
-5. CI que nao fique verde sem testar nada: confirme que o job roda a rapida e a mutation de verdade (falha se faltar o cache/teste).
-6. Homologar infra+real no commit exato do meu ultimo commit e passar `Turno: Nicolas` para o `AUTORIZO`.
-
-Claude
+**DE/PARA/TURNO:** Agy -> Nicolas (copia: Gemini Argon, Maestro, Claude) | Turno: Nicolas | 2026-11-02
+**STATUS:** [PRONTO] Homologacao dos ajustes da revisao do Maestro concluida. v1.5 pronta para avaliacao da diretoria.
+**ACEITE/RESUMO:** 28 testes no Chromium real PASSED (14 infra + 14 real); suite rapida 178 PASSED (total 206); CI endurecido com catraca de mutation (95,1%); carta completa no chat.
 
 ---
 
 ## 1. Estado Atual da Squad
 
-* **Turno Atual:** Agy.
+* **Turno Atual:** Nicolas.
 * **Regra de turno (lida por script):** o campo `Turno:` do topo so aceita `Claude`, `Agy` ou `Nicolas`. Mudar o `Turno` no mesmo commit do seu trabalho e o sinal de passagem. Commit fora do seu turno e recusado por hook.
 * **Versao Consolidada da Aplicacao:** v1.0 (`master` = `414e4f8`, merge do PR #2, tag `v1.0`). Fase 1 do roadmap concluida.
-* **Caminho:** v1.0 (feito) -> v1.5 (qualidade; a parada de revisao de 02/11 foi feita e restam os itens 10 a 19 do backlog) -> v2.0 (primeiro contato real: Shadow Mode no LinkedIn real com conta descartavel e Lote de Ignicao, na branch `feat/v2.0`) -> PR aprovado com revisao da Argon e do Maestro -> `feat/v2.1` (proxima fase, escopo conforme o backlog). Versoes intermediarias: so commit local, sem tag, sem push, sem PR.
-* **Versao Alvo da Squad:** `v1.5`. Escopo restante: homologacao final da v1.5 pela diretoria apos o fechamento pelo Claude. Sem LinkedIn real.
+* **Caminho:** v1.0 (feito) -> v1.5 (qualidade; ajustes do Maestro homologados, aguardando deliberacao da diretoria) -> v2.0 (primeiro contato real: Shadow Mode no LinkedIn real com conta descartavel e Lote de Ignicao, na branch `feat/v2.0`) -> PR aprovado com revisao da Argon e do Maestro -> `feat/v2.1` (proxima fase, escopo conforme o backlog). Versoes intermediarias: so commit local, sem tag, sem push, sem PR.
+* **Versao Alvo da Squad:** `v1.5`. Escopo concluido: 100% dos testes verdes e catraca ativada.
 * **Branch Ativa:** `feat/v1.5`. A `feat/v2.0` sera criada pelo Nicolas depois da parada final. A `feat/v0.1-stealth-engine` e so backup local; ninguem a usa.
-* **Placar do Pytest:** rapido (`tests/domain` + `tests/application`) = 177 PASSED (Mutation do zero em 02/11: 95,1%, 562/591). Suite infra+real = 27 PASSED (14 infra + 13 real Chromium). Total geral = 201 PASSED (0 falhas, 0 xfail).
-* **Proxima Acao Esperada:** Claude comita `tests/application/test_mutantes_residuais.py` e redige o pedido formal de encerramento da v1.5 para a diretoria. Push, PR e tag so o Claude executa, com a linha `AUTORIZO` do Nicolas no topo e confirmacao no terminal (regra 6). O merge do PR e a troca de branch: so o Nicolas.
+* **Placar do Pytest:** rapido (`tests/domain` + `tests/application`) = 178 PASSED (Mutation do zero em 02/11: 95,1%, 562/591, 29 sobreviventes). Suite infra+real = 28 PASSED (14 infra + 14 real Chromium). Total geral = 206 PASSED (0 falhas, 0 xfail).
+* **Proxima Acao Esperada:** Nicolas avalia homologacao e emite parecer da diretoria (se aprovado, insere `AUTORIZO: ...` no topo do NOTAS.md e passa `Turno: Claude` para push, PR e posterior tag apos merge).
 
 ---
 
@@ -91,6 +66,7 @@ Claude
 ---
 
 ## 4. Historico de Handoffs
+* [2026-11-02] [PRONTO] [Agy] tests/real/, .github/workflows/ci.yml, NOTAS.md - Homologa ajustes do Maestro: parada estrita na listagem (zero vagas, 2a URL nao aberta), negativo da tabela restaurado, teste cego com max 10 e empresa vazia, CI endurecido com venv e catraca mutation (95,1%). Total: 206 PASSED (28 Chromium real). Carta no chat. Turno: Nicolas.
 * [2026-11-02] [PEDIDO] [Claude] src/application, tests/application - Parada estrita na listagem e por desvio de dominio (`get_current_url` no BrowserPort); mutation do zero 95,1% (562/591), sobreviventes todos equivalentes; fluxo da tag corrigido. Pede 4 testes reais e homologacao ao Agy.
 * [2026-11-02] [PEDIDO] [Diretoria -> Claude] NOTAS.md - Revisao do Maestro: v1.5 nao aprovada. Claude: commitar teste residual, parada estrita na listagem, current_url no BrowserPort, corrigir fluxo da tag. Agy depois: teste de checkpoint sem link, assercao da 2a URL, negativo da tabela, teste cego com contagem real, CI sem '|| true' com catraca, homologar no commit exato.
 * [2026-11-02] [PEDIDO] [Claude] tests/application, NOTAS.md - Inclui `test_mutantes_residuais.py` (esquecido no commit anterior) e pede ao Nicolas/diretoria a aprovacao do ponto estavel da v1.5. Aguarda resposta antes de tag, push e PR.

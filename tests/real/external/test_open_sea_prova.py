@@ -18,6 +18,13 @@ def test_prova_ecommerce_ajax_cards_e_links_unicos(open_sea_browser):
     assert all(l.startswith("https://webscraper.io/test-sites/e-commerce/more/product/") for l in links)
 
 
+def test_prova_tabela_paginada_nao_vira_link_falso(open_sea_browser):
+    b = open_sea_browser
+    assert b.navigate("https://www.scrapethissite.com/pages/forms/")
+    assert b.get_page().locator("tr.team").count() == 25
+    assert b.extract_links("tr.team", "a.inexistente") == []
+
+
 def test_prova_tabela_paginacao_links_reais(open_sea_browser):
     b = open_sea_browser
     assert b.navigate("https://www.scrapethissite.com/pages/forms/")
@@ -68,20 +75,21 @@ def test_prova_app_service_e2e_alvo_cego(open_sea_browser):
         platform="blind_prova_sandbox",
         static_urls=[target_url],
         selectors=blind_selectors,
-        max_applications=3,
+        max_applications=10,
     )
 
     app_service = AppService(open_sea_browser)
     jobs = app_service.run(req)
 
-    # 1. Contagem exata de vagas extraidas e processadas
+    # 1. Contagem exata de vagas extraidas e processadas (3 cards reais da pagina, sem teto artificial)
     assert len(jobs) == 3
     # 2. Todas as URLs extraidas sao unicas e pertencem ao dominio
     extracted_urls = [j.url for j in jobs]
     assert len(set(extracted_urls)) == 3
     assert all(u.startswith("https://webscraper.io/test-sites/e-commerce/more/product/") for u in extracted_urls)
-    # 3. Titulos validos extraidos
+    # 3. Titulos validos extraidos e empresa vazia (fallback generico sem inventar empresa)
     assert all(len(j.title) > 0 for j in jobs)
+    assert all(j.company == "" for j in jobs)
     # 4. Status de descarte seguro sem submissao
     assert all(j.status == JobStatus.SKIPPED_COMPLEX for j in jobs)
     assert not any(j.status == JobStatus.APPLIED for j in jobs)

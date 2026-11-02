@@ -6,15 +6,6 @@ export default function Checkpoint() {
       data-testid="security-checkpoint"
       className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-6"
     >
-      <section aria-label="Jobs List" className="mb-4">
-        <ul>
-          <li className="p-2 border rounded bg-white">
-            <a href="/checkpoint" className="text-blue-600 font-bold">
-              <h3>Desafio de Seguranca</h3>
-            </a>
-          </li>
-        </ul>
-      </section>
       <div className="max-w-md w-full bg-white rounded-lg shadow-md p-8 text-center">
         <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
           <svg

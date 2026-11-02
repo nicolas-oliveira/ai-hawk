@@ -19,16 +19,37 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install dependencies
+      - name: Set up virtualenv and install dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          python -m venv .venv
+          .venv/bin/pip install --upgrade pip
+          .venv/bin/pip install -r requirements.txt
 
       - name: Fast Unit Tests (Domain & Application)
         run: |
-          pytest tests/domain tests/application -v
+          .venv/bin/pytest tests/domain tests/application -v
 
       - name: Mutation Testing (Domain & Application)
         run: |
-          mutmut run || true
-          mutmut results
+          .venv/bin/mutmut run --CI
+          .venv/bin/mutmut results
+          .venv/bin/python -c "
+          import sqlite3, sys
+          con = sqlite3.connect('.mutmut-cache')
+          cur = con.cursor()
+          counts = dict(cur.execute('SELECT status, count(*) FROM mutant GROUP BY status').fetchall())
+          killed = counts.get('ok_killed', 0)
+          survived = counts.get('bad_survived', 0)
+          total = killed + survived
+          score = (killed / total * 100) if total > 0 else 0
+          print(f'Catraca Mutation: {killed}/{total} mortos ({score:.1f}%), {survived} sobreviventes')
+          if total < 500:
+              print(f'ERRO: Menos mutantes testados do que o esperado ({total} < 500)!')
+              sys.exit(1)
+          if survived > 29:
+              print(f'ERRO: Catraca violada! {survived} sobreviventes > teto de 29.')
+              sys.exit(1)
+          if score < 95.0:
+              print(f'ERRO: Score {score:.1f}% abaixo do piso homologado de 95.0%!')
+              sys.exit(1)
+          "

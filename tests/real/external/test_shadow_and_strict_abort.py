@@ -96,9 +96,8 @@ def test_strict_abort_on_unexpected_screen_or_captcha(
     app_service = AppService(hostile_browser)
     jobs = app_service.run(request)
 
-    # 1. Interrupcao imediata: a vaga de checkpoint fica PENDING
-    assert len(jobs) >= 1, "Deveria ter detectado ao menos a URL inicial"
-    assert jobs[0].status == JobStatus.PENDING
+    # 1. Interrupcao imediata na listagem: zero vagas coletadas e a segunda URL nunca aberta
+    assert len(jobs) == 0, f"Deveria ter abortado na listagem com zero vagas coletadas, mas obteve: {jobs}"
 
     # 2. O motivo do aborto deve ser registrado com clareza
     abort_reason = getattr(app_service, "last_abort_reason", None)
