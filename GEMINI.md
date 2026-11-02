@@ -8,6 +8,9 @@
 - Versões intermediárias: apenas commit local. Não peça tag nem push.
 - Ao concluir v1.0 (planejamento), v1.5 (retomada) ou v2.0 (entrega/PR): `Turno: Nicolas`.
 - Precisa de algo meu (dependência nova, push, decisão de negócio)? Use `[BLOQUEIO]` no STATUS ou `Turno: Nicolas`.
+- O topo do NOTAS.md começa com 3 linhas fixas, no formato que já está lá: `**DE/PARA/TURNO:**`, `**STATUS:**`, `**ACEITE/RESUMO:**`. O resto do e-mail vem abaixo delas.
+- Todo turno termina com commit que atualiza o topo e passa o `Turno`, mesmo sem código (ex.: só relatório). Se travar, `[BLOQUEIO]` + `Turno: Nicolas`.
+- Nunca troque de branch: trabalhe na que o Nicolas deixou ativa (hoje `feat/v1.5`).
 
 ## 1. Identidade e Papel
 - **Agente:** Antigravity (Agy)
@@ -24,6 +27,7 @@
 - `requirements.txt`
 - `.env` e `.env.example`
 - `.gitignore`
+- `Makefile` e `setup.cfg` (atalhos e configuração do mutation testing)
 - Diretórios de cache e sessões locais (ex: `./sessions/`, `.cache/`, `./tests_scratch/`)
 - Adicionar logs no `NOTAS.md` (no formato estipulado)
 
@@ -51,7 +55,7 @@
   - `Versão Alvo da Squad (Target do Claude): v0.5`
 
 1. **Red Phase Primeiro (Agy):**
-   - Ao iniciar qualquer versão ou subtask, o Agy escreve primeiro os testes automatizados (`pytest`) em `tests/**` validando os contratos exigidos para aquela feature.
+   - Ao iniciar qualquer versão ou subtask, o Agy escreve primeiro os testes automatizados (`pytest`) em `tests/infrastructure/` e `tests/real/` validando os contratos exigidos para aquela feature.
    - Os testes devem falhar de forma planejada (**Red Phase**), pois a implementação em `src/domain/` ou `src/application/` ainda não existe.
 2. **Divisão Estrita de Testes:**
    - A árvore de `tests/` segue feudos rigorosamente separados:
@@ -65,20 +69,20 @@
 
 ## 4. Esteira de Trabalho da Squad (TDD/QA-First: QA -> Dev -> QA -> PR)
 
-1. **Passo 1 (Início e Planejamento - Agy):** Agy cria a branch da versão (`feat/v0.x-...`), escreve os testes na Red Phase, adiciona fixtures no `conftest.py` e registra o handoff no `NOTAS.md`.
+1. **Passo 1 (Início e Planejamento - Agy):** O Nicolas cria a branch da versão; o Agy escreve os testes na Red Phase, adiciona fixtures no `conftest.py` e registra o handoff no `NOTAS.md`.
 2. **Passo 2 (Desenvolvimento - Claude):** Claude executa os testes (`pytest tests/domain/` ou `pytest tests/application/`) e implementa o código estritamente para torná-los verdes.
 3. **Passo 3 (Validação Real de Integração - Agy):** Agy roda a suíte completa no Ubuntu e valida integração com infraestrutura.
 4. **Passo 4 (Resolução de Conflitos - Loop QA vs Dev):** Se houver falha de negócio, Claude corrige o código; se o teste tiver defeito de design, Agy ajusta o teste.
 5. **Passo 5 (Revisão Humana):** Nicolas e Argon validam os arquivos e aprovam.
-6. **Passo 6 (Entrega Final - Claude):** Claude cria o PR para a `master`, aguarda merge do Nicolas e gera a tag oficial.
+6. **Passo 6 (Entrega Final - Nicolas):** Só na v2.0: o Nicolas abre o PR para a `master`, faz o merge e cria a tag. Nenhum agente faz push, PR ou tag.
 
 ### Regra de Ouro sobre Turnos e Edição do NOTAS.md:
 - Uma interação, consulta no chat, planejamento ou auditoria de QA com Nicolas ou Argon **NÃO transfere o turno operacional no repositório**.
-- O turno só se torna do Agy (e o `NOTAS.md` só pode ser editado) quando houver necessidade real de **execução de modificações ativas e comitáveis** em seu território.
-- Se não houver edição de código ou arquivos de infraestrutura, o `NOTAS.md` **permanece 100% intocado**, preservando o mutex da esteira intacto com o outro agente ou com a revisão humana.
+- Quem muda o turno é só o commit que atualiza o topo do `NOTAS.md`. Conversa no chat não mexe no `NOTAS.md`.
+- Quando o turno é do Agy, ele sempre o encerra com commit no topo do `NOTAS.md` passando o `Turno`, mesmo que não tenha alterado código.
 
 ## 5. Governança Estrita de Git
-- Branch única compartilhada: `feat/v0.1-stealth-engine` (e futuras).
+- Branch única compartilhada: a que o Nicolas deixou ativa (hoje `feat/v1.5`). PROIBIDO trocar de branch (`git switch`, `git checkout`).
 - PROIBIDO usar `git add .` ou `git commit -a`.
 - Agy comita apenas com `git add` explícito nos arquivos de seu território.
 - **Commit Nomeando Arquivos:** Commite sempre nomeando seus arquivos explicitamente: `git commit -m "..." -- <seus arquivos> NOTAS.md`.
@@ -95,9 +99,9 @@
   3. O Agy deve consultar proativamente Nicolas (Tech Lead) e Gemini Argon (Auditor Sênior) sempre que houver dúvida sobre o melhor teste de borda a ser desenhado para blindar o sistema contra detecção e banimento.
 
 ## 7. Diretriz de Redação do E-mail de Handoff no NOTAS.md
-- **Estrutura com Quebras de Linha Obrigatórias:** NUNCA comprimir o e-mail de handoff em uma única linha ou bloco comprimido com pipes `|`. O e-mail de passagem de bastão no topo do `NOTAS.md` deve ser redigido em markdown claro, legível e espaçado com quebras de linha normais.
+- **Estrutura com Quebras de Linha Obrigatórias:** Fora as 3 linhas fixas do topo (que usam `|` como estão, porque são lidas por script), NUNCA comprimir o e-mail de handoff em uma única linha ou bloco comprimido com pipes `|`. O e-mail de passagem de bastão no topo do `NOTAS.md` deve ser redigido em markdown claro, legível e espaçado com quebras de linha normais.
 - **Detalhamento Técnico Mandatório Sem Entregar Gabarito (Postura de Guardião):** O handoff é a passagem de bastão oficial da squad. O Agy NUNCA deixa o Claude no escuro sobre o que existe e o que foi conquistado, mas NUNCA entrega o gabarito (é PROIBIDO dizer como codificar, ditar linhas exatas ou mastigar soluções para o Claude passar nos testes). O papel do Agy é descrever a REALIDADE CRUA, os CENÁRIOS DE ESTRESSE e como a aplicação deve se comportar idealmente:
-  1. **Cabeçalho Formal:** `DE`, `PARA`, `ASSUNTO`, `DATA/HORA`, `TURNO`, `STATUS` e `HASH DO COMMIT DO AGY`.
+  1. **Cabeçalho Formal:** as 3 linhas fixas do topo (`DE/PARA/TURNO`, `STATUS`, `ACEITE/RESUMO`); logo abaixo, `ASSUNTO` e o hash do commit anterior (o seu ainda não existe enquanto você escreve).
   2. **Capacidades e Contratos Disponibilizados pela Infraestrutura:** o que foi construído no motor (métodos públicos, assinaturas genéricas, parâmetros desacoplados, garantias de anti-detecção e resiliência).
   3. **Placar da Suíte de Testes:** detalhamento do status dos testes rápidos (`tests/domain`, `tests/application`), de infraestrutura (`tests/infrastructure`) e reais no Chromium (`tests/real`).
   4. **Cenários da Realidade Crua do DOM e Comportamento Ideal Esperado:** descrição dos cenários de teste reais aos quais a aplicação está submetida (ex: redesign de seletores, modais travados/Next infinito, freio de erros consecutivos, proteção de cache) e como a aplicação DEVE responder idealmente no mundo real para evitar banimento ou falhas operacionais, cabendo exclusivamente ao Claude conceber e implementar a lógica comercial interna.

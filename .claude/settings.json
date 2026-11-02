@@ -24,6 +24,11 @@
       "Bash(pip install:*)",
       "Bash(pip3 install:*)",
       "Bash(npm install:*)",
+      "Bash(git checkout:*)",
+      "Bash(git switch:*)",
+      "Bash(git rebase:*)",
+      "Bash(git filter-branch:*)",
+      "Bash(git commit --amend:*)",
       "Bash(rm -rf:*)"
     ]
   }

@@ -6,21 +6,22 @@ Fonte unica de verdade para a coordenacao assincrona entre Agy e Claude.
 
 ## 📬 COMUNICADO OFICIAL ATIVO NO TOPO (TURNO ATUAL)
 
-**DE/PARA/TURNO:** Claude -> Nicolas / Argon (Agy em standby) | Turno: revisao humana | 2026-10-31
-**STATUS:** [PRONTO] QA homologou ('e50e4e7'): suite geral 98 passed, hostil 2 passed (55,99 s); `make test` = 81 passed.
-**ACEITE/RESUMO:** Lentidao medida e explicada (18,5 s de sondagens negativas na minha camada, mantidas por seguranca; proposta de reduzir vetada pelo Agy). Aguarda Nicolas: push da branch (atualiza o PR #1), tag `v0.5`.
+**DE/PARA/TURNO:** Nicolas -> Agy | Turno: Agy | 2026-11-02
+**STATUS:** [PEDIDO] Fase 2 (meta v1.5): preparar mutation testing (`mutmut`) na suite rapida.
+**ACEITE/RESUMO:** Mutar so `src/domain` e `src/application`, rodando so `tests/domain` e `tests/application` (nunca `tests/real`). Usar `mutmut==2.5.1` ja instalado pelo Nicolas (o 3.x nao funciona com imports `src.`). Criar `setup.cfg` e `make mutation`, por `.mutmut-cache` no `.gitignore`, registrar o score base (mortos/sobreviventes) sem ler codigo. Nunca interromper o mutmut com Ctrl+C (ele trava); se precisar, `kill -9` e `git restore src/`. Ao terminar: `git status --short src/` limpo e sem `.bak`; commit + `Turno: Claude`.
 
 ---
 
 ## 1. Estado Atual da Squad
 
-* **Turno Atual:** Nicolas e Argon (revisao humana e push do PR #1). Agy e Claude em standby.
-* **Versao Consolidada da Aplicacao:** NENHUMA (`master` = `first commit`; sem tag nem PR). A v0.1/v0.5 so existem apos PR aprovado.
-* **Versoes:** v0.1 = so uma TAG historica local em `b4a33ca` (sem PR, sem branch; nao empurrada). Estaveis intermediarias sem tag: v0.6 `8f32943`, v0.7 `bce92f1`. PR unico previsto: v1.0 ("Release v1.0: AIHawk MVP Operacional").
-* **Versao Alvo da Squad:** `v1.0` (AIHawk MVP Operacional).
-* **Branch Ativa:** `feat/v0.1-stealth-engine` (branch compartilhada onde a squad opera).
+* **Turno Atual:** Agy (QA). Depois Claude (DEV). Nicolas so entra nas paradas (v1.5 e v2.0) ou em `[BLOQUEIO]`.
+* **Regra de turno (lida por script):** o campo `Turno:` do topo so aceita `Claude`, `Agy` ou `Nicolas`. Mudar o `Turno` no mesmo commit do seu trabalho e o sinal de passagem. Commit fora do seu turno e recusado por hook.
+* **Versao Consolidada da Aplicacao:** v1.0 (`master` = `414e4f8`, merge do PR #2, tag `v1.0`). Fase 1 do roadmap concluida.
+* **Caminho:** v1.0 (feito) -> v1.5 (retomada: Nicolas revisa negocio e planejamento contra o que foi construido) -> v2.0 (entrega com PR). Versoes intermediarias (v1.1 a v1.4): so commit local, sem tag, sem push, sem PR.
+* **Versao Alvo da Squad:** `v1.5`. Escopo: mutation testing (Score > 80% na suite rapida) + validacao em mar aberto (sandboxes publicos sem WAF). Burner Run no LinkedIn real e bonus stealth ficam para depois da v1.5; o Burner Run so com o "vai" do Nicolas.
+* **Branch Ativa:** `feat/v1.5` (criada a partir de `origin/master`). A `feat/v0.1-stealth-engine` e so backup local; ninguem a usa.
 * **Placar do Pytest:** rapido (`tests/domain` + `tests/application`) = 81 PASSED. Suite geral homologada pelo QA = 98 PASSED (inclui 2 hostil E2E no Chromium).
-* **Proxima Acao Esperada:** Nicolas autoriza o push da branch (3 commits do Claude + 1 do Agy ainda fora do PR #1) e define o commit da tag `v0.5`. Burner Run (`v1.0`) so com o "vai" do Nicolas.
+* **Proxima Acao Esperada:** Agy prepara o mutation testing (ver topo). Em seguida Claude sobe o score. So Nicolas faz: push, tag, PR, trocar de branch.
 
 ---
 
@@ -43,7 +44,9 @@ Fonte unica de verdade para a coordenacao assincrona entre Agy e Claude.
 5. **Controle de Turno:** Apenas quem possui o `Turno atual` pode alterar a secao `Estado Atual da Squad`.
 6. **Governanca de Git:**
    - NUNCA usar `git add .` ou `git commit -a`. Sempre usar `git add NOTAS.md` explicitamente com seus arquivos de territorio.
-   - Prefixos de commit obrigatorios: `[Agy] v0.x: ...` ou `[Claude] v0.x: ...`.
+   - Commitar com caminhos explicitos: `git commit -m "..." -- <seus arquivos> NOTAS.md` (nao leva o que o outro agente deixou preparado).
+   - Prefixos de commit obrigatorios: `[Agy] v1.x: ...` ou `[Claude] v1.x: ...`.
+   - Agentes NAO fazem push, tag, PR, troca de branch nem reescrita de historico (`rebase`, `--amend`, `filter-branch`, `--no-verify`). So o Nicolas.
 
 ---
 
@@ -51,15 +54,17 @@ Fonte unica de verdade para a coordenacao assincrona entre Agy e Claude.
 
 | Papel | Agente | Territorio Permitido de Escrita |
 |---|---|---|
-| Decisor / Merge PR / Tag | Nicolas | `master` (PR manual via GitHub) |
-| DEV (Arquitetura e Contratos) | Claude | `src/domain/`, `src/application/`, `NOTAS.md` |
-| QA, Runtime e Infraestrutura | Antigravity (Agy) | `src/infrastructure/`, `src/main.py`, `tests/`, `requirements.txt`, `.env*`, `.gitignore`, `NOTAS.md` |
+| Decisor / Merge PR / Tag / Push | Nicolas | `master` (PR manual via GitHub), `.claude/`, `.gemini/`, `scripts/maestro/` |
+| DEV (Arquitetura e Contratos) | Claude | `src/domain/`, `src/application/`, `tests/domain/`, `tests/application/`, `NOTAS.md` |
+| QA, Runtime e Infraestrutura | Antigravity (Agy) | `src/infrastructure/`, `src/main.py`, `tests/infrastructure/`, `tests/real/`, `Makefile`, `requirements.txt`, configs de ferramentas na raiz, `.env*`, `.gitignore`, `NOTAS.md` |
 | Auditoria e Revisao | Argon | Somente leitura |
 
 ---
 
 ## 4. Historico de Handoffs
 
+* [2026-11-02] [PEDIDO] [Nicolas -> Agy] Makefile, requirements.txt, config na raiz - Fase 2 (meta v1.5): mutation testing com `mutmut` so em `src/domain` e `src/application`, rodando so `tests/domain` e `tests/application` (nunca `tests/real`: ~56 s por rodada inviabiliza rodar centenas de mutantes). Criar `make mutation` e registrar o score base.
+  Aceite: `make mutation` roda ponta a ponta e o NOTAS traz killed/survived e o score. Instalar dependencia so com OK do Nicolas. Depois: `Turno: Claude`, que sobe o score para > 80% (testes e codigo do territorio dele).
 * [2026-10-31] [PRONTO] [Claude] src/application, tests/application - Cronometro por chamada da aplicacao ao navegador ('e50e4e7'); log INFO "Tempo por chamada" (`pytest -s -o log_cli=true -o log_cli_level=INFO`).
   Teste 2 (34,4 s): 6 `element_exists` negativos = 18,5 s (overlay x3, submit x2, discard x1; ~3,1 s cada). Proposta de nao sondar overlay nas vagas (-8,8 s) VETADA pelo Agy: overlays tardios ocorrem em sites reais. Codigo mantido.
 

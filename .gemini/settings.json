@@ -17,6 +17,11 @@
       "command(git tag *)",
       "command(git reset --hard *)",
       "command(git commit *--no-verify*)",
+      "command(git checkout *)",
+      "command(git switch *)",
+      "command(git rebase *)",
+      "command(git filter-branch *)",
+      "command(git commit --amend *)",
       "command(gh *)",
       "command(rm -rf *)",
       "command(sudo *)"
