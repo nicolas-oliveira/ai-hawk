@@ -332,20 +332,41 @@ def stress_http_server():
     server.shutdown()
 
 
+def _assert_engine_identity(service: BrowserService) -> None:
+    """
+    Guarda de identidade do motor (Ajuste e do Maestro):
+    Ao abrir a sessao real, le navigator.userAgent na pagina inicial e falha
+    alto se BROWSER_ENGINE nao corresponder ao navegador real carregado.
+    """
+    page = service.get_page()
+    ua = page.evaluate("() => navigator.userAgent")
+    if service.engine == "firefox":
+        assert "Firefox" in ua, (
+            f"Guarda de identidade falhou: engine='firefox', mas navigator.userAgent={ua!r}"
+        )
+    elif service.engine == "chromium":
+        assert "Chrome" in ua, (
+            f"Guarda de identidade falhou: engine='chromium', mas navigator.userAgent={ua!r}"
+        )
+
+
 @pytest.fixture(scope="module")
 def _module_browser_service(tmp_path_factory):
     """Instancia autentica do BrowserService compartilhada no modulo para evitar 25 respawns por suíte."""
     session_dir = str(tmp_path_factory.mktemp("sanctuary_real_session"))
+    headless = os.getenv("HEADLESS", "true").lower() in ("true", "1", "yes")
     service = BrowserService(
         platform="sanctuary_real",
-        headless=True,
-        channel="chromium",
+        headless=headless,
         session_root_dir=session_dir,
     )
     service.start_session()
-    yield service
-    service.close()
-    shutil.rmtree(session_dir, ignore_errors=True)
+    try:
+        _assert_engine_identity(service)
+        yield service
+    finally:
+        service.close()
+        shutil.rmtree(session_dir, ignore_errors=True)
 
 
 @pytest.fixture

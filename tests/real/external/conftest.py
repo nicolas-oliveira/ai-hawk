@@ -55,6 +55,24 @@ def hostile_clone_server():
             proc.kill()
 
 
+def _assert_engine_identity(service: BrowserService) -> None:
+    """
+    Guarda de identidade do motor (Ajuste e do Maestro):
+    Ao abrir a sessao real, le navigator.userAgent na pagina inicial e falha
+    alto se BROWSER_ENGINE nao corresponder ao navegador real carregado.
+    """
+    page = service.get_page()
+    ua = page.evaluate("() => navigator.userAgent")
+    if service.engine == "firefox":
+        assert "Firefox" in ua, (
+            f"Guarda de identidade falhou: engine='firefox', mas navigator.userAgent={ua!r}"
+        )
+    elif service.engine == "chromium":
+        assert "Chrome" in ua, (
+            f"Guarda de identidade falhou: engine='chromium', mas navigator.userAgent={ua!r}"
+        )
+
+
 @pytest.fixture(scope="module")
 def _module_hostile_browser():
     """Sessao real do motor ativa isolada por modulo para testes contra o clone hostil."""
@@ -66,14 +84,16 @@ def _module_hostile_browser():
     service = BrowserService(
         platform="linkedin_clone_test",
         headless=headless,
-        channel="chromium",
         session_root_dir=session_dir,
     )
     service.start_session()
-    yield service
-    service.close()
-    if os.path.exists(session_dir):
-        shutil.rmtree(session_dir, ignore_errors=True)
+    try:
+        _assert_engine_identity(service)
+        yield service
+    finally:
+        service.close()
+        if os.path.exists(session_dir):
+            shutil.rmtree(session_dir, ignore_errors=True)
 
 
 @pytest.fixture
@@ -95,13 +115,15 @@ def _module_open_sea_browser():
     service = BrowserService(
         platform="open_sea",
         headless=os.getenv("HEADLESS", "true").lower() in ("true", "1", "yes"),
-        channel="chromium",
         session_root_dir=session_dir,
     )
     service.start_session()
-    yield service
-    service.close()
-    shutil.rmtree(session_dir, ignore_errors=True)
+    try:
+        _assert_engine_identity(service)
+        yield service
+    finally:
+        service.close()
+        shutil.rmtree(session_dir, ignore_errors=True)
 
 
 @pytest.fixture

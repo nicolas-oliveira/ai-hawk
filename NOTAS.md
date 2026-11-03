@@ -105,7 +105,7 @@ Claude
 │ ├─● A3 perfil separado por motor
 │ ├─● A4 Firefox: Xvfb, ou headless real só explícito
 │ ├─● A5 clone: fluxo base da v1.5 + cenários explícitos
-│ ├─○ A6 fixtures hostis: onde estão, nada enfraquecido
+│ ├─● A6 fixtures hostis: onde estão, nada enfraquecido
 │ └─○ A7 3 execuções Firefox em Xvfb, relatório refeito
 │        → Turno: Nicolas
 │

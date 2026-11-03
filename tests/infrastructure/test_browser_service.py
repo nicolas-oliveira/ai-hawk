@@ -778,6 +778,17 @@ def test_firefox_xvfb_mode_and_runtime_metadata_both_engines(monkeypatch, tmp_pa
     assert cr_meta["xvfb_path"] == "/usr/bin/Xvfb"
 
 
+def test_browser_service_default_channel_is_chromium(monkeypatch, tmp_path):
+    """
+    Passo A6: Prova que BrowserService().channel ja tem 'chromium' como padrao
+    sem precisar chumbar channel='chromium' nas fixtures dos testes reais.
+    """
+    monkeypatch.delenv("BROWSER_CHANNEL", raising=False)
+    service = BrowserService(session_root_dir=str(tmp_path))
+    assert service.channel == "chromium"
+
+
+
 
 
 
