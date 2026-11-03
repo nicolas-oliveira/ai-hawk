@@ -4,7 +4,7 @@ on:
   push:
     branches: [ master, "feat/*" ]
   pull_request:
-    branches: [ master ]
+    branches: [ master, "feat/*" ]
 
 jobs:
   fast-tests:
@@ -27,7 +27,7 @@ jobs:
 
       - name: Fast Unit Tests (Domain & Application)
         run: |
-          .venv/bin/pytest tests/domain tests/application -v
+          .venv/bin/python -m pytest tests/domain tests/application -v
 
       - name: Mutation Testing (Domain & Application)
         run: |
