@@ -235,6 +235,42 @@ def test_slow_modal_opens_within_timeout_and_applies(
     assert app_service.last_abort_reason is None
 
 
+def test_slow_modal_exceeding_injected_timeout_triggers_strict_abort(
+    hostile_clone_server, hostile_browser, tmp_path
+):
+    """
+    Passo A1: Com visibility_timeout_ms=1000 injetado no motor (folgado para o restante
+    da navegacao) e modal lento configurado com delayMs=2500 no clone, o element_exists
+    estoura o prazo de abertura do modal e aciona parada estrita (MODAL_NOT_OPENED)
+    mantendo a vaga PENDING.
+    """
+    selectors = {
+        **_clone_selectors(),
+        "submit_confirmation": "[data-testid='modal-submission-success']",
+    }
+    scenario_url = f"{hostile_clone_server}/?scenario=slow-modal&delayMs=2500"
+
+    prev_timeout = hostile_browser.visibility_timeout_ms
+    hostile_browser.visibility_timeout_ms = 1000
+    try:
+        request = SearchRequest(
+            platform="linkedin_clone",
+            static_urls=[scenario_url],
+            selectors=selectors,
+            max_applications=5,
+        )
+        cache = JsonJobCache(str(tmp_path / "cache_slow_abort.json"))
+        app_service = AppService(hostile_browser, cache=cache)
+        jobs = app_service.run(request)
+    finally:
+        hostile_browser.visibility_timeout_ms = prev_timeout
+
+    assert len(jobs) == 1
+    assert jobs[0].status == JobStatus.PENDING
+    assert app_service.last_abort_reason is not None
+    assert "modal nao abriu" in app_service.last_abort_reason.lower()
+
+
 def test_submission_evidence_and_submitting_crash_recovery(
     hostile_clone_server, hostile_browser, tmp_path
 ):

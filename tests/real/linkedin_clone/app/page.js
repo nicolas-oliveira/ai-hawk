@@ -200,10 +200,16 @@ export default function Home() {
     setSubmitted(false);
     setWrapperVariant((prev) => (prev + 1) % 3);
     if (selectedJob?.slowModal) {
+      const params = new URLSearchParams(window.location.search);
+      const rawDelay = parseInt(params.get("delayMs") || "600", 10);
+      const modalDelayMs = Number.isFinite(rawDelay) && rawDelay > 0 ? rawDelay : 600;
       setTimeout(() => {
+        setStepLoading(true);
         setIsModalOpen(true);
-        setStepLoading(false);
-      }, 600);
+        setTimeout(() => {
+          setStepLoading(false);
+        }, 400);
+      }, modalDelayMs);
       return;
     }
     setStepLoading(true);

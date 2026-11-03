@@ -556,4 +556,40 @@ def test_main_cli_refuses_real_submission_without_cache():
     assert "Regra 1A" in (result.stderr + result.stdout)
 
 
+def test_default_visibility_timeout_is_3000ms_and_constructor_override(monkeypatch, temp_session_dir):
+    """
+    Passo A1: Garante que o prazo padrao de is_visible / element_exists voltou a 3000 ms
+    e que a injecao de visibility_timeout_ms no construtor do BrowserService sobrepoe
+    esse valor sem precisar de variavel de ambiente.
+    """
+    default_service = BrowserService(session_root_dir=temp_session_dir)
+    assert default_service.visibility_timeout_ms == 3000
+
+    observed_timeouts = []
+    monkeypatch.setattr(
+        default_service,
+        "_resolve_visible_locator",
+        lambda selector, timeout=5000: observed_timeouts.append(timeout) or object(),
+    )
+    assert default_service.is_visible("#modal") is True
+    assert observed_timeouts == [3000]
+
+    custom_service = BrowserService(
+        session_root_dir=temp_session_dir,
+        visibility_timeout_ms=1000,
+    )
+    assert custom_service.visibility_timeout_ms == 1000
+    custom_observed = []
+    monkeypatch.setattr(
+        custom_service,
+        "_resolve_visible_locator",
+        lambda selector, timeout=5000: custom_observed.append(timeout) or object(),
+    )
+    assert custom_service.element_exists("#modal") is True
+    assert custom_observed == [1000]
+    assert custom_service.is_visible("#modal", timeout=4500) is True
+    assert custom_observed == [1000, 4500]
+
+
+
 
