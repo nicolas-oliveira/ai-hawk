@@ -132,7 +132,7 @@ H. Ao fechar: homologue no commit exato com `git diff --stat` provando que `src/
 │ ├─● C1 confirmação vale mesmo com diálogo aberto
 │ ├─● C2 envio real exige submit_confirmation, sem palpite
 │ ├─● C3 falha ao gravar SUBMITTING: sem clique, PENDING
-│ ├─○ C4 lote para após MANUAL_REVIEW (decisão 5A)
+│ ├─● C4 lote para após MANUAL_REVIEW (decisão 5A)
 │ ├─○ C5 mutante 140 morto, mutação medida do zero
 │ │      → Turno: Agy
 │ ├─○ A1 prazo de visibilidade VOLTA a 3000 ms

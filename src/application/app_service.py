@@ -50,6 +50,9 @@ class AbortReason:
     MODAL_NOT_OPENED = "parada estrita: modal nao abriu em {url}"
     CHALLENGE_URL = "parada estrita: desafio na URL ({current}) em {url}"
     HISTORY_REQUIRED = "envio real exige historico (cache) ligado; nada foi enviado em {url}"
+    MANUAL_REVIEW_STOP = (
+        "parada estrita: vaga em revisao manual em {url}; confira antes de rodar de novo"
+    )
     HISTORY_WRITE_FAILED = (
         "falha ao gravar a intencao de envio no historico; nada foi enviado em {url}"
     )
@@ -605,6 +608,10 @@ class AppService:
         job.settle_submission(evidence)
         if job.status is JobStatus.APPLIED and evidence.modal_still_open:
             self._close_after_send(sel)
+        if job.status is JobStatus.MANUAL_REVIEW and request.strict_abort:
+            # 5A: o historico guarda a revisao ANTES da parada (o run nao grava vaga parada).
+            self._cache.put(job)
+            self._stop(AbortReason.MANUAL_REVIEW_STOP.format(url=job.url))
 
     def _close_after_send(self, sel: Dict[str, str]) -> None:
         """Envio ja confirmado: fechar o dialogo e cortesia. Falhar nao rebaixa o APPLIED."""

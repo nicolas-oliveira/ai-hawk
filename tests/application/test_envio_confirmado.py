@@ -153,13 +153,47 @@ def test_falha_ao_observar_o_envio_vira_revisao_manual():
     assert jobs[0].review_reason is ReviewReason.CONFIRMATION_MISSING
 
 
-def test_revisao_manual_nao_conta_no_freio_de_erros():
+def test_sem_parada_estrita_revisao_manual_segue_e_nao_conta_no_freio_de_erros():
+    browser = FakeBrowser(visible=ABERTA, click_raises={SEL["submit_button"]})
+
+    service, jobs = _rodar(browser, request=_request(strict_abort=False), vagas=(1, 2))
+
+    assert [j.status for j in jobs] == [JobStatus.MANUAL_REVIEW] * 2
+    assert service.last_abort_reason is None
+
+
+def test_revisao_manual_para_o_lote_com_parada_estrita():
     browser = FakeBrowser(visible=ABERTA, click_raises={SEL["submit_button"]})
 
     service, jobs = _rodar(browser, vagas=(1, 2))
 
-    assert [j.status for j in jobs] == [JobStatus.MANUAL_REVIEW] * 2
-    assert service.last_abort_reason is None
+    assert service.last_abort_reason == AbortReason.MANUAL_REVIEW_STOP.format(url=URL_VAGA)
+    assert AbortReason.MANUAL_REVIEW_STOP == (
+        "parada estrita: vaga em revisao manual em {url}; confira antes de rodar de novo"
+    )
+    assert browser.opened == ["https://x.com/s", URL_VAGA]
+    assert [j.status for j in jobs] == [JobStatus.MANUAL_REVIEW, JobStatus.PENDING]
+
+
+def test_revisao_manual_vai_ao_historico_antes_da_parada():
+    browser = FakeBrowser(visible=ABERTA, click_raises={SEL["submit_button"]})
+    cache = FakeCache()
+
+    _rodar(browser, cache, vagas=(1, 2))
+
+    assert cache.saved == [(URL_VAGA, JobStatus.MANUAL_REVIEW)]
+
+
+def test_sumario_pede_revisao_quando_o_lote_para():
+    browser = FakeBrowser(visible=ABERTA, click_raises={SEL["submit_button"]})
+    browser.job_cards = cards(1, 2)
+    service = AppService(browser, FakeCache())
+
+    linhas = AppController(service, reports_dir=None).execute(_request()).splitlines()
+
+    motivo = AbortReason.MANUAL_REVIEW_STOP.format(url=URL_VAGA)
+    assert f"Sessao interrompida:  {motivo}" in linhas
+    assert f"  - t | {URL_VAGA} | {ReviewReason.CLICK_FAILED}" in linhas
 
 
 def test_revisao_manual_fica_no_historico_e_nao_e_reenviada():
