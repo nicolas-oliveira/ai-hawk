@@ -27,6 +27,15 @@ SHORT_TIMEOUT_MS = 3000
 LOADER_TIMEOUT_MS = 5000
 
 
+class AbortReason:
+    """Razoes de parada do lote, num unico lugar. Formato fixo: o teste compara
+    contra estes valores, e quem le o relatorio ve sempre o mesmo texto."""
+
+    UNEXPECTED_SCREEN = "parada estrita: tela inesperada ({indicator}) em {url}"
+    DOMAIN_DEVIATION = "parada estrita: desvio de dominio ({expected} -> {current}) em {url}"
+    CONSECUTIVE_ERRORS = "{count} erros consecutivos (limite {limit})"
+
+
 class BrowserPort(Protocol):
     """Contrato das capacidades de navegador exigidas pela camada de aplicacao.
 
@@ -275,9 +284,8 @@ class AppService:
             if job.status == JobStatus.ERROR:
                 consecutive_errors += 1
                 if consecutive_errors >= request.max_consecutive_errors:
-                    self.last_abort_reason = (
-                        f"{consecutive_errors} erros consecutivos "
-                        f"(limite {request.max_consecutive_errors})"
+                    self.last_abort_reason = AbortReason.CONSECUTIVE_ERRORS.format(
+                        count=consecutive_errors, limit=request.max_consecutive_errors
                     )
                     logger.error("Sessao interrompida: %s.", self.last_abort_reason)
                     break
@@ -339,10 +347,7 @@ class AppService:
             remembered = self._cache.get(job)
             if remembered is None:
                 continue
-            job.status = (
-                JobStatus.ALREADY_APPLIED if remembered is JobStatus.APPLIED else remembered
-            )
-            job.from_cache = True
+            job.restore_from_history(remembered)
 
     # ------------------------------------------------- v0.3: listagem de vagas
     def _collect_jobs(self, request: SearchRequest) -> List[Job]:
@@ -401,14 +406,14 @@ class AppService:
                 # Sem Easy Apply (candidatura externa ou ja enviada): fora do
                 # escopo da v1.0. Decisao a validar pelo QA/Nicolas.
                 logger.info("Sem botao de candidatura visivel (%s): %s", sel["apply_button"], job.url)
-                job.status = JobStatus.SKIPPED_COMPLEX
+                job.mark_skipped_complex()
                 return
 
             self._browser.click(sel["apply_button"])
-            job.status = self._run_modal(job, request)
+            self._run_modal(job, request)
         except Exception:
             logger.exception("Erro ao processar %s", job.url)
-            job.status = JobStatus.ERROR
+            job.mark_error()
             self._discard_quietly(sel)
 
     @staticmethod
@@ -423,28 +428,30 @@ class AppService:
             return False
         indicator = request.selectors["abort_indicator"]
         if self._browser.element_exists(indicator):
-            self.last_abort_reason = f"parada estrita: tela inesperada ({indicator}) em {url}"
+            self.last_abort_reason = AbortReason.UNEXPECTED_SCREEN.format(
+                indicator=indicator, url=url
+            )
         else:
             expected, current = self._host(url), self._host(self._browser.get_current_url())
             if not current or current == expected:
                 return False
-            self.last_abort_reason = (
-                f"parada estrita: desvio de dominio ({expected} -> {current}) em {url}"
+            self.last_abort_reason = AbortReason.DOMAIN_DEVIATION.format(
+                expected=expected, current=current, url=url
             )
         logger.error("Sessao interrompida: %s.", self.last_abort_reason)
         return True
 
-    def _run_modal(self, job: Job, request: SearchRequest) -> JobStatus:
+    def _run_modal(self, job: Job, request: SearchRequest) -> None:
         """Avanco linear do modal. Regra 3C: inspeciona o DOM ANTES de qualquer
         clique de avanco (Next, Review ou Submit). Shadow Mode: no Submit nao
-        clica; descarta e devolve SIMULATED."""
+        clica; descarta e marca SIMULATED. Parada estrita deixa a vaga PENDING."""
         sel = request.selectors
         modal = sel["modal_container"]
 
         last_signature = ""
         for _ in range(MAX_MODAL_STEPS):
             if self._strict_abort(job.url, request):
-                return JobStatus.PENDING
+                return
 
             # Guarda de progresso: o clique de avanco nao mudou o modal (validacao
             # silenciosa, passo repetido). Descarta sem esperar os 15 passos.
@@ -452,20 +459,25 @@ class AppService:
             if signature and signature == last_signature:
                 logger.warning("Modal sem progresso entre dois passos; descartando.")
                 self._discard(sel)
-                return JobStatus.ERROR
+                job.mark_error()
+                return
             last_signature = signature
             if self._browser.has_empty_required_inputs(modal):
                 logger.info("Regra 3C: campo obrigatorio vazio no passo; descartando (%s).", modal)
                 self._discard(sel)
-                return JobStatus.SKIPPED_COMPLEX
+                job.mark_skipped_complex()
+                return
 
             if self._browser.element_exists(sel["submit_button"]):
                 if request.shadow_mode:
                     logger.info("Shadow Mode: Submit NAO clicado em %s.", job.url)
                     self._discard(sel)
-                    return JobStatus.SIMULATED
+                    job.mark_simulated()
+                    return
                 self._browser.click(sel["submit_button"])
-                return JobStatus.APPLIED
+                job.mark_submitting()
+                job.mark_applied()
+                return
 
             # `review_button` e opcional: nem toda plataforma tem esse passo.
             advance = next(
@@ -479,13 +491,14 @@ class AppService:
             if advance is None:
                 logger.warning("Passo do modal sem botao de avanco reconhecido; descartando.")
                 self._discard(sel)
-                return JobStatus.ERROR
+                job.mark_error()
+                return
 
             self._browser.click(advance)
 
         logger.warning("Limite de %d passos do modal excedido; descartando.", MAX_MODAL_STEPS)
         self._discard(sel)
-        return JobStatus.ERROR
+        job.mark_error()
 
     def _discard(self, sel: Dict[str, str]) -> None:
         """Sequencia segura: Fechar -> Descartar (se a confirmacao aparecer)."""

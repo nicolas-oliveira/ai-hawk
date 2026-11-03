@@ -73,14 +73,15 @@ def test_logs_do_modal_e_da_parada(caplog):
     b.has_empty_required_inputs.return_value = True
     b.modal_signature.return_value = "s"
     svc = AppService(b)
-    job = Job(url="https://x.com/1/", platform="p", title="", company="")
-    svc._run_modal(job, _req())
+    def novo():  # cada passo do modal fecha a vaga: uma vaga nova por chamada
+        return Job(url="https://x.com/1/", platform="p", title="", company="")
+    svc._run_modal(novo(), _req())
     assert "Regra 3C: campo obrigatorio vazio no passo; descartando (.jobs-easy-apply-modal)." in caplog.text
     b.has_empty_required_inputs.return_value = False
-    svc._run_modal(job, _req(shadow_mode=True))
+    svc._run_modal(novo(), _req(shadow_mode=True))
     assert "Shadow Mode: Submit NAO clicado em https://x.com/1/." in caplog.text
     b.element_exists.side_effect = lambda s: s == LINKEDIN_DEFAULT_SELECTORS["next_button"]
-    svc._run_modal(job, _req())
+    svc._run_modal(novo(), _req())
     assert "Modal sem progresso entre dois passos; descartando." in caplog.text
 
 
