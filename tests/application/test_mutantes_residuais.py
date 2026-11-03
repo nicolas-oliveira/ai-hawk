@@ -53,12 +53,15 @@ def test_termo_booleano_rejeita_aspas_e_parenteses(termo):
 
 
 def test_mensagem_strict_abort_exata():
-    with pytest.raises(ValueError, match=r"^strict_abort exige selectors\['abort_indicator'\]\.$"):
-        SearchRequest(platform="p", static_urls=["u"], selectors=LINKEDIN_DEFAULT_SELECTORS, strict_abort=True)
+    sem_desafio = {k: v for k, v in LINKEDIN_DEFAULT_SELECTORS.items() if not k.startswith("abort_")}
+    esperado = r"^strict_abort exige selectors\['abort_indicator'\] ou selectors\['abort_url_pattern'\]\.$"
+    with pytest.raises(ValueError, match=esperado):
+        SearchRequest(platform="p", static_urls=["u"], selectors=sem_desafio, strict_abort=True)
 
 
 def test_motivo_exato_da_parada_estrita():
     b = MagicMock(); b.element_exists.return_value = True
+    b.get_current_url.return_value = "https://x.com/1/"
     svc = AppService(b)
     sel = {**LINKEDIN_DEFAULT_SELECTORS, "abort_indicator": "#cap"}
     req = SearchRequest(platform="p", static_urls=["u"], selectors=sel, strict_abort=True)

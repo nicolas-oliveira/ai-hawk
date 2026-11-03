@@ -1,3 +1,4 @@
+import re
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Sequence
 from urllib.parse import quote, urlencode
@@ -26,7 +27,14 @@ OPTIONAL_SELECTOR_KEYS = (
     "overlay_dismiss",
     # Tela inesperada (checkpoint, captcha): com `strict_abort` o lote para na hora.
     "abort_indicator",
+    # Regex (re.search, sem diferenciar caixa) sobre a URL atual: desafio por rota.
+    "abort_url_pattern",
 )
+
+# Rotas de desafio (checkpoint, captcha, trafego incomum, verificacao de telefone).
+CHALLENGE_URL_PATTERN = r"/(checkpoint|captcha|unusual-traffic|verify-phone)(/|\?|$)"
+# Marcador que as paginas de bloqueio do clone exibem (so a presenca e lida).
+CHALLENGE_MARKER = "[data-aihawk-challenge]"
 
 # Perfil de seletores do LinkedIn (Easy Apply). As chaves sao genericas e
 # compartilhadas por todas as plataformas; so os valores mudam por site.
@@ -47,6 +55,9 @@ LINKEDIN_DEFAULT_SELECTORS: Dict[str, str] = {
     "close_button": "button[aria-label='Dismiss']",
     "discard_button": "button[data-control-name='discard_application_confirm_btn']",
     "modal_container": ".jobs-easy-apply-modal",
+    # HIPOTESES nao validadas (sem LinkedIn real neste portao).
+    "abort_url_pattern": CHALLENGE_URL_PATTERN,
+    "abort_indicator": "iframe[src*='captcha' i]",
 }
 
 
@@ -68,6 +79,8 @@ LINKEDIN_CLONE_SELECTORS: Dict[str, str] = {
     "close_button": "button[aria-label='Dismiss']",
     "discard_button": "button[aria-label*='Discard' i]",
     "modal_container": "[role='dialog']",
+    "abort_url_pattern": CHALLENGE_URL_PATTERN,
+    "abort_indicator": CHALLENGE_MARKER,
 }
 
 # OrangeHRM (modulo Recruitment, demo open-source). NAO validado em DOM real:
@@ -83,6 +96,7 @@ ORANGEHRM_SELECTORS: Dict[str, str] = {
     "close_button": "button.oxd-dialog-close-button",
     "discard_button": "button.oxd-button--ghost",
     "modal_container": ".oxd-dialog-container-default",
+    "abort_url_pattern": CHALLENGE_URL_PATTERN,
 }
 
 # Sandboxes publicos do mar aberto (somente leitura: sem login, sem envio).
@@ -97,6 +111,7 @@ _LISTING_ONLY = {
     "close_button": _INERT,
     "discard_button": _INERT,
     "modal_container": _INERT,
+    "abort_url_pattern": CHALLENGE_URL_PATTERN,
 }
 
 # books.toscrape.com: 20 cartoes `article.product_pod` por pagina, titulo e link
@@ -297,8 +312,13 @@ class SearchRequest:
             raise ValueError("SearchRequest.max_applications deve ser >= 1.")
         if self.max_consecutive_errors < 1:
             raise ValueError("SearchRequest.max_consecutive_errors deve ser >= 1.")
-        if self.strict_abort and not self.selectors.get("abort_indicator"):
-            raise ValueError("strict_abort exige selectors['abort_indicator'].")
+        if self.strict_abort and not (
+            self.selectors.get("abort_indicator") or self.selectors.get("abort_url_pattern")
+        ):
+            raise ValueError(
+                "strict_abort exige selectors['abort_indicator'] ou selectors['abort_url_pattern']."
+            )
+        self._validate_url_pattern(self.selectors.get("abort_url_pattern"))
         missing = [key for key in REQUIRED_SELECTOR_KEYS if not self.selectors.get(key)]
         if missing:
             raise ValueError(
@@ -306,3 +326,12 @@ class SearchRequest:
             )
         # Copia defensiva: evita mutar o dicionario compartilhado do modulo.
         self.selectors = dict(self.selectors)
+
+    @staticmethod
+    def _validate_url_pattern(pattern: Optional[str]) -> None:
+        if not pattern:
+            return
+        try:
+            re.compile(pattern)
+        except re.error as exc:
+            raise ValueError(f"selectors['abort_url_pattern'] nao e uma regex valida: {exc}.") from exc

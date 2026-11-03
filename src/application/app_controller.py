@@ -50,6 +50,8 @@ class AppController:
             aborted_reason=reason if isinstance(reason, str) else None,
         )
         path = self._export_telemetry(report, finished)
+        if isinstance(reason, str) and reason:
+            summary += f"\nSessao interrompida:  {reason}"
         if path:
             summary += f"\nTelemetria:           {path}"
         return summary

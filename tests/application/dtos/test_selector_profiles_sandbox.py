@@ -46,7 +46,8 @@ def test_perfil_orangehrm_vagas_publicas_exato():
 
 def test_valores_exatos_dos_perfis_de_producao():
     from src.application.dtos.search_request import (
-        LINKEDIN_CLONE_SELECTORS as C, LINKEDIN_DEFAULT_SELECTORS as L, ORANGEHRM_SELECTORS as O)
+        CHALLENGE_URL_PATTERN, LINKEDIN_CLONE_SELECTORS as C,
+        LINKEDIN_DEFAULT_SELECTORS as L, ORANGEHRM_SELECTORS as O)
     assert L == {
         "jobs_list_container": ".jobs-search-results-list",
         "job_card": ".job-card-container",
@@ -58,6 +59,8 @@ def test_valores_exatos_dos_perfis_de_producao():
         "close_button": "button[aria-label='Dismiss']",
         "discard_button": "button[data-control-name='discard_application_confirm_btn']",
         "modal_container": ".jobs-easy-apply-modal",
+        "abort_url_pattern": CHALLENGE_URL_PATTERN,
+        "abort_indicator": "iframe[src*='captcha' i]",
     }
     assert C == {
         "jobs_list_container": "section[aria-label='Jobs List']",
@@ -70,6 +73,8 @@ def test_valores_exatos_dos_perfis_de_producao():
         "close_button": "button[aria-label='Dismiss']",
         "discard_button": "button[aria-label*='Discard' i]",
         "modal_container": "[role='dialog']",
+        "abort_url_pattern": CHALLENGE_URL_PATTERN,
+        "abort_indicator": "[data-aihawk-challenge]",
     }
     assert O == {
         "jobs_list_container": ".oxd-table-body",
@@ -82,6 +87,7 @@ def test_valores_exatos_dos_perfis_de_producao():
         "close_button": "button.oxd-dialog-close-button",
         "discard_button": "button.oxd-button--ghost",
         "modal_container": ".oxd-dialog-container-default",
+        "abort_url_pattern": CHALLENGE_URL_PATTERN,
     }
 
 

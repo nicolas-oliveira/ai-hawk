@@ -113,9 +113,9 @@ def test_sem_strict_ignora_o_indicador():
 
 
 def test_strict_abort_exige_indicador():
+    sem_desafio = {k: v for k, v in LINKEDIN_DEFAULT_SELECTORS.items() if not k.startswith("abort_")}
     with pytest.raises(ValueError, match="abort_indicator"):
-        SearchRequest(platform="p", static_urls=["u"],
-                      selectors=LINKEDIN_DEFAULT_SELECTORS, strict_abort=True)
+        SearchRequest(platform="p", static_urls=["u"], selectors=sem_desafio, strict_abort=True)
 
 
 def test_padroes_novos_desligados():

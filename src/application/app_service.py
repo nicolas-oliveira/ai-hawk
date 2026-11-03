@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import re
 import time
 from urllib.parse import urlsplit
 from dataclasses import dataclass
@@ -27,6 +28,11 @@ SHORT_TIMEOUT_MS = 3000
 LOADER_TIMEOUT_MS = 5000
 
 
+def url_matches_pattern(url: str, pattern: str) -> bool:
+    """True se a regex (sem diferenciar caixa) casa em algum ponto da URL."""
+    return re.search(pattern, url or "", re.IGNORECASE) is not None
+
+
 class AbortReason:
     """Razoes de parada do lote, num unico lugar. Formato fixo: o teste compara
     contra estes valores, e quem le o relatorio ve sempre o mesmo texto."""
@@ -35,6 +41,7 @@ class AbortReason:
     DOMAIN_DEVIATION = "parada estrita: desvio de dominio ({expected} -> {current}) em {url}"
     CONSECUTIVE_ERRORS = "{count} erros consecutivos (limite {limit})"
     MODAL_NOT_OPENED = "parada estrita: modal nao abriu em {url}"
+    CHALLENGE_URL = "parada estrita: desafio na URL ({current}) em {url}"
 
 
 class BrowserPort(Protocol):
@@ -434,25 +441,38 @@ class AppService:
         return urlsplit(url or "").netloc.lower().removeprefix("www.")
 
     def _strict_abort(self, url: str, request: SearchRequest) -> bool:
-        """Parada estrita: tela inesperada (checkpoint/captcha) ou desvio de
-        dominio encerra o LOTE. Nao clica em nada (nem descarta): a vaga fica
-        PENDING e o motivo registrado. `url` = pagina que o motor tentou abrir."""
+        """Parada estrita: desafio (checkpoint, captcha, trafego incomum, telefone),
+        tela inesperada ou desvio de dominio encerra o LOTE. Nao clica em nada
+        (nem descarta): a vaga fica PENDING e o motivo registrado. Sem resolucao
+        automatica. `url` = pagina que o motor tentou abrir."""
         if not request.strict_abort:
             return False
-        indicator = request.selectors["abort_indicator"]
-        if self._browser.element_exists(indicator):
-            self.last_abort_reason = AbortReason.UNEXPECTED_SCREEN.format(
-                indicator=indicator, url=url
-            )
-        else:
-            expected, current = self._host(url), self._host(self._browser.get_current_url())
-            if not current or current == expected:
-                return False
-            self.last_abort_reason = AbortReason.DOMAIN_DEVIATION.format(
-                expected=expected, current=current, url=url
-            )
-        logger.error("Sessao interrompida: %s.", self.last_abort_reason)
-        return True
+        for check in (self._challenge_by_url, self._challenge_by_screen, self._domain_deviation):
+            reason = check(url, request.selectors)
+            if reason:
+                self._stop(reason)
+                return True
+        return False
+
+    def _challenge_by_url(self, url: str, sel: Dict[str, str]) -> Optional[str]:
+        """Barato e sem espera: so olha a URL atual."""
+        pattern = sel.get("abort_url_pattern")
+        current = self._browser.get_current_url()
+        if pattern and url_matches_pattern(current, pattern):
+            return AbortReason.CHALLENGE_URL.format(current=current, url=url)
+        return None
+
+    def _challenge_by_screen(self, url: str, sel: Dict[str, str]) -> Optional[str]:
+        indicator = sel.get("abort_indicator")
+        if indicator and self._browser.element_exists(indicator):
+            return AbortReason.UNEXPECTED_SCREEN.format(indicator=indicator, url=url)
+        return None
+
+    def _domain_deviation(self, url: str, sel: Dict[str, str]) -> Optional[str]:
+        expected, current = self._host(url), self._host(self._browser.get_current_url())
+        if not current or current == expected:
+            return None
+        return AbortReason.DOMAIN_DEVIATION.format(expected=expected, current=current, url=url)
 
     def _run_modal(self, job: Job, request: SearchRequest) -> None:
         """Avanco linear do modal. Regra 3C: inspeciona o DOM ANTES de qualquer
