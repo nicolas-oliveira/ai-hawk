@@ -21,6 +21,7 @@ SEMANTIC_CLONE_SELECTORS: Dict[str, str] = {
     "submit_button": "button[aria-label='Submit application']",
     "close_button": "button[aria-label='Dismiss']",
     "discard_button": "button[aria-label='Dismiss']",
+    "submit_confirmation": "[data-testid='modal-submission-success']",
     "abort_indicator": "[data-aihawk-challenge]",
     "abort_url_pattern": r"/(checkpoint|captcha|unusual-traffic|verify-phone)(/|\?|$)",
 }

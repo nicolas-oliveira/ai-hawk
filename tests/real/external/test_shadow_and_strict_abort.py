@@ -5,10 +5,10 @@ Validados contra o clone local do LinkedIn (http://localhost:3000).
 """
 import pytest
 
-from src.application.app_service import AppService, JsonJobCache
+from src.application.app_service import AbortReason, AppService, JsonJobCache
 from src.application.dtos import search_request as search_request_module
 from src.application.dtos.search_request import SearchRequest
-from src.domain.entities.job import Job, JobStatus
+from src.domain.entities.job import Job, JobStatus, ReviewReason
 from tests.real.external.test_navigation_hostile import SEMANTIC_CLONE_SELECTORS
 
 pytestmark = pytest.mark.external
@@ -271,48 +271,185 @@ def test_slow_modal_exceeding_injected_timeout_triggers_strict_abort(
     assert "modal nao abriu" in app_service.last_abort_reason.lower()
 
 
+def test_base_flow_confirmation_inside_open_modal_applies_and_closes_dialog(
+    hostile_clone_server, hostile_browser, tmp_path
+):
+    """
+    Passo A5 (C1): No fluxo base da v1.5 (sem ?scenario=), o modal permanece aberto
+    apos o Submit exibindo [data-testid='modal-submission-success'] dentro do dialogo.
+    A vaga termina APPLIED e o AppService fecha o dialogo clicando em close_button.
+    """
+    selectors = _clone_selectors()
+    request = SearchRequest(
+        platform="linkedin_clone",
+        static_urls=[hostile_clone_server],
+        selectors=selectors,
+        max_applications=1,
+    )
+    cache = JsonJobCache(str(tmp_path / "cache_base_c1.json"))
+    app_service = AppService(hostile_browser, cache=cache)
+    jobs = app_service.run(request)
+
+    page = hostile_browser.get_page()
+    assert len(jobs) == 2
+    assert jobs[0].status == JobStatus.APPLIED
+    assert app_service.last_abort_reason is None
+    assert page.locator(selectors["modal_container"]).count() == 0
+
+
+def test_close_on_submit_scenario_applies_when_modal_closes_with_banner_outside(
+    hostile_clone_server, hostile_browser, tmp_path
+):
+    """
+    Passo A5 (?scenario=close-on-submit): O modal fecha sozinho no Submit e o banner
+    de confirmacao aparece nos detalhes da vaga fora do modal -> APPLIED sem precisar
+    clicar em close_button.
+    """
+    selectors = _clone_selectors()
+    request = SearchRequest(
+        platform="linkedin_clone",
+        static_urls=[f"{hostile_clone_server}/?scenario=close-on-submit"],
+        selectors=selectors,
+        max_applications=1,
+    )
+    cache = JsonJobCache(str(tmp_path / "cache_close_on_submit.json"))
+    app_service = AppService(hostile_browser, cache=cache)
+    jobs = app_service.run(request)
+
+    assert len(jobs) == 1
+    assert jobs[0].status == JobStatus.APPLIED
+    assert app_service.last_abort_reason is None
+
+
+def test_no_confirm_scenario_marks_manual_review_and_halts_batch_in_strict_mode(
+    hostile_clone_server, hostile_browser, tmp_path
+):
+    """
+    Passo A5 (?scenario=no-confirm + C4): O modal fecha apos o Submit sem elemento de
+    confirmacao -> vaga vira MANUAL_REVIEW (CONFIRMATION_MISSING), e gravada no cache
+    antes da parada, e o lote para com MANUAL_REVIEW_STOP sem abrir a segunda vaga.
+    """
+    selectors = _clone_selectors()
+    cache = JsonJobCache(str(tmp_path / "cache_no_confirm.json"))
+    request = SearchRequest(
+        platform="linkedin_clone",
+        static_urls=[f"{hostile_clone_server}/?scenario=no-confirm"],
+        selectors=selectors,
+        max_applications=5,
+        strict_abort=True,
+    )
+    app_service = AppService(hostile_browser, cache=cache)
+    jobs = app_service.run(request)
+
+    assert len(jobs) == 2
+    assert jobs[0].status == JobStatus.MANUAL_REVIEW
+    assert jobs[0].review_reason == ReviewReason.CONFIRMATION_MISSING
+    assert jobs[1].status == JobStatus.PENDING
+    assert app_service.last_abort_reason == AbortReason.MANUAL_REVIEW_STOP.format(url=jobs[0].url)
+    reloaded = JsonJobCache(str(tmp_path / "cache_no_confirm.json"))
+    assert reloaded.get(jobs[0].url) == JobStatus.MANUAL_REVIEW
+
+
+def test_stuck_submit_scenario_marks_manual_review_and_halts_batch_in_strict_mode(
+    hostile_clone_server, hostile_browser, tmp_path
+):
+    """
+    Passo A5 (?scenario=stuck-submit + C4): O modal permanece aberto apos o Submit sem
+    confirmacao -> vaga vira MANUAL_REVIEW (MODAL_STILL_OPEN) e o lote para na hora
+    com MANUAL_REVIEW_STOP sem abrir a segunda vaga.
+    """
+    selectors = _clone_selectors()
+    cache = JsonJobCache(str(tmp_path / "cache_stuck_submit.json"))
+    request = SearchRequest(
+        platform="linkedin_clone",
+        static_urls=[f"{hostile_clone_server}/?scenario=stuck-submit"],
+        selectors=selectors,
+        max_applications=5,
+        strict_abort=True,
+    )
+    app_service = AppService(hostile_browser, cache=cache)
+    jobs = app_service.run(request)
+
+    assert len(jobs) == 2
+    assert jobs[0].status == JobStatus.MANUAL_REVIEW
+    assert jobs[0].review_reason == ReviewReason.MODAL_STILL_OPEN
+    assert jobs[1].status == JobStatus.PENDING
+    assert app_service.last_abort_reason == AbortReason.MANUAL_REVIEW_STOP.format(url=jobs[0].url)
+    reloaded = JsonJobCache(str(tmp_path / "cache_stuck_submit.json"))
+    assert reloaded.get(jobs[0].url) == JobStatus.MANUAL_REVIEW
+
+
+def test_real_submission_without_submit_confirmation_refuses_before_opening_any_url(
+    hostile_clone_server, hostile_browser, tmp_path
+):
+    """
+    Passo A5 (C2): Envio real (shadow_mode=False) sem 'submit_confirmation' no perfil
+    de seletores recusa o lote no inicio do run() com SUBMIT_CONFIRMATION_REQUIRED
+    sem abrir nenhuma URL.
+    """
+    selectors = dict(_clone_selectors())
+    selectors.pop("submit_confirmation", None)
+
+    hostile_browser.navigate("about:blank")
+    cache = JsonJobCache(str(tmp_path / "cache_c2.json"))
+    request = SearchRequest(
+        platform="linkedin_clone",
+        static_urls=[hostile_clone_server],
+        selectors=selectors,
+        max_applications=5,
+        shadow_mode=False,
+    )
+    app_service = AppService(hostile_browser, cache=cache)
+    jobs = app_service.run(request)
+
+    assert jobs == []
+    assert app_service.last_abort_reason == AbortReason.SUBMIT_CONFIRMATION_REQUIRED
+    assert hostile_browser.get_current_url() == "about:blank"
+
+
+def test_history_write_failure_on_submitting_discards_modal_without_submit_click(
+    hostile_clone_server, hostile_browser, tmp_path
+):
+    """
+    Passo A5 (C3): Se record_submitting falhar em disco (pai do arquivo de cache e um
+    arquivo regular gerando OSError), o motor NAO clica em Submit, descarta o dialogo,
+    mantem a vaga PENDING, desfaz SUBMITTING em memoria no cache e para o lote com
+    HISTORY_WRITE_FAILED.
+    """
+    blocking_parent = tmp_path / "regular_file_not_dir"
+    blocking_parent.write_text("bloqueio de diretorio pai", encoding="utf-8")
+    broken_cache_path = blocking_parent / "jobs_history.json"
+    cache = JsonJobCache(str(broken_cache_path))
+
+    selectors = _clone_selectors()
+    request = SearchRequest(
+        platform="linkedin_clone",
+        static_urls=[hostile_clone_server],
+        selectors=selectors,
+        max_applications=5,
+    )
+    app_service = AppService(hostile_browser, cache=cache)
+    jobs = app_service.run(request)
+
+    page = hostile_browser.get_page()
+    assert len(jobs) == 2
+    assert all(j.status == JobStatus.PENDING for j in jobs)
+    assert cache.get(jobs[0].url) is None
+    assert app_service.last_abort_reason == AbortReason.HISTORY_WRITE_FAILED.format(url=jobs[0].url)
+    assert page.evaluate("() => window.sessionStorage.getItem('modal_submission_success')") is None
+
+
 def test_submission_evidence_and_submitting_crash_recovery(
     hostile_clone_server, hostile_browser, tmp_path
 ):
     """
     Valida no navegador real:
-    1. Submit com modal que nao fecha -> MANUAL_REVIEW (nunca APPLIED nem ERROR).
-    2. Submit sem confirmacao visivel -> MANUAL_REVIEW.
-    3. Vaga gravada como SUBMITTING antes de reinicio -> vira MANUAL_REVIEW sem reabrir.
-    4. Regra 1A: envio real sem cache para no Submit com last_abort_reason e vaga PENDING.
+    1. Crash recovery: SUBMITTING persistido no cache antes de reinicio -> MANUAL_REVIEW sem reabrir.
+    2. Regra 1A: envio real sem cache para no Submit com last_abort_reason e vaga PENDING.
     """
-    base_selectors = {
-        **_clone_selectors(),
-        "submit_confirmation": "[data-testid='modal-submission-success']",
-    }
+    base_selectors = _clone_selectors()
 
-    # 1. Submit com modal que nao fecha -> MANUAL_REVIEW
-    cache_stuck = JsonJobCache(str(tmp_path / "cache_stuck.json"))
-    req_stuck = SearchRequest(
-        platform="linkedin_clone",
-        static_urls=[f"{hostile_clone_server}/?scenario=stuck-submit"],
-        selectors=base_selectors,
-        max_applications=1,
-    )
-    svc_stuck = AppService(hostile_browser, cache=cache_stuck)
-    jobs_stuck = svc_stuck.run(req_stuck)
-    assert len(jobs_stuck) == 1
-    assert jobs_stuck[0].status == JobStatus.MANUAL_REVIEW
-
-    # 2. Submit sem elemento de confirmacao -> MANUAL_REVIEW
-    cache_noconf = JsonJobCache(str(tmp_path / "cache_noconf.json"))
-    req_noconf = SearchRequest(
-        platform="linkedin_clone",
-        static_urls=[f"{hostile_clone_server}/?scenario=no-confirm"],
-        selectors=base_selectors,
-        max_applications=1,
-    )
-    svc_noconf = AppService(hostile_browser, cache=cache_noconf)
-    jobs_noconf = svc_noconf.run(req_noconf)
-    assert len(jobs_noconf) == 1
-    assert jobs_noconf[0].status == JobStatus.MANUAL_REVIEW
-
-    # 3. Crash recovery: SUBMITTING persistido no cache antes de reinicio -> MANUAL_REVIEW sem reabrir
+    # 1. Crash recovery: SUBMITTING persistido no cache antes de reinicio -> MANUAL_REVIEW sem reabrir
     cache_crash = JsonJobCache(str(tmp_path / "cache_crash.json"))
     job_1_url = f"{hostile_clone_server}/?jobId=job-1"
     dangling_job = Job(url=job_1_url, platform="linkedin_clone", title="Vaga 1", company="Empresa Acme")
@@ -329,8 +466,9 @@ def test_submission_evidence_and_submitting_crash_recovery(
     jobs_crash = svc_crash.run(req_crash)
     by_url = {j.url: j for j in jobs_crash}
     assert by_url[job_1_url].status == JobStatus.MANUAL_REVIEW
+    assert by_url[job_1_url].review_reason == ReviewReason.INTERRUPTED_SUBMISSION
 
-    # 4. Regra 1A: envio real sem cache para no Submit e mantem vaga PENDING
+    # 2. Regra 1A: envio real sem cache para no Submit e mantem vaga PENDING
     req_no_cache = SearchRequest(
         platform="linkedin_clone",
         static_urls=[hostile_clone_server],
@@ -340,4 +478,4 @@ def test_submission_evidence_and_submitting_crash_recovery(
     svc_no_cache = AppService(hostile_browser, cache=None)
     jobs_no_cache = svc_no_cache.run(req_no_cache)
     assert jobs_no_cache[0].status == JobStatus.PENDING
-    assert svc_no_cache.last_abort_reason is not None
+    assert svc_no_cache.last_abort_reason == AbortReason.HISTORY_REQUIRED.format(url=jobs_no_cache[0].url)

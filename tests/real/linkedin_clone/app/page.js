@@ -69,6 +69,15 @@ const SCENARIO_JOBS = {
     complex: false,
     noConfirmSubmit: true,
   },
+  "job-close-on-submit": {
+    id: "job-close-on-submit",
+    title: "Vaga Fecha Modal no Submit",
+    company: "AutoClose Corp",
+    location: "Remoto",
+    description: "Vaga cujo modal fecha no Submit e exibe confirmação fora do modal.",
+    complex: false,
+    closeOnSubmit: true,
+  },
 };
 
 const ALL_JOBS = [...INITIAL_JOBS, ...Object.values(SCENARIO_JOBS)];
@@ -84,10 +93,13 @@ function resolveScenarioJobs(scenario) {
     return [SCENARIO_JOBS["job-slow-modal"]];
   }
   if (scenario === "stuck-submit") {
-    return [SCENARIO_JOBS["job-stuck-submit"]];
+    return [SCENARIO_JOBS["job-stuck-submit"], INITIAL_JOBS[0]];
   }
   if (scenario === "no-confirm") {
-    return [SCENARIO_JOBS["job-no-confirm"]];
+    return [SCENARIO_JOBS["job-no-confirm"], INITIAL_JOBS[0]];
+  }
+  if (scenario === "close-on-submit") {
+    return [SCENARIO_JOBS["job-close-on-submit"]];
   }
   return INITIAL_JOBS;
 }
@@ -236,17 +248,28 @@ export default function Home() {
       if (selectedJob?.stuckSubmit) {
         return;
       }
-      setIsModalOpen(false);
       if (selectedJob?.noConfirmSubmit) {
+        setIsModalOpen(false);
         setSubmitted(false);
         return;
       }
+      if (selectedJob?.closeOnSubmit) {
+        setIsModalOpen(false);
+        setSubmitted(true);
+        window.sessionStorage.setItem(
+          "modal_submission_success",
+          "Candidatura enviada com sucesso!"
+        );
+        return;
+      }
+      // Fluxo base da v1.5 (sem ?scenario=): modal permanece aberto com
+      // [data-testid="modal-submission-success"] dentro do dialogo ate a aplicacao fecha-lo.
       setSubmitted(true);
       window.sessionStorage.setItem(
         "modal_submission_success",
         "Candidatura enviada com sucesso!"
       );
-    }, 800);
+    }, 1000);
   };
 
   const handleCloseModal = () => {
