@@ -508,3 +508,52 @@ def test_browser_engine_chromium_does_not_import_invisible_playwright(monkeypatc
         BrowserService(engine="firefox", session_root_dir=temp_session_dir)
 
 
+def test_cli_options_rules_1a_and_2a(monkeypatch):
+    """Valida regras 1A (envio real exige cache) e 2A (strict_abort ligado por padrao) na CLI."""
+    from src.main import resolve_cli_options
+
+    monkeypatch.delenv("SHADOW_MODE", raising=False)
+    monkeypatch.delenv("STRICT_ABORT", raising=False)
+    monkeypatch.delenv("JOB_CACHE_ENABLED", raising=False)
+    monkeypatch.delenv("JOB_CACHE_PATH", raising=False)
+
+    # Padrao: strict_abort=True, shadow_mode=False, cache habilitado
+    opts_default = resolve_cli_options([])
+    assert opts_default["strict_abort"] is True
+    assert opts_default["shadow_mode"] is False
+    assert opts_default["cache_enabled"] is True
+    assert opts_default["cache_path"].endswith("jobs_history.json")
+
+    # 2A: desligar strict_abort exige flag explicita
+    opts_no_strict = resolve_cli_options(["--no-strict-abort"])
+    assert opts_no_strict["strict_abort"] is False
+
+    # 1A: envio real sem cache falha na hora
+    with pytest.raises(ValueError) as exc_1a:
+        resolve_cli_options(["--no-cache"])
+    assert "Regra 1A" in str(exc_1a.value)
+
+    # 1A: shadow mode permite rodar sem cache
+    opts_shadow = resolve_cli_options(["--shadow-mode", "--no-cache"])
+    assert opts_shadow["shadow_mode"] is True
+    assert opts_shadow["cache_enabled"] is False
+    assert opts_shadow["cache_path"] is None
+
+
+def test_main_cli_refuses_real_submission_without_cache():
+    """Valida que python -m src.main --no-cache falha imediatamente antes de abrir navegador."""
+    result = subprocess.run(
+        [sys.executable, "-m", "src.main", "--no-cache"],
+        capture_output=True,
+        text=True,
+        env={
+            **os.environ,
+            "HEADLESS": "true",
+            "SHADOW_MODE": "false",
+        },
+    )
+    assert result.returncode != 0
+    assert "Regra 1A" in (result.stderr + result.stdout)
+
+
+

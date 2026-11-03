@@ -1,7 +1,8 @@
 import os
 import sys
 import json
-from typing import Dict
+import argparse
+from typing import Any, Dict, List, Optional
 from dotenv import load_dotenv
 
 # Garante o import limpo da raiz do projeto sem acoplamentos
@@ -10,6 +11,47 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 load_dotenv()
 
 from src.infrastructure.browser_service import BrowserService
+
+DEFAULT_CACHE_PATH = "./.cache/jobs_history.json"
+
+
+def resolve_cli_options(argv: Optional[List[str]] = None) -> Dict[str, Any]:
+    """
+    Resolve opcoes de seguranca da CLI (Regras 1A e 2A):
+    - 1A: Envio real (shadow_mode=False) recusa rodar sem cache de historico.
+    - 2A: strict_abort ligado por padrao; desligar exige opcao explicita (--no-strict-abort ou STRICT_ABORT=false).
+    """
+    parser = argparse.ArgumentParser(description="AIHawk CLI", add_help=False)
+    parser.add_argument("--shadow-mode", action="store_true", help="Ativa modo simulacao sem envio real")
+    parser.add_argument("--no-strict-abort", action="store_true", help="Desliga parada estrita explicitamente")
+    parser.add_argument("--no-cache", action="store_true", help="Desativa cache de historico (permitido apenas em shadow mode)")
+    parser.add_argument("--cache-path", type=str, default=None, help="Caminho para o JSON de cache de historico")
+    args, _ = parser.parse_known_args(argv if argv is not None else sys.argv[1:])
+
+    env_shadow = os.getenv("SHADOW_MODE", "false").strip().lower() in ("true", "1", "yes")
+    shadow_mode = bool(args.shadow_mode or env_shadow)
+
+    env_strict_raw = os.getenv("STRICT_ABORT", "true").strip().lower()
+    env_strict_disabled = env_strict_raw in ("false", "0", "no")
+    strict_abort = not (args.no_strict_abort or env_strict_disabled)
+
+    env_cache_enabled = os.getenv("JOB_CACHE_ENABLED", "true").strip().lower() not in ("false", "0", "no")
+    raw_cache_path = args.cache_path if args.cache_path is not None else os.getenv("JOB_CACHE_PATH", DEFAULT_CACHE_PATH)
+    cache_path = (raw_cache_path or "").strip()
+    cache_enabled = bool(env_cache_enabled and not args.no_cache and cache_path)
+
+    if not shadow_mode and not cache_enabled:
+        raise ValueError(
+            "Regra 1A violada: Envio real recusa rodar sem cache de historico. "
+            "Mantenha o cache ativo ou execute com --shadow-mode."
+        )
+
+    return {
+        "shadow_mode": shadow_mode,
+        "strict_abort": strict_abort,
+        "cache_enabled": cache_enabled,
+        "cache_path": os.path.abspath(cache_path) if cache_enabled else None,
+    }
 
 
 def resolve_selector_profile(platform: str) -> Dict[str, str]:
@@ -62,15 +104,22 @@ def bootstrap():
     else:
         static_urls = [u.strip() for u in raw_urls.split(",") if u.strip()]
 
+    # Valida opcoes 1A (cache obrigatorio em envio real) e 2A (strict_abort padrao)
+    cli_opts = resolve_cli_options()
+
     # Valida e resolve o perfil de seletores da plataforma antes de subir o navegador
     selectors = resolve_selector_profile(platform)
 
     browser_service = BrowserService(platform=platform, headless=headless_env, channel=channel)
 
     print(f"[-] Plataforma: {platform}")
+    print(f"[-] Motor: {browser_service.engine}")
     print(f"[-] Diretorio de Sessao: {browser_service.user_data_dir}")
     print(f"[-] Headless: {browser_service.headless}")
     print(f"[-] Canal: {browser_service.channel}")
+    print(f"[-] Strict Abort (2A): {cli_opts['strict_abort']}")
+    print(f"[-] Shadow Mode: {cli_opts['shadow_mode']}")
+    print(f"[-] Cache de Historico (1A): {cli_opts['cache_path'] or 'DESATIVADO (Shadow Mode)'}")
     print(f"[-] URLs Alvo: {static_urls}")
     print(f"[-] Max Candidaturas: {max_apps}")
 
@@ -80,10 +129,11 @@ def bootstrap():
         # Injecao de Dependencias da Arquitetura Limpa
         try:
             from src.application.app_controller import AppController
-            from src.application.app_service import AppService
+            from src.application.app_service import AppService, JsonJobCache
             from src.application.dtos.search_request import SearchRequest
 
-            app_service = AppService(browser_service)
+            job_cache = JsonJobCache(cli_opts["cache_path"]) if cli_opts["cache_enabled"] else None
+            app_service = AppService(browser_service, cache=job_cache)
             app_controller = AppController(app_service=app_service)
 
             request = SearchRequest(
@@ -91,6 +141,8 @@ def bootstrap():
                 static_urls=static_urls,
                 selectors=selectors,
                 max_applications=max_apps,
+                strict_abort=cli_opts["strict_abort"],
+                shadow_mode=cli_opts["shadow_mode"],
             )
 
             print("[*] Disparando loop de candidatura atraves do AppController...")
