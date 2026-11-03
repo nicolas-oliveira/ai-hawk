@@ -62,7 +62,7 @@ class FakeBrowser:
 
 def _req(selectors=None, urls=("https://x.com/s",), **kw):
     return SearchRequest(platform="linkedin", static_urls=list(urls),
-                         selectors=selectors or SEL, **kw)
+                         selectors=selectors or SEL, **kw, strict_abort=False)
 
 
 def _cards(n, **extra):

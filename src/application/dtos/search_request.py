@@ -303,8 +303,9 @@ class SearchRequest:
     # Shadow Mode (dry-run): percorre o modal mas NUNCA clica em Submit; a vaga
     # vira SIMULATED e o modal e descartado.
     shadow_mode: bool = False
-    # Parada estrita: se `selectors["abort_indicator"]` aparecer, aborta o LOTE.
-    strict_abort: bool = False
+    # Parada estrita (2A): desafio, tela inesperada, modal que nao abre ou desvio de
+    # dominio abortam o LOTE. Ligada por padrao; desligar so explicitamente, para teste.
+    strict_abort: bool = True
 
     def __post_init__(self) -> None:
         if not self.platform or not self.platform.strip():

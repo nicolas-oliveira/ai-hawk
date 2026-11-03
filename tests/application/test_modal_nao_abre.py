@@ -66,7 +66,7 @@ def test_sem_parada_estrita_modal_ausente_continua_sendo_erro():
     browser = FakeBrowser(visible={SEL["apply_button"]})
     service = AppService(browser)
 
-    jobs = service.run(_request(max_applications=5, max_consecutive_errors=9))
+    jobs = service.run(_request(strict_abort=False, max_applications=5, max_consecutive_errors=9))
 
     assert service.last_abort_reason is None
     assert jobs[0].status is JobStatus.ERROR

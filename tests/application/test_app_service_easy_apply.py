@@ -33,7 +33,7 @@ def test_apply_to_job_single_step_direct_submission(mock_browser_service, valid_
     """
     from src.application.app_service import AppService
 
-    request = SearchRequest(**valid_search_request_payload)
+    request = SearchRequest(**valid_search_request_payload, strict_abort=False)
     job = Job(**valid_job_payload)
     app_service = AppService(mock_browser_service, FakeCache())
     apply_fn = _get_apply_function(app_service)
@@ -77,7 +77,7 @@ def test_apply_to_job_detects_empty_required_and_aborts_cleanly(mock_browser_ser
     """
     from src.application.app_service import AppService
 
-    request = SearchRequest(**valid_search_request_payload)
+    request = SearchRequest(**valid_search_request_payload, strict_abort=False)
     job = Job(**valid_job_payload)
     app_service = AppService(mock_browser_service)
     apply_fn = _get_apply_function(app_service)
@@ -108,7 +108,7 @@ def test_apply_to_job_multi_step_simple_submission(mock_browser_service, valid_s
     """
     from src.application.app_service import AppService
 
-    request = SearchRequest(**valid_search_request_payload)
+    request = SearchRequest(**valid_search_request_payload, strict_abort=False)
     job = Job(**valid_job_payload)
     app_service = AppService(mock_browser_service, FakeCache())
     apply_fn = _get_apply_function(app_service)
@@ -149,7 +149,7 @@ def test_apply_to_job_external_redirect_skipped_complex(mock_browser_service, va
     """Step C: Vaga sem botao de Easy Apply (redirecionamento externo) -> SKIPPED_COMPLEX."""
     from src.application.app_service import AppService
 
-    request = SearchRequest(**valid_search_request_payload)
+    request = SearchRequest(**valid_search_request_payload, strict_abort=False)
     job = Job(**valid_job_payload)
     app_service = AppService(mock_browser_service)
     apply_fn = _get_apply_function(app_service)
@@ -171,7 +171,7 @@ def test_apply_to_job_exceeding_max_steps_aborts_cleanly(mock_browser_service, v
     """
     from src.application.app_service import AppService
 
-    request = SearchRequest(**valid_search_request_payload)
+    request = SearchRequest(**valid_search_request_payload, strict_abort=False)
     job = Job(**valid_job_payload)
     app_service = AppService(mock_browser_service)
     apply_fn = _get_apply_function(app_service)
@@ -200,7 +200,7 @@ def test_run_orchestration_respects_max_applications_ceiling(mock_browser_servic
 
     payload = dict(valid_search_request_payload)
     payload["max_applications"] = 2
-    request = SearchRequest(**payload)
+    request = SearchRequest(**payload, strict_abort=False)
 
     # 5 vagas extraidas
     mock_jobs = [
@@ -248,7 +248,7 @@ def test_app_controller_run_delegates_to_service_and_returns_summary(mock_browse
     from src.application.app_controller import AppController
     from src.domain.entities.job import Job
 
-    request = SearchRequest(**valid_search_request_payload)
+    request = SearchRequest(**valid_search_request_payload, strict_abort=False)
     app_service = AppService(mock_browser_service)
     app_controller = AppController(app_service, reports_dir=None)
 

@@ -27,7 +27,7 @@ class Fake:
 
 
 def _req(**kw):
-    return SearchRequest(platform="p", static_urls=["https://x.com/s"], selectors=SEL, **kw)
+    return SearchRequest(platform="p", static_urls=["https://x.com/s"], selectors=SEL, **{"strict_abort": False, **kw})
 
 
 def test_shadow_nunca_clica_submit_e_descarta():
@@ -119,9 +119,9 @@ def test_strict_abort_exige_indicador():
         SearchRequest(platform="p", static_urls=["u"], selectors=sem_desafio, strict_abort=True)
 
 
-def test_padroes_novos_desligados():
+def test_shadow_desligado_e_parada_estrita_ligada_por_padrao():
     r = SearchRequest(platform="p", static_urls=["u"], selectors=LINKEDIN_DEFAULT_SELECTORS)
-    assert (r.shadow_mode, r.strict_abort) == (False, False)
+    assert (r.shadow_mode, r.strict_abort) == (False, True)
 
 
 def test_modal_travado_descarta_com_erro_sem_esperar_15_passos():

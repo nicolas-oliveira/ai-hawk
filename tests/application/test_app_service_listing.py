@@ -23,7 +23,7 @@ def test_extract_jobs_navigates_scrolls_and_extracts_canonical_jobs(mock_browser
         "https://www.linkedin.com/jobs/view/100000001/?refId=outro_param_mesma_vaga",
     ]
 
-    request = SearchRequest(**valid_search_request_payload)
+    request = SearchRequest(**valid_search_request_payload, strict_abort=False)
     app_service = AppService(mock_browser_service)
 
     # Identifica o metodo de coleta de vagas (extract_jobs ou _collect_jobs)
@@ -58,7 +58,7 @@ def test_extract_jobs_handles_empty_listing_gracefully(mock_browser_service, val
     mock_browser_service.extract_job_cards.return_value = []
     mock_browser_service.extract_links.return_value = []
 
-    request = SearchRequest(**valid_search_request_payload)
+    request = SearchRequest(**valid_search_request_payload, strict_abort=False)
     app_service = AppService(mock_browser_service)
     collect_fn = getattr(app_service, "extract_jobs", getattr(app_service, "_collect_jobs", None))
 
@@ -75,7 +75,7 @@ def test_extract_jobs_iterates_multiple_static_urls(mock_browser_service, valid_
         "https://www.linkedin.com/jobs/search/?keywords=python",
         "https://www.linkedin.com/jobs/search/?keywords=backend",
     ]
-    request = SearchRequest(**payload)
+    request = SearchRequest(**payload, strict_abort=False)
 
     # Primeira busca retorna vaga 1; segunda busca retorna vaga 1 e vaga 2
     mock_browser_service.extract_job_cards.side_effect = [

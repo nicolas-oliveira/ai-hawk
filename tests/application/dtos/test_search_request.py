@@ -5,7 +5,7 @@ def test_search_request_dto_valid(valid_search_request_payload):
     """Valida criacao e estrutura do SearchRequest DTO com seletores e URLs."""
     from src.application.dtos.search_request import SearchRequest
 
-    dto = SearchRequest(**valid_search_request_payload)
+    dto = SearchRequest(**{**valid_search_request_payload, "strict_abort": False})
 
     assert dto.platform == "linkedin"
     assert len(dto.static_urls) == 1
@@ -21,7 +21,7 @@ def test_search_request_dto_default_max_applications(valid_search_request_payloa
     payload = dict(valid_search_request_payload)
     del payload["max_applications"]
 
-    dto = SearchRequest(**payload)
+    dto = SearchRequest(**{**payload, "strict_abort": False})
     assert dto.max_applications == 10
 
 
@@ -85,6 +85,7 @@ def test_search_request_dto_missing_mandatory_selectors_raises_error(valid_searc
         incomplete_selectors = dict(valid_search_request_payload["selectors"])
         del incomplete_selectors[key]
         incomplete_payload["selectors"] = incomplete_selectors
+        incomplete_payload["strict_abort"] = False  # aqui so importam as chaves obrigatorias
 
         with pytest.raises(ValueError, match=f".*{key}.*"):
             SearchRequest(**incomplete_payload)
@@ -168,3 +169,18 @@ def test_build_linkedin_search_url_invalid_posted_within_raises():
     with pytest.raises(ValueError, match="posted_within invalido"):
         build_linkedin_search_url("python", posted_within="last_century")
 
+
+
+def test_parada_estrita_vem_ligada_por_padrao_nos_perfis():
+    from src.application.dtos.search_request import SELECTOR_PROFILES, SearchRequest
+
+    for nome, perfil in SELECTOR_PROFILES.items():
+        request = SearchRequest(platform=nome, static_urls=["https://x.com"], selectors=perfil)
+        assert request.strict_abort is True, nome
+
+
+def test_parada_estrita_padrao_exige_chave_de_desafio_nos_seletores(valid_search_request_payload):
+    from src.application.dtos.search_request import SearchRequest
+
+    with pytest.raises(ValueError, match="abort_indicator"):
+        SearchRequest(**valid_search_request_payload)  # seletores sem chave de desafio

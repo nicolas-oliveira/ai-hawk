@@ -9,7 +9,7 @@ from src.application.dtos.search_request import (
 
 
 def _request(selectors, urls=("http://exemplo/busca",)):
-    return SearchRequest(platform="p", static_urls=list(urls), selectors=selectors, max_applications=1)
+    return SearchRequest(platform="p", static_urls=list(urls), selectors=selectors, max_applications=1, strict_abort=False)
 
 
 def _browser(cards=()):

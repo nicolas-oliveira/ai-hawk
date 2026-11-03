@@ -16,7 +16,7 @@ T0 = datetime(2026, 11, 2, 10, 0, 0, tzinfo=timezone.utc)
 
 
 def _req(**kw):
-    return SearchRequest(platform="p", static_urls=["u"], selectors=LINKEDIN_DEFAULT_SELECTORS, **kw)
+    return SearchRequest(platform="p", static_urls=["u"], selectors=LINKEDIN_DEFAULT_SELECTORS, **{"strict_abort": False, **kw})
 
 
 def test_controller_mensagem_de_tipo_e_linha_de_telemetria(tmp_path):
