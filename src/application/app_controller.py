@@ -115,6 +115,7 @@ class AppController:
                 "applied": counts[JobStatus.APPLIED],
                 "errors": counts[JobStatus.ERROR],
                 "already_applied": counts[JobStatus.ALREADY_APPLIED],
+                "simulated": counts[JobStatus.SIMULATED],
                 "not_processed": counts[JobStatus.PENDING],
             },
             "conversion": {

@@ -1,0 +1,54 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git tag:*)",
+      "Bash(gh pr view:*)"
+    ],
+    "ask": [
+      "Bash(git push:*)",
+      "Bash(gh pr create:*)",
+      "Bash(git checkout:*)",
+      "Bash(git switch:*)"
+    ],
+    "deny": [
+      "Read(./src/infrastructure/**)",
+      "Read(./tests/real/**)",
+      "Read(./tests/infrastructure/**)",
+      "Read(./src/main.py)",
+      "Edit(./.gemini/**)",
+      "Edit(./src/infrastructure/**)",
+      "Edit(./tests/real/**)",
+      "Edit(./tests/infrastructure/**)",
+      "Edit(./src/main.py)",
+      "Edit(./requirements.txt)",
+      "Edit(./Makefile)",
+      "Edit(./.gitignore)",
+      "Edit(./.env*)",
+      "Edit(./.claude/**)",
+      "Edit(./.git/**)",
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Bash(git push --force-with-lease:*)",
+      "Bash(git push --delete:*)",
+      "Bash(git push *--no-verify*)",
+      "Bash(git push origin master:*)",
+      "Bash(git push origin main:*)",
+      "Bash(git tag -d:*)",
+      "Bash(git tag --delete:*)",
+      "Bash(gh pr merge:*)",
+      "Bash(gh pr close:*)",
+      "Bash(gh repo:*)",
+      "Bash(gh api:*)",
+      "Bash(gh auth:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(git commit *--no-verify*)",
+      "Bash(pip install:*)",
+      "Bash(pip3 install:*)",
+      "Bash(npm install:*)",
+      "Bash(git rebase:*)",
+      "Bash(git filter-branch:*)",
+      "Bash(git commit --amend:*)",
+      "Bash(rm -rf:*)"
+    ]
+  }
+}

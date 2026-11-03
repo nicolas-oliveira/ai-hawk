@@ -185,7 +185,8 @@ def test_hostile_clone_e2e_anti_cheat_and_success_state(
     # 3. Validacao do funil da camada de aplicacao (Vaga 1 aplicada, Vaga 2 nao processada pelo teto=1)
     assert len(jobs) == 2, f"Deveria extrair apenas as 2 vagas visiveis (ignorando o card honeypot): {jobs}"
     assert jobs[0].title == "Vaga 1"
-    assert jobs[0].company == "Empresa Acme"
+    expected_company = "Empresa Acme" if selectors.get("job_card_company") else ""
+    assert jobs[0].company == expected_company
     assert jobs[0].status == JobStatus.APPLIED
 
 

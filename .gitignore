@@ -40,6 +40,8 @@ __pycache__/
 .ruff_cache/
 .coverage
 htmlcov/
+.mutmut-cache
+.testmondata*
 
 # Node / Next.js
 node_modules/
@@ -48,7 +50,6 @@ out/
 build/
 
 # Ferramental de Agentes e IDEs
-.gemini/
 .idea/
 .vscode/
 *.swp

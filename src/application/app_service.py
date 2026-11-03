@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import time
+from urllib.parse import urlsplit
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Protocol, Set
@@ -65,6 +66,13 @@ class BrowserPort(Protocol):
     def has_empty_required_inputs(self, container_selector: str) -> bool:
         """Inspetor DOM 3C: True se o container tem `input[required]`,
         `aria-required="true"`, `textarea` ou `select` obrigatorios vazios."""
+
+    def get_current_url(self) -> str:
+        """URL corrente da pagina ativa (para detectar desvio de dominio)."""
+
+    def modal_signature(self, container_selector: str) -> str:
+        """Hash estavel do texto visivel do container ('' se ausente/invisivel).
+        Dois passos seguidos com a mesma assinatura = modal travado."""
 
     def dismiss_overlay_if_present(self, dismiss_selector: str, timeout: int) -> bool:
         """Fecha overlays intrusivos (cookies, premium) se estiverem visiveis.
@@ -242,6 +250,9 @@ class AppService:
         self.last_abort_reason = None
         self.timings.clear()
         jobs = self._collect_jobs(request)
+        if self.last_abort_reason:  # parada estrita ja na listagem: nada e processado
+            self._log_timing_summary()
+            return jobs
         self._apply_cache(jobs)
         applied = 0
         consecutive_errors = 0
@@ -253,6 +264,8 @@ class AppService:
                 logger.info("Limite de %d candidaturas atingido.", request.max_applications)
                 break
             self._process_job(job, request)
+            if self.last_abort_reason:  # parada estrita: lote encerrado, vaga fica PENDING
+                break
             if self._cache is not None:
                 self._cache.put(job)
             if job.status == JobStatus.APPLIED:
@@ -343,6 +356,8 @@ class AppService:
             try:
                 self._browser.open_url(page_url)
                 self._prepare_page(sel)
+                if self._strict_abort(page_url, request):
+                    break
                 self._browser.scroll_container_to_end(sel["jobs_list_container"])
                 cards = self._browser.extract_job_cards(
                     sel["job_card"],
@@ -360,8 +375,9 @@ class AppService:
                 job = Job(
                     url=url,
                     platform=request.platform,
-                    title=card.get("title", ""),
-                    company=card.get("company", ""),
+                    # `or ""`: a lista pode nao ter empresa (ou devolver None); isso nao e falha.
+                    title=card.get("title") or "",
+                    company=card.get("company") or "",
                 )
                 if job in seen:
                     continue
@@ -378,6 +394,8 @@ class AppService:
         try:
             self._browser.open_url(job.url)
             self._prepare_page(sel)
+            if self._strict_abort(job.url, request):
+                return
 
             if not self._browser.element_exists(sel["apply_button"]):
                 # Sem Easy Apply (candidatura externa ou ja enviada): fora do
@@ -387,24 +405,65 @@ class AppService:
                 return
 
             self._browser.click(sel["apply_button"])
-            job.status = self._run_modal(sel)
+            job.status = self._run_modal(job, request)
         except Exception:
             logger.exception("Erro ao processar %s", job.url)
             job.status = JobStatus.ERROR
             self._discard_quietly(sel)
 
-    def _run_modal(self, sel: Dict[str, str]) -> JobStatus:
+    @staticmethod
+    def _host(url: str) -> str:
+        return urlsplit(url or "").netloc.lower().removeprefix("www.")
+
+    def _strict_abort(self, url: str, request: SearchRequest) -> bool:
+        """Parada estrita: tela inesperada (checkpoint/captcha) ou desvio de
+        dominio encerra o LOTE. Nao clica em nada (nem descarta): a vaga fica
+        PENDING e o motivo registrado. `url` = pagina que o motor tentou abrir."""
+        if not request.strict_abort:
+            return False
+        indicator = request.selectors["abort_indicator"]
+        if self._browser.element_exists(indicator):
+            self.last_abort_reason = f"parada estrita: tela inesperada ({indicator}) em {url}"
+        else:
+            expected, current = self._host(url), self._host(self._browser.get_current_url())
+            if not current or current == expected:
+                return False
+            self.last_abort_reason = (
+                f"parada estrita: desvio de dominio ({expected} -> {current}) em {url}"
+            )
+        logger.error("Sessao interrompida: %s.", self.last_abort_reason)
+        return True
+
+    def _run_modal(self, job: Job, request: SearchRequest) -> JobStatus:
         """Avanco linear do modal. Regra 3C: inspeciona o DOM ANTES de qualquer
-        clique de avanco (Next, Review ou Submit)."""
+        clique de avanco (Next, Review ou Submit). Shadow Mode: no Submit nao
+        clica; descarta e devolve SIMULATED."""
+        sel = request.selectors
         modal = sel["modal_container"]
 
+        last_signature = ""
         for _ in range(MAX_MODAL_STEPS):
+            if self._strict_abort(job.url, request):
+                return JobStatus.PENDING
+
+            # Guarda de progresso: o clique de avanco nao mudou o modal (validacao
+            # silenciosa, passo repetido). Descarta sem esperar os 15 passos.
+            signature = self._browser.modal_signature(modal)
+            if signature and signature == last_signature:
+                logger.warning("Modal sem progresso entre dois passos; descartando.")
+                self._discard(sel)
+                return JobStatus.ERROR
+            last_signature = signature
             if self._browser.has_empty_required_inputs(modal):
                 logger.info("Regra 3C: campo obrigatorio vazio no passo; descartando (%s).", modal)
                 self._discard(sel)
                 return JobStatus.SKIPPED_COMPLEX
 
             if self._browser.element_exists(sel["submit_button"]):
+                if request.shadow_mode:
+                    logger.info("Shadow Mode: Submit NAO clicado em %s.", job.url)
+                    self._discard(sel)
+                    return JobStatus.SIMULATED
                 self._browser.click(sel["submit_button"])
                 return JobStatus.APPLIED
 

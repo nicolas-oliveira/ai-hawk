@@ -1,7 +1,7 @@
 # Atalhos do AIHawk (equivalente ao "npm run"). Uso: make <alvo>
 PY := .venv/bin/python
 
-.PHONY: test test-unit pre-pr demo
+.PHONY: test test-unit pre-pr demo mutation
 
 # Suite completa: unitarios + infraestrutura + Chromium real + clone Next.js hostil
 test:
@@ -11,6 +11,11 @@ test:
 # Rapido, sem navegador: apenas testes unitarios de dominio e aplicacao (mocks)
 test-unit:
 	$(PY) -m pytest tests/domain tests/application -q
+
+# Mutation testing na suite rapida (domain e application) com mutmut
+mutation:
+	@$(PY) -m mutmut run || true
+	@$(PY) -m mutmut results
 
 # Antes de abrir/atualizar PR: testes reais (Chromium) + borda + suite completa
 pre-pr:

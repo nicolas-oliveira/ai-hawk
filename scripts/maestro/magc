@@ -1,0 +1,303 @@
+#!/usr/bin/env fish
+# maestro.fish — passa o turno entre Claude e Agy lendo o NOTAS.md JÁ COMMITADO.
+#
+# Uso:
+#   magc [pasta-do-projeto]                 # só reage quando o Turno mudar
+#   magc [pasta-do-projeto] --chamar-agora  # também acorda quem está com o turno agora
+#
+# Regras:
+#   - Lê só o NOTAS.md do último commit (recado sem commit não vale).
+#   - Turno mudou para Claude ou Agy  -> digita na janela dele.
+#   - Turno mudou para qualquer outra coisa (ex.: Nicolas) -> para e te avisa.
+#   - [BLOQUEIO] no STATUS do topo    -> para e te avisa.
+#   - Muito tempo sem commit          -> te avisa (pode estar esperando aprovação na janela).
+#   - Limite de passagens             -> para (proteção contra loop).
+#   - Depois de acordar um agente, confere na tela dele (tmux) se a mensagem chegou e se a
+#     tela está mudando (= trabalhando). Tela parada por OCIOSA_SEG sem commit -> te avisa
+#     (provável espera por aprovação/pergunta, ou travado).
+#   - Na troca de turno, mostra o que o commit mudou (arquivos) e o STATUS do topo.
+#   - Se a tela do agente mostrar uma pergunta/pedido de aprovação, te avisa na hora.
+#
+# Log: tudo vai para a tela (colorida) e para .git/maestro.log (sem cores).
+#   Ver depois: tail -f .git/maestro.log
+# Cores: amarelo = turno mudou | ciano = commit novo | verde = agente acordado
+#        vermelho = precisa de você (com bip e notificação) | cinza = sinal de vida
+#        Sem cores: NO_COLOR=1 magc   (ou quando a saída não for um terminal)
+
+argparse 'c/chamar-agora' -- $argv; or exit 1
+
+set INTERVALO 10           # segundos entre cada checagem
+set ALERTA_PARADO_MIN 30   # minutos sem commit antes de avisar
+set SINAL_DE_VIDA_MIN 5    # de quantos em quantos minutos dizer "estou vivo"
+set MAX_PASSAGENS 20       # passagens de turno antes de parar
+set CONFIRMA_SEG 6         # após enviar a mensagem: quanto esperar para ver se a janela reagiu
+set OCIOSA_SEG 180         # tela da janela parada por tanto tempo, sem commit -> avisa
+# Frases que, no fim da tela do agente, indicam PERGUNTA ou pedido de aprovação esperando você.
+# (Claude Code: "Do you want to proceed?". Agy: ajuste depois de ver o pedido dele.)
+# NÃO use "esc to cancel": aparece no rodapé do Agy enquanto ele trabalha ou com um menu aberto (falso positivo).
+set PADRAO_PERGUNTA 'Do you want to (proceed|make|create|run|allow)|\(y/n\)|\[y/N\]|Allow (this|once|always)|Deseja continuar\?'
+# Frases de ação barrada por permissão (o agente costuma contornar; fica registrado em amarelo).
+set PADRAO_BLOQUEIO 'blocked by auto mode|permission denied|Permissão negada|denied by'
+
+if set -q argv[1]
+    set PROJETO $argv[1]
+else
+    set PROJETO .
+end
+
+if not test -f "$PROJETO/NOTAS.md"
+    echo "Erro: não achei NOTAS.md em $PROJETO"
+    exit 1
+end
+
+set GITDIR (git -C $PROJETO rev-parse --absolute-git-dir)
+set LOG $GITDIR/maestro.log
+
+# Trava: só um maestro por projeto
+set TRAVA $GITDIR/maestro.pid
+if test -f $TRAVA; and kill -0 (cat $TRAVA) 2>/dev/null
+    echo "Já existe um maestro rodando neste projeto (PID "(cat $TRAVA)"). Feche-o antes."
+    exit 1
+end
+echo %self > $TRAVA
+function _soltar_trava --on-event fish_exit
+    bloco
+    log suave "Maestro encerrado."
+    rm -f $TRAVA
+end
+
+# Estilos da tela (a cor é só da tela; o arquivo de log nunca leva cor)
+function _estilo -a nome
+    switch $nome
+        case titulo; set_color -o magenta
+        case evento; set_color -o cyan
+        case turno;  set_color -o yellow
+        case ok;     set_color -o green
+        case alerta; set_color -o red
+        case suave;  set_color brblack
+        case '*';    set_color normal
+    end
+end
+
+# log ESTILO "texto": só registra (tela + arquivo).
+function log -a estilo texto
+    echo (date '+%Y-%m-%d %H:%M:%S')"  $texto" >> $LOG
+    if isatty stdout; and not set -q NO_COLOR
+        set_color brblack
+        printf '%s  ' (date '+%H:%M:%S')
+        _estilo $estilo
+        printf '%s' "$texto"
+        set_color normal
+        printf '\n'
+    else
+        echo (date '+%H:%M:%S')"  $texto"
+    end
+end
+
+# bloco: linha em branco para separar um grupo de eventos do próximo.
+function bloco
+    echo
+    echo >> $LOG
+end
+
+# avisar: registra + bip + notificação (precisa de você).
+function avisar
+    bloco
+    log alerta "🔔 $argv"
+    printf '\a'
+    if type -q notify-send
+        notify-send "Maestro" "$argv"
+    end
+end
+
+function topo_turno
+    # Leitura única, a mesma do hook de commit (.git/hooks/ler_topo.py)
+    python3 $PROJETO/.git/hooks/ler_topo.py turno $PROJETO
+end
+
+function topo_status
+    python3 $PROJETO/.git/hooks/ler_topo.py status $PROJETO
+end
+
+# Impressão digital da tela da janela do agente (muda quando ele está escrevendo/rodando).
+function tela_hash -a sessao
+    tmux -L $sessao capture-pane -p -t $sessao 2>/dev/null | md5sum | string split ' ' -f1
+end
+
+# Últimas N linhas (não vazias) da tela do agente.
+function tela_fim -a sessao n
+    tmux -L $sessao capture-pane -p -t $sessao 2>/dev/null | string match -rv '^\s*$' | tail -n $n
+end
+
+function acordar -a sessao
+    if not tmux -L $sessao has-session -t $sessao 2>/dev/null
+        avisar "A janela do $sessao não está aberta. Abra o kiosk e rode o maestro de novo."
+        exit 1
+    end
+    set instrucoes CLAUDE.md
+    if test $sessao = agy
+        set instrucoes GEMINI.md
+    end
+    tmux -L $sessao send-keys -l -t $sessao "Seu turno. Leia o topo do NOTAS.md e o $instrucoes e execute seu turno. Ao terminar: escreva a SUA CARTA no NOTAS.md, logo abaixo das 3 linhas do topo, no lugar da carta anterior (no chat, so um resumo de 2 linhas; EXCECAO: se passar para o Nicolas, a carta vai no chat), commite e passe o Turno."
+    sleep 0.5
+    tmux -L $sessao send-keys -t $sessao Enter
+    log ok "➡️  Mensagem enviada para a janela do $sessao."
+    sleep 1
+    if not tmux -L $sessao capture-pane -p -S -200 -t $sessao 2>/dev/null | string match -q '*Seu turno. Leia*'
+        avisar "A mensagem NÃO apareceu na janela do $sessao. Confira o kiosk (pode estar travada ou esperando algo)."
+    else
+        set h1 (tela_hash $sessao)
+        sleep $CONFIRMA_SEG
+        if test (tela_hash $sessao) != "$h1"
+            log ok "✅ A janela do $sessao reagiu: a tela está mudando, ele começou a trabalhar. Aguardando o commit dele."
+        else
+            avisar "A mensagem chegou na janela do $sessao, mas a tela não mudou em $CONFIRMA_SEG s. Pode estar esperando Enter ou aprovação. Confira o kiosk."
+        end
+    end
+    set -g ultima_tela (tela_hash $sessao)
+    set -g tela_mudou_em (date +%s)
+    set -g alertou_ocioso 0
+end
+
+set ultimo_turno (string lower -- (topo_turno))
+set ultimo_head (git -C $PROJETO rev-parse HEAD)
+set ultimo_movimento (date +%s)
+set ultimo_sinal (date +%s)
+set passagens 0
+set alertou_parado 0
+set ultima_tela ''
+set tela_mudou_em (date +%s)
+set alertou_ocioso 0
+set avisou_pergunta 0
+set avisou_bloqueio 0
+
+bloco
+log titulo "🎼 Maestro iniciado em "(realpath $PROJETO)
+log info "   Último commit: "(git -C $PROJETO log -1 --format='%h %s')
+log turno "   Turno atual: '$ultimo_turno'"
+log info "   STATUS: "(topo_status)
+log suave "   Checa a cada $INTERVALO s | sinal de vida a cada $SINAL_DE_VIDA_MIN min | alerta após $ALERTA_PARADO_MIN min parado | máx. $MAX_PASSAGENS passagens"
+log suave "   Log em: $LOG"
+
+if set -q _flag_chamar_agora
+    if test -z "$ultimo_turno"
+        avisar "Não consegui ler o Turno no topo do NOTAS.md. Corrija o topo, commite e rode o magc de novo."
+        exit 1
+    end
+    switch "$ultimo_turno"
+        case claude agy
+            bloco
+            log turno "--chamar-agora: acordando quem está com o turno."
+            acordar $ultimo_turno
+        case '*'
+            avisar "O turno é de '$ultimo_turno', não de um agente. Nada a fazer."
+            exit 0
+    end
+else
+    bloco
+    log suave "Sem --chamar-agora: só vou agir quando o Turno mudar."
+end
+
+while true
+    sleep $INTERVALO
+    set agora (date +%s)
+    set head (git -C $PROJETO rev-parse HEAD)
+
+    if test "$head" != "$ultimo_head"
+        set ultimo_head $head
+        set ultimo_movimento $agora
+        set ultimo_sinal $agora
+        set alertou_parado 0
+        set tela_mudou_em $agora
+        set alertou_ocioso 0
+        set avisou_pergunta 0
+        set avisou_bloqueio 0
+
+        set turno (string lower -- (topo_turno))
+        set st (topo_status)
+        bloco
+        log evento "📝 Commit novo: "(git -C $PROJETO log -1 --format='%h %s')
+        log info "   Mudou: "(git -C $PROJETO show --shortstat --format= HEAD | string trim)
+        log info "   Arquivos: "(git -C $PROJETO show --name-only --format= HEAD | string match -rv '^$' | head -n 6 | string join ', ')
+        log info "   Topo do NOTAS.md -> Turno: '$turno' | STATUS: $st"
+
+        if string match -q -- '*[BLOQUEIO]*' "$st"
+            avisar "[BLOQUEIO] no topo do NOTAS.md. Sua vez."
+            exit 0
+        end
+
+        if test "$turno" = "$ultimo_turno"
+            log suave "   Turno continua com '$turno'. Ele segue trabalhando; não vou interromper."
+            continue
+        end
+
+        if test -z "$turno"
+            avisar "Commit novo sem Turno legível no topo do NOTAS.md. Parei. Corrija o topo e rode o magc de novo."
+            exit 1
+        end
+
+        log turno "   Turno mudou: '$ultimo_turno' -> '$turno'."
+        set ultimo_turno $turno
+        switch "$turno"
+            case claude agy
+                set passagens (math $passagens + 1)
+                if test $passagens -gt $MAX_PASSAGENS
+                    avisar "Limite de $MAX_PASSAGENS passagens atingido. Confira o andamento."
+                    exit 0
+                end
+                log info "   Passagem $passagens de $MAX_PASSAGENS."
+                acordar $turno
+            case '*'
+                avisar "Turno passou para '$turno'. Sua vez."
+                exit 0
+        end
+    else
+        set parado_min (math "floor(($agora - $ultimo_movimento) / 60)")
+
+        # Vigia da janela: tela parada sem commit = provável espera por você (ou travado).
+        if contains -- $ultimo_turno claude agy
+            set h (tela_hash $ultimo_turno)
+            if test "$h" != "$ultima_tela"
+                set ultima_tela $h
+                set tela_mudou_em $agora
+                set alertou_ocioso 0
+            end
+
+            # Pergunta / pedido de aprovação na tela (vale mesmo com a tela mudando)
+            set achou (tela_fim $ultimo_turno 15 | string match -r -- ".*($PADRAO_PERGUNTA).*" | head -n 1 | string trim)
+            if test -n "$achou"
+                if test $avisou_pergunta -eq 0
+                    avisar "A janela do $ultimo_turno parece estar fazendo uma pergunta ou pedindo aprovação: \"$achou\". Confira o kiosk."
+                    set avisou_pergunta 1
+                end
+            else
+                set avisou_pergunta 0
+            end
+
+            # Ação barrada por permissão (só registra, sem bip)
+            set barrou (tela_fim $ultimo_turno 40 | string match -ri -- ".*($PADRAO_BLOQUEIO).*" | head -n 1 | string trim)
+            if test -n "$barrou"
+                if test $avisou_bloqueio -eq 0
+                    bloco
+                    log turno "⚠️  A janela do $ultimo_turno teve uma ação barrada: \"$barrou\". Ele costuma contornar; se ficar parado, confira."
+                    set avisou_bloqueio 1
+                end
+            else
+                set avisou_bloqueio 0
+            end
+
+            if test "$h" = "$ultima_tela"; and test (math "$agora - $tela_mudou_em") -ge $OCIOSA_SEG; and test $alertou_ocioso -eq 0
+                avisar "A janela do $ultimo_turno está parada há "(math "floor(($agora - $tela_mudou_em) / 60)")" min e ele não commitou. Pode estar esperando você (aprovação ou pergunta) ou ter travado. Confira o kiosk."
+                set alertou_ocioso 1
+            end
+        end
+
+        if test $parado_min -ge $ALERTA_PARADO_MIN; and test $alertou_parado -eq 0
+            avisar "Nenhum commit há $parado_min min (turno: $ultimo_turno). Pode estar esperando aprovação na janela."
+            set alertou_parado 1
+        else if test (math "$agora - $ultimo_sinal") -ge (math "$SINAL_DE_VIDA_MIN * 60")
+            log suave "💤 Vivo. Esperando '$ultimo_turno' commitar (último commit há $parado_min min; tela da janela mudou há "(math "$agora - $tela_mudou_em")" s)."
+            set ultimo_sinal $agora
+        end
+    end
+end

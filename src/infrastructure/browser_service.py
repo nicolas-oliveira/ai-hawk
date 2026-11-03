@@ -123,6 +123,16 @@ class BrowserService:
             print(f"[BrowserService.navigate] Falha ao navegar para {url}: {e}")
             return False
 
+    def get_current_url(self) -> str:
+        """
+        Retorna a URL corrente ativa da pagina no navegador.
+        Permite a camada de aplicacao detectar desvios de dominio ou checkpoints.
+        """
+        try:
+            return self.get_page().url
+        except Exception:
+            return ""
+
     def human_delay(self, min_s: float = 0.25, max_s: float = 0.65) -> float:
         """
         Aplica um atraso estocastico imitando a variancia de tempo de reacao humana
@@ -153,9 +163,14 @@ class BrowserService:
                 locator.evaluate(
                     """
                     (el, factor) => {
-                        const delta = (el.clientHeight || 500) * factor;
-                        el.scrollTop += delta;
-                        el.dispatchEvent(new Event('scroll', { bubbles: true }));
+                        const isDoc = el === document.body || el === document.documentElement;
+                        const delta = (isDoc ? window.innerHeight : (el.clientHeight || 500)) * factor;
+                        if (isDoc) {
+                            window.scrollBy(0, delta);
+                        } else {
+                            el.scrollTop += delta;
+                            el.dispatchEvent(new Event('scroll', { bubbles: true }));
+                        }
                     }
                     """,
                     jitter_factor,
@@ -259,11 +274,13 @@ class BrowserService:
 
                         const tSel = titleSel || '[class*="title"], h1, h2, h3, h4, .title';
                         const titleEl = card.querySelector(tSel);
-                        const title = titleEl ? titleEl.innerText.trim() : (linkEl ? linkEl.innerText.trim() : 'Vaga');
+                        const title = titleEl ? titleEl.innerText.trim() : (linkEl ? linkEl.innerText.trim() : '');
 
-                        const cSel = compSel || '[class*="company"], [class*="subtitle"], [class*="description"], .company, .subtitle, p, span';
-                        const companyEl = card.querySelector(cSel);
-                        const company = companyEl ? companyEl.innerText.trim() : 'Empresa';
+                        let company = '';
+                        if (compSel) {
+                            const companyEl = card.querySelector(compSel);
+                            company = companyEl ? companyEl.innerText.trim() : '';
+                        }
 
                         if (url) {
                             result.push({ url, title, company });
@@ -547,3 +564,4 @@ class BrowserService:
     open_url = navigate
     element_exists = is_visible
     click = click_element
+    current_url = get_current_url
