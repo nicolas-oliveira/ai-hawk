@@ -170,7 +170,8 @@ class BrowserService:
             root_dir = os.path.abspath(explicit_root.strip())
         else:
             root_dir = str(get_project_root() / "sessions")
-        self.user_data_dir = os.path.abspath(os.path.join(root_dir, self.platform))
+        profile_folder = self.platform if self.engine == "chromium" else f"{self.platform}-{self.engine}"
+        self.user_data_dir = os.path.abspath(os.path.join(root_dir, profile_folder))
         print(f"[BrowserService] Diretorio de perfil de sessao: {self.user_data_dir}")
 
         self.playwright: Optional[Playwright] = None

@@ -635,6 +635,29 @@ def test_default_cache_and_profile_anchored_at_project_root_under_chdir(monkeypa
     assert service_env_rel.user_data_dir.startswith(str((tmp_path / "env_sessions").resolve()))
 
 
+def test_profile_directory_is_separated_by_engine_as_sibling(tmp_path):
+    """
+    Passo A3: Mesma plataforma e motores diferentes usam diretorios de perfil irmaos
+    (<root>/<platform> para chromium e <root>/<platform>-firefox para firefox),
+    evitando corrupcao de perfil e preservando sessoes existentes de Chromium.
+    """
+    chromium_service = BrowserService(
+        platform="linkedin",
+        engine="chromium",
+        session_root_dir=str(tmp_path),
+    )
+    firefox_service = BrowserService(
+        platform="linkedin",
+        engine="firefox",
+        session_root_dir=str(tmp_path),
+    )
+
+    assert chromium_service.user_data_dir == str((tmp_path / "linkedin").resolve())
+    assert firefox_service.user_data_dir == str((tmp_path / "linkedin-firefox").resolve())
+    assert chromium_service.user_data_dir != firefox_service.user_data_dir
+
+
+
 
 
 
