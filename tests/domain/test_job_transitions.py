@@ -72,14 +72,16 @@ def test_vaga_nova_nao_tem_motivo_de_revisao():
     "clique,confirmacao,modal,motivo",
     [
         (True, True, False, None),
+        (True, True, True, None),
         (False, True, False, ReviewReason.CLICK_FAILED),
+        (False, True, True, ReviewReason.CLICK_FAILED),
+        (False, False, False, ReviewReason.CLICK_FAILED),
         (False, False, True, ReviewReason.CLICK_FAILED),
-        (True, True, True, ReviewReason.MODAL_STILL_OPEN),
         (True, False, True, ReviewReason.MODAL_STILL_OPEN),
         (True, False, False, ReviewReason.CONFIRMATION_MISSING),
     ],
 )
-def test_evidencia_so_confirma_com_as_tres_condicoes(clique, confirmacao, modal, motivo):
+def test_confirmacao_vista_vence_dialogo_aberto(clique, confirmacao, modal, motivo):
     ev = SubmissionEvidence(clique, confirmacao, modal)
     assert ev.review_reason is motivo
 

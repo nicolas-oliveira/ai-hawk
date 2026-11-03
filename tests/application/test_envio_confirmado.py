@@ -77,12 +77,44 @@ def test_submit_sem_confirmacao_vira_revisao_manual():
 
 
 def test_submit_com_modal_ainda_aberto_vira_revisao_manual():
-    browser = FakeBrowser(visible=ABERTA | {CONFIRMACAO})
+    browser = FakeBrowser(visible=ABERTA)
 
     _, jobs = _rodar(browser)
 
     assert jobs[0].status is JobStatus.MANUAL_REVIEW
     assert jobs[0].review_reason is ReviewReason.MODAL_STILL_OPEN
+
+
+def test_confirmacao_com_dialogo_aberto_vira_applied_e_fecha_o_dialogo():
+    browser = FakeBrowser(visible=ABERTA)
+    browser.on_click[SEL["submit_button"]] = lambda b: b.visible.add(CONFIRMACAO)
+
+    _, jobs = _rodar(browser)
+
+    assert jobs[0].status is JobStatus.APPLIED
+    assert browser.clicks[-2:] == [SEL["submit_button"], SEL["close_button"]]
+
+
+def test_dialogo_fechado_apos_envio_confirmado_nao_e_fechado_de_novo():
+    browser = FakeBrowser(visible=ABERTA)
+    _envio_fecha_o_modal(browser)
+
+    _rodar(browser)
+
+    assert browser.clicks[-1] == SEL["submit_button"]
+
+
+def test_falha_ao_fechar_dialogo_apos_envio_nao_rebaixa_applied(caplog):
+    browser = FakeBrowser(visible=ABERTA, click_raises={SEL["close_button"]})
+    browser.on_click[SEL["submit_button"]] = lambda b: b.visible.add(CONFIRMACAO)
+    cache = FakeCache()
+
+    service, jobs = _rodar(browser, cache)
+
+    assert jobs[0].status is JobStatus.APPLIED
+    assert cache.saved == [(URL_VAGA, JobStatus.APPLIED)]
+    assert service.last_abort_reason is None
+    assert "Envio confirmado, mas o dialogo nao fechou; seguindo." in _mensagens(caplog)
 
 
 def test_submit_com_excecao_no_clique_vira_revisao_manual_e_nao_erro():

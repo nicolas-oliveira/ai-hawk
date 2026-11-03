@@ -75,7 +75,8 @@ class SubmissionEvidence:
     """O que se observou depois do clique de envio.
 
     Regra do dominio: so sucesso CONFIRMADO conta como candidatura enviada.
-    Clique concluido, modal fechado e confirmacao vista: tudo precisa valer.
+    Sucesso se e somente se o clique foi concluido E a confirmacao foi vista,
+    qualquer que seja o estado do dialogo.
     """
 
     click_completed: bool
@@ -87,11 +88,11 @@ class SubmissionEvidence:
         """Primeira condicao que falhou, ou None quando o envio esta confirmado."""
         if not self.click_completed:
             return ReviewReason.CLICK_FAILED
+        if self.confirmation_seen:
+            return None
         if self.modal_still_open:
             return ReviewReason.MODAL_STILL_OPEN
-        if not self.confirmation_seen:
-            return ReviewReason.CONFIRMATION_MISSING
-        return None
+        return ReviewReason.CONFIRMATION_MISSING
 
 
 @dataclass(eq=False)

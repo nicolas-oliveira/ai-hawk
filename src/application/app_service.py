@@ -574,7 +574,17 @@ class AppService:
             return
         self._cache.record_submitting(job)
         job.mark_submitting()
-        job.settle_submission(self._send(sel))
+        evidence = self._send(sel)
+        job.settle_submission(evidence)
+        if job.status is JobStatus.APPLIED and evidence.modal_still_open:
+            self._close_after_send(sel)
+
+    def _close_after_send(self, sel: Dict[str, str]) -> None:
+        """Envio ja confirmado: fechar o dialogo e cortesia. Falhar nao rebaixa o APPLIED."""
+        try:
+            self._browser.click(sel["close_button"])
+        except Exception:
+            logger.warning("Envio confirmado, mas o dialogo nao fechou; seguindo.")
 
     def _send(self, sel: Dict[str, str]) -> SubmissionEvidence:
         """Clica em Submit e junta o que se observou. Falha no clique ou na
