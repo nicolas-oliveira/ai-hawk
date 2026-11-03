@@ -181,4 +181,8 @@ def test_razoes_de_parada_tem_formato_fixo():
 def test_parada_registra_o_motivo_no_log(caplog):
     browser = FakeBrowser(current_url=lambda b: "https://x.com/captcha")
     AppService(browser).run(_request(strict_abort=True))
-    assert "Sessao interrompida: parada estrita: desafio na URL (https://x.com/captcha) em https://x.com/s." in caplog.text
+    mensagens = [registro.getMessage() for registro in caplog.records]
+    assert (
+        "Sessao interrompida: parada estrita: desafio na URL (https://x.com/captcha) em https://x.com/s."
+        in mensagens
+    )

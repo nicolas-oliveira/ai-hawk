@@ -220,10 +220,15 @@ def test_telemetria_conta_a_revisao_manual_no_funil():
     assert relatorio["funnel"]["manual_review"] == 1
 
 
+def _mensagens(caplog):
+    # Mensagem inteira, nao trecho: um texto embrulhado em outro nao pode passar.
+    return [registro.getMessage() for registro in caplog.records]
+
+
 def test_clique_de_envio_que_falha_deixa_rastro_no_log(caplog):
     browser = FakeBrowser(visible=ABERTA, click_raises={SEL["submit_button"]})
     _rodar(browser)
-    assert "Clique de envio falhou; vaga vai para revisao manual." in caplog.text
+    assert "Clique de envio falhou; vaga vai para revisao manual." in _mensagens(caplog)
 
 
 def test_observacao_que_falha_deixa_rastro_no_log(caplog):
@@ -232,4 +237,4 @@ def test_observacao_que_falha_deixa_rastro_no_log(caplog):
         raise RuntimeError("pagina fechou")
     browser.wait_for_loader_to_disappear = falha
     _rodar(browser)
-    assert "Nao foi possivel observar o envio; vaga vai para revisao manual." in caplog.text
+    assert "Nao foi possivel observar o envio; vaga vai para revisao manual." in _mensagens(caplog)
