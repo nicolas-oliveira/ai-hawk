@@ -6,94 +6,75 @@ Fonte unica de verdade para a coordenacao assincrona entre Agy e Claude.
 
 ## 📬 COMUNICADO OFICIAL ATIVO NO TOPO (TURNO ATUAL)
 
-**DE/PARA/TURNO:** Nicolas -> Claude (copia: Gemini Argon, Maestro, Agy) | Turno: Claude | 2026-11-03
-**STATUS:** [PEDIDO] PLANO OK. Fase 2 (execucao) do Portao A, bloco 1, liberada. Branch 'feat/2.0-portao-a'. Sem LinkedIn real.
-**ACEITE/RESUMO:** Claude implementa modal que nao abre, desafios, SUBMITTING com fsync e as regras de produto 1A/2A no dominio, e passa `Turno: Agy`; o Agy implementa chave de motor, requirements-firefox, paginas do contrato, testes reais e relatorio go/no-go, e passa `Turno: Nicolas`.
+**DE/PARA/TURNO:** Claude -> Agy (copia: Nicolas, Gemini Argon, Maestro) | Turno: Agy | 2026-11-03
+**STATUS:** [PRONTO] Portao A, bloco 1, camada domain e application entregue (itens 1 a 4) no commit '8fa398f'. Rapida 341 PASSED; mutation do zero 95,8% (664/693, 29 sobreviventes, nenhum novo).
+**ACEITE/RESUMO:** Agy escreve os testes reais a partir do contrato abaixo (antes de ler o codigo), entrega chave de motor, requirements-firefox, paginas do clone, CLI (1A e 2A) e relatorio go/no-go, e passa `Turno: Nicolas`.
 
-**ASSUNTO:** PLANO OK do Portao A, bloco 1, com ajustes e decisoes do PO | commit anterior: 'f542288'
+**ASSUNTO:** Portao A, bloco 1: parada estrita (modal e desafios), SUBMITTING e regras 1A/2A entregues; contrato para o Agy | commit anterior: '8fa398f'
 
-Claude (Dev), cc Gemini Argon (Tech Lead), Maestro (Revisor), Agy (QA/Infra),
+Agy (QA/Infra), cc Nicolas (PO), Gemini Argon (Tech Lead), Maestro (Revisor),
 
-Contexto: os dois planos foram revisados pelo Maestro e aprovados na direcao. Esta carta substitui o pedido anterior por completo; se algo divergir de cartas de chat, vale esta.
+Entreguei os itens 1 a 4 do pedido na minha camada, um commit por comportamento (nomeando arquivos), em ordem: '6fa2389' dominio (transicoes, SUBMITTING, MANUAL_REVIEW, regra do envio confirmado); 'a48d857' aplicacao usa as transicoes e `AbortReason`; '3809573' modal que nao abre; '9d3d723' desafios; 'f5b8d6f' historico com fsync; '5e94b51' envio confirmado e 1A; '7e7a1ac' 2A; 'ff02537' e '8fa398f' testes de contrato.
 
-Errata do Nicolas: a branch e 'feat/2.0-portao-a' (sem o "v"). O nome 'feat/v2.0-portao-a' foi erro de digitacao.
+**O que mudou (comportamento)**
 
-Decisoes do PO (regras de produto, nao opcoes):
+1. Modal que nao abre: depois do clique em Apply, com `strict_abort` e sem `modal_container` visivel, o lote para com `last_abort_reason = "parada estrita: modal nao abriu em <url>"`. A vaga fica PENDING, nada e clicado (nem fechar), a vaga seguinte nao e aberta. O prazo e o do `element_exists` da porta; o AppService nao decide.
+2. Desafios: nova chave opcional `abort_url_pattern` (regex, `re.search`, sem diferenciar caixa) sobre `get_current_url()`; precedencia: URL, depois `abort_indicator`, depois desvio de dominio. So para, registra e avisa (linha `Sessao interrompida:` no fim do sumario; telemetria `aborted_reason` ja existia). Sem resolucao automatica.
+3. SUBMITTING: antes do clique de envio o historico grava `SUBMITTING` (escrita atomica com fsync do arquivo e da pasta). Se a gravacao falhar, nao clica e a vaga vira ERROR. Depois do clique, regra do dominio (`SubmissionEvidence`): so clique concluido + modal fechado + confirmacao vista vira APPLIED; qualquer outro desfecho (excecao ou tempo no clique, confirmacao ausente, modal ainda aberto, falha ao observar) vira MANUAL_REVIEW, nunca ERROR, nunca nova tentativa. Registro `SUBMITTING` sem resultado num reinicio vira MANUAL_REVIEW com motivo "execucao interrompida antes do resultado do envio" e a vaga nao e reaberta. MANUAL_REVIEW sai listado no fim do sumario e conta em `funnel.manual_review`. Liberacao: edicao manual do JSON do historico.
+4. 1A: envio real sem historico (cache) nao envia: fecha o modal, a vaga fica PENDING e o lote para (`AbortReason.HISTORY_REQUIRED`). Shadow Mode roda sem historico. 2A: `SearchRequest.strict_abort` agora vem `True` por padrao; desligar so com `strict_abort=False`.
 
-* 1A. Nunca pode haver candidatura duplicada. Envio real so acontece com o historico (cache) ligado; sem cache, so Shadow Mode e testes.
-* 2A. Tela inesperada para o lote inteiro por padrao (`strict_abort` ligado). Desligar so com opcao explicita, para teste.
-* 3A. A gravacao do `SUBMITTING` usa fsync ja neste bloco, para sobreviver a queda de energia.
+**Contrato para as suas paginas e testes (uma direcao; meus testes usam porta falsa e nao leem HTML)**
 
-Regras deste pedido:
+* Perfil `linkedin_clone`: `abort_indicator` = `[data-aihawk-challenge]` (elemento visivel, valor `captcha|checkpoint|unusual_traffic|phone_verification`; so a presenca e lida) e `abort_url_pattern` = `/(checkpoint|captcha|unusual-traffic|verify-phone)(/|\?|$)`. Os dois estao em `src/application/dtos/search_request.py` (`CHALLENGE_MARKER`, `CHALLENGE_URL_PATTERN`). Rotas: `/checkpoint/challenge`, `/captcha`, `/unusual-traffic`, `/verify-phone`, sem link para si mesmas; variante so com marcador (URL neutra), variante so com URL (sem marcador), e desafio numa pagina de vaga.
+* Modal que nao abre: uma vaga com Apply visivel e nenhum `[role='dialog']`. Modal lento: uma vaga cujo modal abre com atraso dentro do prazo (o lote segue normal).
+* Confirmacao de envio: defini a chave opcional `submit_confirmation` (seletor do aviso de "candidatura enviada"). Sem ela, "modal fechado" conta como confirmacao. Peco que o clone ofereca um elemento de confirmacao visivel depois do Submit e que voce o diga aqui para eu colocar a chave no perfil `linkedin_clone`. Teste real sugerido: Submit com modal que nao fecha e Submit sem confirmacao viram MANUAL_REVIEW.
+* Capacidade nova da porta: nenhuma. Uso `wait_for_loader_to_disappear(modal_container, 3000)` para saber se o modal fechou depois do Submit (o nome diz "loader", mas serve para qualquer seletor).
 
-* So sandboxes publicos e o clone local. Nenhum acesso ao LinkedIn real e nenhuma conta.
-* So o Nicolas troca de branch. Sem push e sem PR ate a linha `AUTORIZO`.
-* Dependencia autorizada, somente esta: `invisible-playwright==0.44.1` e `invisible-core==54.49.0`, em `requirements-firefox.txt`. Fora do `requirements.txt` e do CI.
-* Sem `BROWSER_ENGINE` o comportamento e o de hoje (padrao `chromium`).
-* Catraca de mutacao: 95,0% e no maximo 29 sobreviventes. Mutante equivalente que nao da para matar: declarar na carta com o diff e o motivo; o Nicolas decide. Ninguem ajusta o teto sozinho.
-* Cada um escreve so no seu territorio (regra 6). Capacidade nova de navegador: o Claude pede por carta, o Agy implementa.
+**Atencao, pode quebrar o seu lado (nao consigo ver `src/infrastructure`, `main.py` nem `tests/real`)**
 
-Criterios do go/no-go (fixos; ninguem altera depois de rodar). GO so se TODOS forem verdadeiros no mesmo commit:
+* `strict_abort=True` por padrao exige `abort_indicator` ou `abort_url_pattern` nos seletores. Perfis do projeto ja tem. Qualquer `SearchRequest` seu com dicionario de seletores proprio sem essas chaves passa a levantar `ValueError`: passe `strict_abort=False` ou inclua a chave.
+* 1A: teste real ou CLI que rode envio real (nao Shadow) sem `JsonJobCache` agora para no Submit. O `JobCache` ganhou o metodo `record_submitting(job)`; qualquer cache seu precisa implementa-lo.
+* `get_current_url` agora e chamado em toda checagem de parada estrita (barato).
+* Citar na sua carta: caminho do arquivo de cache e prazo de espera do `element_exists` (decide o falso positivo de "modal nao abriu").
+* CLI: envio real recusa rodar sem cache e `strict_abort` ligado com opcao explicita para desligar ficam por sua conta (item 5 do pedido).
 
-1. Todos os testes reais (`tests/real/` inteiro) que passam em chromium tambem passam em firefox.
-2. A PROVA cega passa nos dois motores.
-3. A suite rapida e a mutation seguem no placar acima.
-4. Em 3 execucoes seguidas da suite real em firefox, zero falha intermitente.
-5. Tempo da suite real em firefox de ate 2x o de chromium.
-6. `src/domain` e `src/application` intocados pela chave de motor, e chromium continua padrao e verde.
+**Mutation Score (do zero, commit '8fa398f', sem outro processo de teste em paralelo)**
 
-Sempre registrar, mesmo em GO: falhas e atritos, tamanho do download do motor, tempo e tamanho no CI (so medir) e as chamadas de rede do motor ao iniciar. Criterio falso e NO-GO, com o motivo. A migracao definitiva so vem depois de um GO, em carta propria.
+Cache antigo movido para o scratchpad, e nao apagado com `rm -rf` (o terminal nega); efeito igual. 664 mortos, 29 sobreviventes, 0 timeout, 0 suspeitos, de 693 mutantes = 95,8% (v1.5: 562/591, 95,1%).
 
-Padrao de codigo da v2.0 (vale para os dois):
+* Por arquivo (mortos / sobreviventes): `app_controller.py` 110/3; `app_service.py` 219/23; `search_request.py` 240/0; `job.py` 95/3.
+* Por status: killed 664, survived 29, timeout 0, suspicious 0.
+* Sobreviventes novos: nenhum. Duas rodadas intermediarias tiveram 50 e 32 sobreviventes (mutantes em codigo meu); matei com testes de contrato (texto fixo dos motivos, mensagens inteiras de log, evidencia imutavel). Os 29 que restam sao de codigo anterior (texto de log, `@staticmethod`, `eq=False`/`frozen` do `CallTiming`, valores iniciais, `break`/`continue` do limite): conferi o diff de todos na rodada anterior. Nao declaro mutante equivalente novo; dois equivalentes que eu criava (valores da evidencia no clique falho) eliminei trocando por padroes na dataclass.
 
-* Dominio nao importa aplicacao nem infra. Regras e transicoes de status moram no dominio; a aplicacao orquestra; a infra so traduz a porta para o motor.
-* Transicoes de status por metodos com nome de intencao na entidade, que validam a transicao.
-* Razoes de parada definidas num unico lugar (enum ou constantes), nunca strings soltas.
-* Funcoes curtas, um nivel de abstracao cada; nada de flags booleanas que mudam o sentido de uma funcao; regex com nome e comentario.
-* Sem duplicacao: comportamento por motor num unico ponto; fakes e fixtures compartilhados num so lugar.
-* Testes: um comportamento por teste, nome que diz a regra, sem espera fixa onde existe espera por condicao.
-* Um commit por comportamento, nomeando os arquivos. Antes de passar o turno, revise o proprio diff e diga na carta o que refatorou.
+**O que refatorei para cumprir o padrao v2.0**
 
-Itens do Claude (um commit por entrega; nao passe o turno antes de todos):
+* Dominio: toda mudanca de estado virou metodo com nome de intencao e tabela de transicoes validada (`InvalidTransition`); o `AppService` nao atribui mais `job.status` (8 pontos). Regra "o que conta como sucesso" mora no dominio (`SubmissionEvidence.review_reason`).
+* Razoes de parada num lugar so (`AbortReason`, textos identicos aos antigos) e motivos de revisao no dominio (`ReviewReason`).
+* `_strict_abort` virou tres checagens pequenas (`_challenge_by_url`, `_challenge_by_screen`, `_domain_deviation`); `_run_modal` deixou de devolver status e perdeu o ramo de envio, que foi para `_submit`/`_send`/`_observe_submission` (um nivel cada). Regex com nome e comentario.
+* Fakes compartilhados em `tests/application/fakes.py` (usados pelos testes novos).
+* Nao fiz: migrar os fakes antigos de outros arquivos de teste (ficaram duplicados); cerca de 20 construcoes de `SearchRequest` em testes antigos ganharam `strict_abort=False` (por 2A) e 8 testes receberam cache falso (por 1A).
 
-1. Modal que nao abre: com parada estrita, vira parada com `last_abort_reason` e nenhuma vaga seguinte tentada; a vaga fica PENDING. O prazo de espera e o da porta, nao decidido no AppService.
+**Limites e riscos**
 
-2. Desafios: `abort_url_pattern` opcional (regex nomeada) e `abort_indicator`, conforme o seu plano, com precedencia URL antes do indicador. So parar, registrar e avisar no sumario. O contrato do seu plano e o oficial (rotas `/checkpoint/challenge`, `/captcha`, `/unusual-traffic`, `/verify-phone`; marcador `[data-aihawk-challenge]`).
+* Nada foi exercitado em navegador real; so porta falsa.
+* Perfil `linkedin` real: `abort_url_pattern` e `abort_indicator` (`iframe[src*='captcha' i]`) sao hipoteses nao validadas.
+* Historico lembra MANUAL_REVIEW sem o motivo original (volta como "ja estava em revisao manual" ou "interrompida antes do resultado"). Telemetria por vaga ainda nao traz o motivo.
+* O fsync protege de queda de energia no disco local; testei que e chamado (arquivo e pasta), nao uma queda real.
 
-3. SUBMITTING: grava antes do clique de envio, com escrita atomica e fsync (3A). Depois de `SUBMITTING`, so sucesso confirmado vira APPLIED; qualquer outro desfecho (excecao, confirmacao ausente, modal ainda aberto, tempo esgotado) vira MANUAL_REVIEW, nunca ERROR nem nova tentativa. Escreva como regra do dominio, nao como efeito de try/except. Liberacao de MANUAL_REVIEW: edicao manual do JSON por ora.
-
-4. Regras 1A e 2A: as regras ficam no dominio/aplicacao (envio real exige cache; `strict_abort` padrao ligado no `SearchRequest`). A ligacao na CLI e do Agy.
-
-5. Reporte a Mutation Score do zero no commit exato, por status e por arquivo, com os sobreviventes novos (se houver). Entrega: carta para o Agy com a lista abaixo, `Turno: Agy`.
-
-O que vem depois (para voce repassar ao Agy):
-
-1. ORDEM: escreva os testes a partir dos criterios antes de ler o codigo do Claude; so depois leia, para revisar.
-
-2. Chave de motor no `BrowserService`: le `BROWSER_ENGINE`, normaliza (`strip` e `lower`) tanto da variavel quanto do parametro, padrao `chromium`, valor invalido falha com mensagem que lista os validos, `invisible-playwright` importado so quando firefox. Escolha do motor isolada numa fabrica pequena e testavel.
-
-3. `requirements-firefox.txt` com os dois pins e comentario de uma linha.
-
-4. Clone: as rotas e o marcador do contrato do Claude, sem variacoes, sem link para si mesmas; variante so com marcador, so com URL, e desafio numa pagina de vaga. Uma vaga cujo modal nao abre e outra cujo modal abre com atraso dentro do prazo (o lote segue normal). Se algo do contrato for inviavel, devolva ao Claude por carta.
-
-5. CLI (`main.py`): envio real recusa rodar sem cache (1A); `strict_abort` ligado por padrao com opcao explicita para desligar (2A). Cite na carta o caminho do arquivo de cache e o prazo de espera da infra.
-
-6. Testes reais dos cenarios acima; `tests/real/` inteiro nos dois motores; relatorio `docs/relatorio_go_nogo_firefox.md` gerado por script a partir da saida dos testes, com os 6 criterios, as 3 execucoes e os itens de "sempre registrar". Nao altere o CI.
-
-7. Falha na logica do AppService: devolva ao Claude (`Turno: Claude`). Ao fechar, homologue no commit exato sem tocar em `src/domain`, `src/application`, `tests/domain` nem `tests/application` (mostrar `git diff --stat`) e passe `Turno: Nicolas` pedindo a revisao do relatorio.
+Proximo: o seu turno. Se achar falha na logica do AppService, devolva com `Turno: Claude`.
 
 ---
 
 ## 1. Estado Atual da Squad
 
-* **Turno Atual:** Claude.
+* **Turno Atual:** Agy.
 * **Regra de turno (lida por script):** o campo `Turno:` do topo so aceita `Claude`, `Agy` ou `Nicolas`. Mudar o `Turno` no mesmo commit do seu trabalho e o sinal de passagem. Commit fora do seu turno e recusado por hook.
 * **Versao Consolidada da Aplicacao:** v1.5 (`master` = 'e28da32', merge do PR #4, tag `v1.5`). Antes: v1.0 ('414e4f8', PR #2, tag `v1.0`).
-* **Caminho:** v1.5 (feito) -> v2.0 em tres portoes: A (motor e seguranca, sem LinkedIn), B (Shadow Mode real com a conta temporaria, sem envio), C (Burner Run de 5 vagas) -> v2.5 (LLM) -> v3.0. Se um portao falha, o proximo nao comeca. Backlog definitivo: a planilha do Nicolas.
-* **Versao Alvo da Squad:** v2.0, Portao A, bloco 1 (fase 2: execucao, com PLANO OK).
+* **Caminho:** Geracao 2.0 fecha na v2.0, com marcos intermediarios: v1.5 (feito) -> v1.6 (Portao A: motor e seguranca, sem LinkedIn) -> v1.7 (Portao B: Shadow Mode real com a conta temporaria, sem envio) -> v2.0 (Portao C: Burner Run de 5 vagas, primeiro envio real) -> Geracao 2.5 (LLM) -> Geracao 3.0. Cada marco sai por PR para a master, com CI e catraca verdes, e so depois do merge ganha a tag. Se um portao falha, o proximo nao comeca. Backlog definitivo: a planilha do Nicolas.
+* **Versao Alvo da Squad:** v1.6 (Portao A, bloco 1 de 2: fase 2, execucao, com PLANO OK).
 * **Branch Ativa:** `feat/2.0-portao-a`. A `master` so recebe PR; as `feat/*` aceitam push normal (sem force push nem exclusao).
-* **Placar do Pytest (base v1.5):** rapido (`tests/domain` + `tests/application`) = 178 PASSED (Mutation do zero em 02/11: 95,1%, 562/591, 29 sobreviventes). Suite infra+real = 28 PASSED (14 infra + 14 real Chromium). Total geral = 206 PASSED (0 falhas, 0 xfail).
-* **Proxima Acao Esperada:** Claude executa os itens do bloco 1 e passa `Turno: Agy`.
+* **Placar do Pytest:** rapido (`tests/domain` + `tests/application`) = 341 PASSED em '8fa398f' (Mutation do zero em 03/11: 95,8%, 664/693, 29 sobreviventes, nenhum novo; v1.5 era 95,1%, 562/591). Suite infra+real: nao rodada por mim (Caixa Preta); ultimo placar conhecido 28 PASSED.
+* **Proxima Acao Esperada:** Agy escreve os testes reais pelo contrato da carta, entrega chave de motor, requirements-firefox, paginas do clone, CLI (1A e 2A) e relatorio go/no-go, e passa `Turno: Nicolas`.
 
 ---
 
@@ -122,7 +103,7 @@ O que vem depois (para voce repassar ao Agy):
    - Push, PR e tag: so o Claude, depois da revisao aprovada, com a linha `AUTORIZO: ...` do Nicolas no topo do NOTAS.md e confirmacao dele no terminal. O Agy nunca. O hook `pre-push` recusa qualquer push para `master`/`main`.
 7. **Mutation Score:** todo score registrado traz a contagem por status e por arquivo, e foi medido do zero (`rm -rf .mutmut-cache`) e sem outro processo de teste rodando em paralelo. O Maestro pode reproduzi-lo; diferenca entre medicoes e investigada antes de entrar no historico.
 
-8. **Versao e tag:** a revisao acontece antes do PR. Revisao negada nao gera PR nem tag e nao consome versao: a versao segue em aberto e as correcoes entram na mesma branch, com a rodada registrada no Historico como `[RESPOSTA]`. A tag so e criada depois do merge. Correcao depois do merge usa versao de correcao (v1.5.1). O numero seguinte so existe depois do merge da anterior.
+8. **Versao e tag:** a revisao acontece antes do PR. Revisao negada nao gera PR nem tag e nao consome versao: a versao segue em aberto e as correcoes entram na mesma branch, com a rodada registrada no Historico como `[RESPOSTA]`. A tag so e criada depois do merge. Correcao depois do merge usa versao de correcao (v1.5.1). O numero seguinte so existe depois do merge da anterior.  Dentro de uma Geracao, cada portao aprovado fecha um marco intermediario (ex: v1.6, v1.7) com o mesmo fluxo: revisao antes do PR, merge manual do Nicolas e tag depois. Commit entre turnos nunca gera tag.
 
 ---
 
@@ -138,6 +119,7 @@ O que vem depois (para voce repassar ao Agy):
 ---
 
 ## 4. Historico de Handoffs
+* [2026-11-03] [PRONTO] [Claude] src/domain, src/application, tests/domain, tests/application - Portao A bloco 1 (camada Claude): modal que nao abre e desafios (`abort_url_pattern`) param o lote; SUBMITTING com fsync; so envio confirmado vira APPLIED, o resto MANUAL_REVIEW; 1A (sem cache nao envia) e 2A (`strict_abort` padrao). Commit '8fa398f'; rapida 341 PASSED; mutation do zero 95,8% (664/693, 29 sobreviventes, nenhum novo).
 * [2026-11-03] [PEDIDO] [Nicolas -> Claude] NOTAS.md - PLANO OK do Portao A, bloco 1 (branch 'feat/2.0-portao-a'): planos do Claude e do Agy aprovados com ajustes do Maestro; decisoes do PO 1A (nunca candidatura duplicada, envio real exige cache), 2A (parada estrita por padrao), 3A (fsync no SUBMITTING). Restauradas as secoes 1 e 2, apagadas por engano no commit '2e7bf69'; `git stash` proibido para agentes.
 * [2026-11-02] [PRONTO] [Claude] NOTAS.md - Autorizacao recebida: push da feat/v1.5 e PR para a master. Tag v1.5 so depois do merge (Nicolas avisa no chat). Limitacoes conhecidas vao na descricao do PR e no backlog da v2.0.
 * [2026-11-02] [RESPOSTA] [Nicolas -> Claude] NOTAS.md - Revisao do ponto estavel '3276d90' aprovada (Nicolas, Argon, Maestro). AUTORIZO: push, PR e tag da feat/v1.5; tag so apos o merge.
@@ -147,9 +129,3 @@ O que vem depois (para voce repassar ao Agy):
 * [2026-11-02] [PEDIDO] [Claude] tests/application, NOTAS.md - Inclui `test_mutantes_residuais.py` (esquecido no commit anterior) e pede ao Nicolas/diretoria a aprovacao do ponto estavel da v1.5. Aguarda resposta antes de tag, push e PR.
 * [2026-11-02] [PRONTO] [Agy] NOTAS.md - Homologacao de modal_signature no motor real: 27/27 Chromium PASSED (201/201 no total do repo); guarda de progresso aprovada sem falsos positivos; ponto estavel para fechamento da v1.5. Turno: Claude.
 * [2026-11-02] [PEDIDO] [Claude] src/application, tests/application - `modal_signature` no BrowserPort e no laco do modal (guarda de progresso); mutation do zero 95,0% (551/580); rapida 174 PASSED. Pede infra+real ao Agy.
-* [2026-11-02] [PRONTO] [Agy] src/infrastructure/, tests/, .github/ - Suite real 100% verde (27/27 Chromium PASSED): Shadow Mode (SIMULATED) e Parada Estrita validados; get_current_url exposto; modal_signature confirmado; CI/CD criado (.github/workflows/ci.yml). Turno: Claude.
-* [2026-11-02] [PRONTO] [Claude] src/domain, src/application, tests/application - Shadow Mode (`shadow_mode`, `JobStatus.SIMULATED`), parada estrita (`strict_abort` + `abort_indicator`, `last_abort_reason`), perfil `orangehrm_vagas_publicas`, seletores fixados em teste. Rapida 162 PASSED; mutation do zero 93,9% (538/573). Falta `modal_signature` (depende do Agy).
-* [2026-11-02] [PRONTO] [Agy] src/infrastructure/browser_service.py, tests/ - Geracao 1.5 parte 2 entregue: extrator sem fallback 'Empresa'/'Vaga', rolagem real no quotes comprovada (> 10 quotes), mapeamento DOM do OrangeHRM publico, PROVA cega (5/5 PASSED), testes vermelhos de Shadow Mode e parada estrita (2 xfail strict). Turno: Claude.
-* [2026-11-02] [PEDIDO] [Nicolas -> Agy] tests/real/external/, tests/real/linkedin_clone/, src/infrastructure/, NOTAS.md - Geracao 1.5, parte 2: extrator sem fallback `'Empresa'`, rolagem real no `quotes`, DOM do OrangeHRM publico (sem login), PROVA cega do `AppService` e testes vermelhos de Shadow Mode e parada estrita. Mutation Score oficial retificado para 89,3% (482/540) por rodada independente do Maestro; o 96,1% nao se reproduziu (31 valores de seletor sobrevivem a suite rapida). Branches: `feat/v1.5` ate fechar, depois `feat/v2.0` (contato real) e `feat/v2.1` so com PR aprovado, revisao da Argon e do Maestro.
-* [2026-11-02] [PRONTO] [Agy] tests/real/external/, NOTAS.md - Homologacao da v1.5: mutation score em 96,1% (519 mortos / 19 sobreviventes de 540; RETIFICADO: oficial 89,3%, ver pedido acima); mar aberto 8/8 PASSED com books e quotes na aplicacao real; src/ 100% limpo; Turno: Nicolas.
-* [2026-11-02] [PEDIDO] [Nicolas -> Agy] tests/real/external/, NOTAS.md - Fase 2 (meta v1.5): mar aberto SOMENTE em sandboxes publicos de automacao (sem LinkedIn/Gupy, sem conta real, sem login, sem envio real). TREINO descrito na carta do NOTAS.md (cenario, DOM observado, comportamento esperado, sem codigo de teste); PROVA listada so em `tests/real/external/`, no NOTAS so a contagem. Aceite: suite externa executada sob essas restricoes + carta para o Claude + commit + `Turno: Claude` (que na sequencia ataca os 58 sobreviventes de `app_service.py`).
