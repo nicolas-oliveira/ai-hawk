@@ -43,7 +43,8 @@ class AppController:
         jobs = self._service.run(request)
         finished = self._clock()
 
-        summary = self.format_summary(jobs, request)
+        # Pela instancia: a lista de revisao manual fecha o bloco do sumario.
+        summary = "\n".join([self.format_summary(jobs, request), *self._manual_review_lines(jobs)])
         reason = getattr(self._service, "last_abort_reason", None)
         report = self.build_telemetry(
             jobs, request, started, finished,
@@ -80,7 +81,6 @@ class AppController:
             if status is JobStatus.APPLIED:
                 continue
             lines.append(f"{status.value:<21} {counts[status]}")
-        lines.extend(AppController._manual_review_lines(jobs))
         return "\n".join(lines)
 
     @staticmethod
