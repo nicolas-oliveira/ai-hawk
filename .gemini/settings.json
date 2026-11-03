@@ -13,6 +13,7 @@
       "write_file(CLAUDE.md)",
       "write_file(.claude/**)",
       "write_file(.git/**)",
+      "command(git stash *)",
       "command(git push *)",
       "command(git tag *)",
       "command(git reset --hard *)",

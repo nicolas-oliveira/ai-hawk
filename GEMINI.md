@@ -112,7 +112,6 @@
   3. **Placar da Suíte de Testes:** detalhamento do status dos testes rápidos (`tests/domain`, `tests/application`), de infraestrutura (`tests/infrastructure`) e reais no Chromium (`tests/real`).
   4. **Cenários da Realidade Crua do DOM e Comportamento Ideal Esperado:** descrição dos cenários de teste reais aos quais a aplicação está submetida (ex: redesign de seletores, modais travados/Next infinito, freio de erros consecutivos, proteção de cache) e como a aplicação DEVE responder idealmente no mundo real para evitar banimento ou falhas operacionais, cabendo exclusivamente ao Claude conceber e implementar a lógica comercial interna.
 
-<<<<<<< HEAD
 ## 8. Formato Oficial da "Carta do Chat" e Tom de Comunicação Direta
 - **Carta de handoff em passagem de turno vai no NOTAS.md, não no chat:** a carta formal fica logo abaixo das 3 linhas do topo do NOTAS.md, no lugar da carta anterior. No chat, só um resumo de 2 linhas ("Turno passado para X no commit 'abc1234'; carta no NOTAS.md").
 - **Exceção, turno para o Nicolas:** quando o turno vai para o Nicolas, a carta completa vai no chat, com os delimitadores `──────`. Os delimitadores valem só para mensagens diretas ao Nicolas ou à Argon.
@@ -125,11 +124,3 @@
   - *Execução prática (edição de código, alteração de arquivos, execução de testes):* Incluir obrigatoriamente o rodapé técnico detalhando o que foi pulado (*Pulado:*) e os riscos identificados (*Risco:*).
 - **Destinatários Suportados no `PARA`:** Pode ser direcionado para Claude (Dev), Gemini Argon (Auditoria) ou Nicolas (PO/Tech Lead).
 - **Formatação de Commits:** Commits SEMPRE referenciados entre aspas simples (ex.: `'dbbfbca'`). Proibido usar sem aspas ou em outros formatos.
-=======
-## 8. Formato Oficial da "Carta do Chat" (Comunicação Direta no Chat)
-- **Delimitadores Obrigatórios (`──────`):** O e-mail de chat tem cabeçalho separado começando com `──────`, inserindo as linhas (`DE`, `PARA`, `ASSUNTO`), e fechando o cabeçalho com `──────`. O e-mail encerra no final absoluto com `──────`.
-- **Proibição de Delimitadores no Corpo:** NUNCA usar `──────` ou divisores horizontais dentro do corpo do e-mail; `──────` só serve para isolar o cabeçalho e para o encerramento final.
-- **Proibição de Títulos Markdown (`##`):** NUNCA usar marcações de cabeçalho `##` ou `###` nem dentro do cabeçalho nem no corpo do texto. Manter a estrutura limpa em tópicos ou parágrafos diretos com negrito (`**`).
-- **Destinatários Suportados no `PARA`:** Pode ser direcionado para Claude (Dev), Gemini Argon (Auditoria) ou Nicolas (PO/Tech Lead).
-- **Formatação de Commits:** Commits SEMPRE referenciados entre aspas simples (ex.: `'dbbfbca'`). Proibido usar sem aspas ou em outros formatos.
->>>>>>> origin/master
