@@ -14,9 +14,16 @@ from src.domain.entities.job import Job, JobStatus
 logger = logging.getLogger(__name__)
 
 # Somente estes status valem a pena lembrar entre execucoes. ERROR e PENDING
-# NUNCA entram no cache: precisam ser tentados de novo.
+# NUNCA entram no cache: precisam ser tentados de novo. SUBMITTING e MANUAL_REVIEW
+# entram para a vaga nunca ser reenviada sozinha depois de uma queda.
 CACHEABLE_STATUSES = frozenset(
-    {JobStatus.APPLIED, JobStatus.SKIPPED_COMPLEX, JobStatus.ALREADY_APPLIED}
+    {
+        JobStatus.APPLIED,
+        JobStatus.SKIPPED_COMPLEX,
+        JobStatus.ALREADY_APPLIED,
+        JobStatus.SUBMITTING,
+        JobStatus.MANUAL_REVIEW,
+    }
 )
 
 # Trava de seguranca da maquina de estados do modal (passos Next/Review/Submit).
@@ -168,6 +175,10 @@ class JobCache(Protocol):
     def put(self, job: Job) -> None:
         """Lembra o status da vaga. Ignora status fora de CACHEABLE_STATUSES."""
 
+    def record_submitting(self, job: Job) -> None:
+        """Grava a INTENCAO de envio de forma duravel, antes do clique. Se nao
+        conseguir gravar, levanta: sem intencao gravada o envio nao acontece."""
+
 
 class JsonJobCache:
     """JobCache em arquivo JSON local: `{"version": 1, "jobs": {"<platform>|<url>": {...}}}`.
@@ -224,25 +235,44 @@ class JsonJobCache:
     def put(self, job: Job) -> None:
         if job.status not in CACHEABLE_STATUSES:
             return
+        self._remember(job, job.status)
+        self._flush()
+
+    def record_submitting(self, job: Job) -> None:
+        # Diferente do put: uma falha de gravacao PROPAGA (nao engole).
+        self._remember(job, JobStatus.SUBMITTING)
+        self._write_atomic()
+
+    def _remember(self, job: Job, status: JobStatus) -> None:
         self._jobs()[self._key(job)] = {
-            "status": job.status.value,
+            "status": status.value,
             "title": job.title,
             "company": job.company,
             "at": datetime.now().astimezone().isoformat(timespec="seconds"),
         }
-        self._flush()
 
     def _flush(self) -> None:
         try:
-            directory = os.path.dirname(self._path)
-            if directory:
-                os.makedirs(directory, exist_ok=True)
-            tmp_path = f"{self._path}.tmp"
-            with open(tmp_path, "w", encoding="utf-8") as fh:
-                json.dump(self._data, fh, ensure_ascii=False, indent=2)
-            os.replace(tmp_path, self._path)
+            self._write_atomic()
         except OSError:
             logger.exception("Falha ao gravar o cache em %s (seguindo so em memoria).", self._path)
+
+    def _write_atomic(self) -> None:
+        """Escrita atomica e duravel: arquivo e pasta chegam ao disco (fsync) antes
+        de seguir, para sobreviver a uma queda de energia."""
+        directory = os.path.dirname(self._path) or "."
+        os.makedirs(directory, exist_ok=True)
+        tmp_path = f"{self._path}.tmp"
+        with open(tmp_path, "w", encoding="utf-8") as fh:
+            json.dump(self._data, fh, ensure_ascii=False, indent=2)
+            fh.flush()
+            os.fsync(fh.fileno())
+        os.replace(tmp_path, self._path)
+        directory_fd = os.open(directory, os.O_RDONLY)
+        try:
+            os.fsync(directory_fd)
+        finally:
+            os.close(directory_fd)
 
 
 class AppService:
