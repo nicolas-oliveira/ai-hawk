@@ -7,14 +7,19 @@ Fonte unica de verdade para a coordenacao assincrona entre Agy e Claude.
 ## 📬 COMUNICADO OFICIAL ATIVO NO TOPO (TURNO ATUAL)
 
 **DE/PARA/TURNO:** Nicolas -> Claude (copia: Gemini Argon, Maestro, Agy) | Turno: Claude | 2026-11-03
-**STATUS:** [PEDIDO] Abertura da Geracao 2.0, Portao A (bloco 1). Branch 'feat/v2.0-portao-a'. Sem LinkedIn real.
-**ACEITE/RESUMO:** Claude entrega a chave `BROWSER_ENGINE`, o `requirements-firefox.txt`, a parada estrita (modal que nao abre e desafios) e a intencao pre-clique, e passa `Turno: Agy`; o Agy testa pelos criterios antes de ler o codigo, emite o relatorio go/no-go e passa `Turno: Nicolas`.
+**STATUS:** [PEDIDO] Abertura da Geracao 2.0, Portao A (bloco 1), fase 1: plano. Branch 'feat/v2.0-portao-a'. Sem LinkedIn real.
+**ACEITE/RESUMO:** Claude roda o /plan na sua camada (domain e application), posta o plano na carta e passa `Turno: Agy`; o Agy planeja a sua camada (infra e testes reais) e passa `Turno: Nicolas`; so com `PLANO OK` no topo o codigo comeca.
 
-**ASSUNTO:** Abertura da Geracao 2.0, Portao A (bloco 1): chave de motor, parada estrita e intencao pre-clique | commit anterior: tag 'v1.5'
+**ASSUNTO:** Abertura da Geracao 2.0, Portao A (bloco 1): parada estrita, intencao pre-clique e chave de motor | commit anterior: tag 'v1.5'
 
 Claude (Dev), cc Gemini Argon (Tech Lead), Maestro (Revisor), Agy (QA/Infra),
 
-Contexto: a v1.5 esta fechada (merge na master e tag 'v1.5'). Abrimos a Geracao 2.0 em tres portoes: A (motor e seguranca, sem LinkedIn), B (Shadow Mode no LinkedIn real, sem envio) e C (Burner Run). Se um portao falha, o proximo nao comeca. Este pedido cobre so o bloco 1 do Portao A. "Perfil por identidade" e "Residuos da esteira" ficam para o pedido seguinte, porque dependem do resultado do spike e de decisoes de regra do Nicolas. O backlog definitivo e a planilha.
+Contexto: a v1.5 esta fechada (merge na master e tag 'v1.5'). Abrimos a Geracao 2.0 em tres portoes: A (motor e seguranca, sem LinkedIn), B (Shadow Mode no LinkedIn real, sem envio) e C (Burner Run). Se um portao falha, o proximo nao comeca. Este pedido cobre so o bloco 1 do Portao A. "Perfil por identidade" e "Residuos da esteira" ficam para o pedido seguinte, porque dependem do resultado do spike e de decisoes de regra do Nicolas; pode citar no plano como "proximo", sem executar. O backlog definitivo e a planilha.
+
+Fases deste pedido:
+
+* Fase 1 (plano): cada agente roda o /plan so sobre os seus itens, na branch ativa, sem criar nem trocar de branch, e registra o plano na carta do seu turno. Nenhum codigo, nenhum teste novo, nenhuma dependencia instalada nesta fase. O Nicolas libera com a linha `PLANO OK` no topo do NOTAS.md.
+* Fase 2 (execucao): so depois do `PLANO OK`, na ordem dos itens abaixo.
 
 Regras deste pedido:
 
@@ -23,7 +28,7 @@ Regras deste pedido:
 * Dependencia autorizada pelo Nicolas nesta carta, somente esta: `invisible-playwright==0.44.1` e `invisible-core==54.49.0`, em `requirements-firefox.txt`. Elas nao entram no `requirements.txt` nem no CI. Nenhuma outra dependencia nova.
 * Sem `BROWSER_ENGINE` o comportamento e o de hoje: o padrao e `chromium`.
 * A catraca de mutacao nao pode piorar (95,0% e no maximo 29 sobreviventes). Codigo novo em `src/domain` ou `src/application` vem com teste que mata os mutantes dele.
-* Cada um escreve so no seu territorio (regra 6).
+* Cada um escreve so no seu territorio (regra 6). Claude: `src/domain`, `src/application` e `tests/domain`, `tests/application`. Agy: `src/infrastructure`, `tests/infrastructure`, `tests/real`, `requirements*.txt`, `docs/`. Se o AppService precisar de uma capacidade nova do navegador, o Claude define a assinatura na carta e pede ao Agy; nao edita infra.
 
 Criterios do go/no-go. Ficam fixos agora e ninguem os altera depois de rodar. O spike so vira GO se TODOS forem verdadeiros no mesmo commit:
 
@@ -32,39 +37,35 @@ Criterios do go/no-go. Ficam fixos agora e ninguem os altera depois de rodar. O 
 3. A suite rapida e a mutation seguem no placar acima.
 4. Em 3 execucoes seguidas da suite real em firefox, zero falha intermitente.
 5. Tempo da suite real em firefox de ate 2x o de chromium (limite proposto pelo Maestro; o Nicolas ajusta ANTES de rodar, se quiser).
-6. `src/domain` intocado pela chave de motor, e chromium continua como padrao e verde.
+6. `src/domain` e `src/application` intocados pela chave de motor, e chromium continua como padrao e verde.
 
 Sempre registrar no relatorio, mesmo em GO: cada falha e atrito, o tamanho do download do motor, tempo e tamanho no CI (so medir, sem alterar o CI) e as chamadas de rede feitas pelo motor ao iniciar. Qualquer criterio falso e NO-GO, e o relatorio diz qual. Um NO-GO bem fundamentado e um resultado valido. A migracao definitiva so e pedida depois de um GO, em carta propria.
 
-Itens do Claude (um commit por entrega, nomeando os arquivos; nao passe o turno antes de todos):
+Itens do Claude (fase 2; um commit por entrega, nomeando os arquivos; nao passe o turno antes de todos):
 
-1. Chave de motor: o `BrowserService` le `BROWSER_ENGINE` (`chromium` ou `firefox`). Ausente vale `chromium`. Qualquer outro valor falha na hora com mensagem que lista os valores validos. O caminho firefox importa o `invisible-playwright` so quando escolhido, para o chromium rodar sem ele instalado. Teste rapido da escolha e da falha (porta falsa, sem abrir browser).
+1. Parada estrita, modal que nao abre: hoje cai em ERROR. Deve virar parada estrita com `last_abort_reason` preenchido e nenhuma vaga seguinte tentada. Teste rapido.
 
-2. `requirements-firefox.txt` com os dois pins exatos acima e um comentario de uma linha dizendo o porque (a versao do wrapper exige o core). Sem tocar no `requirements.txt`.
+2. Parada estrita, desafios: checkpoint, captcha, "trafego incomum" e verificacao de telefone passam a contar como `abort_indicator`, via perfil de seletores ou padroes de URL e nao por codigo solto. Seus testes rapidos usam a porta falsa e nao leem HTML. CONTRATO com o Agy: na sua carta, liste as chaves de seletor e os padroes de URL exatos que o perfil passa a esperar; o Agy constroi as paginas do sandbox para dispararem exatamente esses. Nao existe resolucao automatica de desafio: so parar, registrar e avisar.
 
-3. Parada estrita, modal que nao abre: hoje cai em ERROR. Deve virar parada estrita com `last_abort_reason` preenchido e nenhuma vaga seguinte tentada. Teste rapido.
+3. Intencao pre-clique minima: gravar `SUBMITTING` para a vaga ANTES do clique de envio. Depois de um reinicio, uma vaga com `SUBMITTING` e sem resultado nunca e repetida sozinha: vai para revisao manual (status proprio, listado no fim do lote). Teste rapido que simula a queda entre o `SUBMITTING` e o resultado e confirma que a vaga nao e reaberta. Diga na carta onde o estado fica persistido.
 
-4. Parada estrita, desafios: checkpoint, captcha, "trafego incomum" e verificacao de telefone passam a contar como `abort_indicator`, via perfil de seletores ou padroes de URL e nao por codigo solto. O Agy fornece as paginas de teste no sandbox; voce cobre com teste rapido por porta falsa. Nao existe resolucao automatica de desafio: so parar, registrar e avisar.
-
-5. Intencao pre-clique minima: gravar `SUBMITTING` para a vaga ANTES do clique de envio. Depois de um reinicio, uma vaga com `SUBMITTING` e sem resultado nunca e repetida sozinha: vai para revisao manual (status proprio, listado no fim do lote). Teste rapido que simula a queda entre o `SUBMITTING` e o resultado e confirma que a vaga nao e reaberta. Diga na carta onde o estado fica persistido.
-
-6. Reporte a Mutation Score do zero no commit exato (regra 7), por status e por arquivo, com os sobreviventes novos (se houver) e se sao texto de log ou equivalentes. Entrega: carta para o Agy com a lista abaixo, commits nomeando seus arquivos, `Turno: Agy`.
+4. Reporte a Mutation Score do zero no commit exato (regra 7), por status e por arquivo, com os sobreviventes novos (se houver) e se sao texto de log ou equivalentes. Entrega: carta para o Agy com a lista abaixo, commits nomeando seus arquivos, `Turno: Agy`.
 
 O que vem depois (para voce repassar ao Agy na sua carta, descrevendo o comportamento esperado):
 
 1. ORDEM: antes de ler o codigo do Claude, escreva a partir dos criterios acima (a) a execucao da suite real parametrizada por `BROWSER_ENGINE`, para rodar a mesma suite nos dois motores, e (b) o script do relatorio. So depois leia o codigo do Claude, para revisar. Teste que espelha a implementacao nao vale.
 
-2. Paginas de bloqueio no sandbox: rotas novas no clone, sem link para si mesmas, para captcha, checkpoint, "trafego incomum" e verificacao de telefone. O Nicolas anexa o HTML ou print salvo da tela de "trafego incomum" do Google; use como modelo do texto da pagina, sem copiar marca. Teste real: cada pagina como primeira URL da fila e a URL do clone como segunda. Esperado: zero vagas, `last_abort_reason` preenchido e a segunda URL nunca aberta.
+2. Chave de motor no `BrowserService`: le `BROWSER_ENGINE` (`chromium` ou `firefox`). Ausente vale `chromium`. Qualquer outro valor falha na hora com mensagem que lista os valores validos. O caminho firefox importa o `invisible-playwright` so quando escolhido, para o chromium rodar sem ele instalado. Teste de infra da escolha e da falha, sem abrir browser.
 
-3. Teste real: desafio na pagina da vaga (e nao so na listagem) para o lote.
+3. `requirements-firefox.txt` com os dois pins exatos acima e um comentario de uma linha dizendo o porque (a versao do wrapper exige o core). Sem tocar no `requirements.txt`.
 
-4. Teste real: modal que nao abre vira parada estrita, e nao ERROR.
+4. Paginas de bloqueio no sandbox: rotas novas no clone, sem link para si mesmas, para captcha, checkpoint, "trafego incomum" e verificacao de telefone, disparando as chaves e padroes que o Claude listar. O Nicolas anexa o HTML ou print salvo da tela de "trafego incomum" do Google; use como modelo do texto da pagina, sem copiar marca. Teste real: cada pagina como primeira URL da fila e a URL do clone como segunda. Esperado: zero vagas, `last_abort_reason` preenchido e a segunda URL nunca aberta.
 
-5. Rode a suite real em chromium e em firefox e emita `docs/relatorio_go_nogo_firefox.md` com a tabela dos 6 criterios (valor medido, verdadeiro ou falso), as 3 execucoes do firefox e os itens de "sempre registrar". O veredito GO ou NO-GO vai dentro do relatorio.
+5. Teste real: desafio na pagina da vaga (e nao so na listagem) para o lote. Teste real: modal que nao abre vira parada estrita, e nao ERROR.
 
-6. Nao altere o CI (a migracao e condicional); so meca download, tempo e tamanho.
+6. Rode a suite real em chromium e em firefox e emita `docs/relatorio_go_nogo_firefox.md` com a tabela dos 6 criterios (valor medido, verdadeiro ou falso), as 3 execucoes do firefox e os itens de "sempre registrar". O veredito GO ou NO-GO vai dentro do relatorio. Nao altere o CI (a migracao e condicional); so meca download, tempo e tamanho.
 
-7. Se uma falha for do adaptador em `src/`, devolva ao Claude com carta (`Turno: Claude`) em vez de corrigir. Quando fechar, homologue no commit exato, sem tocar em `src/domain`, `src/application`, `tests/domain` nem `tests/application` (mostrar o `git diff --stat` na carta), e passe `Turno: Nicolas` com a carta pedindo a revisao do relatorio.
+7. Se uma falha for da logica do AppService, devolva ao Claude com carta (`Turno: Claude`) em vez de contornar. Quando fechar, homologue no commit exato, sem tocar em `src/domain`, `src/application`, `tests/domain` nem `tests/application` (mostrar o `git diff --stat` na carta), e passe `Turno: Nicolas` com a carta pedindo a revisao do relatorio.
 
 ---
 
