@@ -583,16 +583,12 @@ class AppService:
             self._browser.click(sel["submit_button"])
         except Exception:
             logger.exception("Clique de envio falhou; vaga vai para revisao manual.")
-            return SubmissionEvidence(
-                click_completed=False, confirmation_seen=False, modal_still_open=False
-            )
+            return SubmissionEvidence(click_completed=False)
         try:
             return self._observe_submission(sel)
         except Exception:
             logger.exception("Nao foi possivel observar o envio; vaga vai para revisao manual.")
-            return SubmissionEvidence(
-                click_completed=True, confirmation_seen=False, modal_still_open=False
-            )
+            return SubmissionEvidence(click_completed=True)
 
     def _observe_submission(self, sel: Dict[str, str]) -> SubmissionEvidence:
         modal_closed = self._browser.wait_for_loader_to_disappear(

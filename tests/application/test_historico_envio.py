@@ -94,3 +94,11 @@ def test_falha_ao_gravar_resultado_continua_so_em_memoria(tmp_path):
     cache.put(job)  # nao levanta
 
     assert cache.get(_job()) is JobStatus.APPLIED
+
+
+def test_caminho_sem_pasta_grava_na_pasta_atual(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+
+    JsonJobCache("historico.json").record_submitting(_job())
+
+    assert os.listdir(tmp_path) == ["historico.json"]

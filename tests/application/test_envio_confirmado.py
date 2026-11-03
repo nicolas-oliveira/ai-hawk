@@ -218,3 +218,18 @@ def test_telemetria_conta_a_revisao_manual_no_funil():
     relatorio = AppController.build_telemetry(jobs, _request(), agora, agora)
 
     assert relatorio["funnel"]["manual_review"] == 1
+
+
+def test_clique_de_envio_que_falha_deixa_rastro_no_log(caplog):
+    browser = FakeBrowser(visible=ABERTA, click_raises={SEL["submit_button"]})
+    _rodar(browser)
+    assert "Clique de envio falhou; vaga vai para revisao manual." in caplog.text
+
+
+def test_observacao_que_falha_deixa_rastro_no_log(caplog):
+    browser = FakeBrowser(visible=ABERTA)
+    def falha(sel, timeout):
+        raise RuntimeError("pagina fechou")
+    browser.wait_for_loader_to_disappear = falha
+    _rodar(browser)
+    assert "Nao foi possivel observar o envio; vaga vai para revisao manual." in caplog.text

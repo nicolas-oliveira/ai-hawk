@@ -1,4 +1,5 @@
 """Maquina de estados do Job: transicoes com nome de intencao e regra do envio."""
+import dataclasses
 import itertools
 
 import pytest
@@ -53,7 +54,7 @@ def test_matriz_de_transicoes(origem, alvo):
 
 
 def test_transicao_invalida_diz_origem_e_destino():
-    with pytest.raises(InvalidTransition, match=r"APPLIED -> ERROR nao e permitido\."):
+    with pytest.raises(InvalidTransition, match=r"^APPLIED -> ERROR nao e permitido\.$"):
         _job(S.APPLIED).mark_error()
 
 
@@ -126,3 +127,32 @@ def test_historico_recusa_status_que_nao_se_lembra(lembrado):
 def test_historico_so_restaura_vaga_pendente():
     with pytest.raises(InvalidTransition):
         _job(S.ERROR).restore_from_history(S.APPLIED)
+
+
+def test_historico_recusa_com_mensagem_exata():
+    with pytest.raises(InvalidTransition, match=r"^ERROR nao restaura APPLIED\.$"):
+        _job(S.ERROR).restore_from_history(S.APPLIED)
+
+
+@pytest.mark.parametrize(
+    "motivo,texto",
+    [
+        (ReviewReason.CLICK_FAILED, "clique de envio falhou ou estourou o tempo"),
+        (ReviewReason.MODAL_STILL_OPEN, "modal ainda aberto apos o envio"),
+        (ReviewReason.CONFIRMATION_MISSING, "confirmacao de envio ausente"),
+        (ReviewReason.INTERRUPTED_BEFORE_RESULT, "execucao interrompida antes do resultado do envio"),
+        (ReviewReason.ALREADY_IN_REVIEW, "ja estava em revisao manual de uma execucao anterior"),
+    ],
+)
+def test_motivos_de_revisao_tem_texto_fixo(motivo, texto):
+    assert motivo.value == texto
+
+
+def test_evidencia_e_imutavel():
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        SubmissionEvidence(True, True, False).click_completed = False
+
+
+def test_evidencia_so_com_clique_nao_traz_confirmacao_nem_modal_aberto():
+    ev = SubmissionEvidence(click_completed=False)
+    assert (ev.confirmation_seen, ev.modal_still_open) == (False, False)

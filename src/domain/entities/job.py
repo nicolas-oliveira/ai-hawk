@@ -79,8 +79,8 @@ class SubmissionEvidence:
     """
 
     click_completed: bool
-    confirmation_seen: bool
-    modal_still_open: bool
+    confirmation_seen: bool = False
+    modal_still_open: bool = False
 
     @property
     def review_reason(self) -> Optional[ReviewReason]:

@@ -4,6 +4,7 @@ import pytest
 from src.application.app_controller import AppController
 from src.application.app_service import AbortReason, AppService, url_matches_pattern
 from src.application.dtos.search_request import (
+    OPTIONAL_SELECTOR_KEYS,
     CHALLENGE_MARKER,
     CHALLENGE_URL_PATTERN,
     SearchRequest,
@@ -140,3 +141,44 @@ def test_sumario_sem_parada_nao_traz_aviso():
     service.last_abort_reason = None
     resumo = AppController(service, reports_dir=None).execute(_request())
     assert "Sessao interrompida" not in resumo
+
+
+def test_chaves_novas_do_perfil_sao_opcionais_conhecidas():
+    assert {"abort_url_pattern", "submit_confirmation"} <= set(OPTIONAL_SELECTOR_KEYS)
+
+
+def test_so_indicador_basta_para_ligar_a_parada_estrita():
+    so_indicador = {k: v for k, v in SELETORES.items() if k != "abort_url_pattern"}
+    assert _request(selectors=so_indicador, strict_abort=True).strict_abort is True
+
+
+def test_url_ausente_nunca_casa_com_o_padrao():
+    assert url_matches_pattern(None, ".") is False
+
+
+@pytest.mark.parametrize("motivo", ["", 5, object()])
+def test_sumario_ignora_motivo_vazio_ou_que_nao_e_texto(motivo):
+    service = _ServicoParado()
+    service.last_abort_reason = motivo
+    resumo = AppController(service, reports_dir=None).execute(_request())
+    assert "Sessao interrompida" not in resumo
+
+
+def test_sumario_com_parada_mantem_o_resumo_e_acrescenta_o_aviso():
+    resumo = AppController(_ServicoParado(), reports_dir=None).execute(_request())
+    assert resumo.startswith("=" * 50 + "\nAIHawk - Resumo da sessao (p)")
+    assert resumo.endswith("\nSessao interrompida:  parada estrita: teste")
+
+
+def test_razoes_de_parada_tem_formato_fixo():
+    assert AbortReason.MODAL_NOT_OPENED == "parada estrita: modal nao abriu em {url}"
+    assert AbortReason.CHALLENGE_URL == "parada estrita: desafio na URL ({current}) em {url}"
+    assert AbortReason.HISTORY_REQUIRED == (
+        "envio real exige historico (cache) ligado; nada foi enviado em {url}"
+    )
+
+
+def test_parada_registra_o_motivo_no_log(caplog):
+    browser = FakeBrowser(current_url=lambda b: "https://x.com/captcha")
+    AppService(browser).run(_request(strict_abort=True))
+    assert "Sessao interrompida: parada estrita: desafio na URL (https://x.com/captcha) em https://x.com/s." in caplog.text
