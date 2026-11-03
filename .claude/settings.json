@@ -2,6 +2,7 @@
   "permissions": {
     "allow": [
       "Bash(git tag:*)",
+      "Bash(rm -rf .mutmut-cache)",
       "Bash(gh pr view:*)"
     ],
     "ask": [

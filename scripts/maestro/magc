@@ -37,7 +37,10 @@ set OCIOSA_SEG 180         # tela da janela parada por tanto tempo, sem commit -
 # NÃO use "esc to cancel": aparece no rodapé do Agy enquanto ele trabalha ou com um menu aberto (falso positivo).
 set PADRAO_PERGUNTA 'Do you want to (proceed|make|create|run|allow)|\(y/n\)|\[y/N\]|Allow (this|once|always)|Deseja continuar\?'
 # Frases de ação barrada por permissão (o agente costuma contornar; fica registrado em amarelo).
-set PADRAO_BLOQUEIO 'blocked by auto mode|permission denied|Permissão negada|denied by'
+# Só as frases do PRÓPRIO Claude Code. NÃO use "permission denied" solto nem "denied by": aparecem
+# na saída de comandos, em testes e em texto de regras que o agente lê (falso positivo).
+# Agy: ajuste depois de ver a frase real que a janela dele mostra quando barra uma ação.
+set PADRAO_BLOQUEIO 'actions? not run|blocked by auto mode'
 
 if set -q argv[1]
     set PROJETO $argv[1]
@@ -129,6 +132,16 @@ function tela_fim -a sessao n
     tmux -L $sessao capture-pane -p -t $sessao 2>/dev/null | string match -rv '^\s*$' | tail -n $n
 end
 
+# Histórico recente da tela do agente (inclui o que já rolou para cima).
+function tela_historico -a sessao
+    tmux -L $sessao capture-pane -p -S -500 -t $sessao 2>/dev/null
+end
+
+# Quantas linhas de "ação barrada" existem no histórico da tela.
+function conta_bloqueios -a sessao
+    tela_historico $sessao | string match -ri -- ".*(?:$PADRAO_BLOQUEIO).*" | count
+end
+
 function acordar -a sessao
     if not tmux -L $sessao has-session -t $sessao 2>/dev/null
         avisar "A janela do $sessao não está aberta. Abra o kiosk e rode o maestro de novo."
@@ -157,6 +170,7 @@ function acordar -a sessao
     set -g ultima_tela (tela_hash $sessao)
     set -g tela_mudou_em (date +%s)
     set -g alertou_ocioso 0
+    set -g max_bloqueios (conta_bloqueios $sessao)
 end
 
 set ultimo_turno (string lower -- (topo_turno))
@@ -169,7 +183,7 @@ set ultima_tela ''
 set tela_mudou_em (date +%s)
 set alertou_ocioso 0
 set avisou_pergunta 0
-set avisou_bloqueio 0
+set max_bloqueios 0
 
 bloco
 log titulo "🎼 Maestro iniciado em "(realpath $PROJETO)
@@ -211,7 +225,7 @@ while true
         set tela_mudou_em $agora
         set alertou_ocioso 0
         set avisou_pergunta 0
-        set avisou_bloqueio 0
+        set max_bloqueios (conta_bloqueios $ultimo_turno)
 
         set turno (string lower -- (topo_turno))
         set st (topo_status)
@@ -274,16 +288,16 @@ while true
                 set avisou_pergunta 0
             end
 
-            # Ação barrada por permissão (só registra, sem bip)
-            set barrou (tela_fim $ultimo_turno 40 | string match -ri -- ".*($PADRAO_BLOQUEIO).*" | head -n 1 | string trim)
-            if test -n "$barrou"
-                if test $avisou_bloqueio -eq 0
-                    bloco
-                    log turno "⚠️  A janela do $ultimo_turno teve uma ação barrada: \"$barrou\". Ele costuma contornar; se ficar parado, confira."
-                    set avisou_bloqueio 1
-                end
-            else
-                set avisou_bloqueio 0
+            # Ação barrada por permissão (só registra, sem bip).
+            # Conta no histórico da tela e só avisa quando o total SOBE acima do maior já visto desde o
+            # último commit. O Claude Code recolhe e expande linhas (ex.: ao rodar comando em segundo
+            # plano), e a mesma linha sumia e voltava, repetindo o aviso.
+            set n_barradas (conta_bloqueios $ultimo_turno)
+            if test "$n_barradas" -gt "$max_bloqueios"
+                set max_bloqueios $n_barradas
+                set barrou (tela_historico $ultimo_turno | string match -ri -- ".*(?:$PADRAO_BLOQUEIO).*" | tail -n 1 | string trim)
+                bloco
+                log turno "⚠️  A janela do $ultimo_turno teve uma ação barrada ($n_barradas no histórico): \"$barrou\". Ele costuma contornar; se ficar parado, confira."
             end
 
             if test "$h" = "$ultima_tela"; and test (math "$agora - $tela_mudou_em") -ge $OCIOSA_SEG; and test $alertou_ocioso -eq 0
