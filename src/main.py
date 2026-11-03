@@ -11,8 +11,9 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 load_dotenv()
 
 from src.infrastructure.browser_service import BrowserService
+from src.infrastructure.paths import get_project_root
 
-DEFAULT_CACHE_PATH = "./.cache/jobs_history.json"
+DEFAULT_CACHE_PATH = str(get_project_root() / ".cache" / "jobs_history.json")
 
 
 def resolve_cli_options(argv: Optional[List[str]] = None) -> Dict[str, Any]:
@@ -36,9 +37,12 @@ def resolve_cli_options(argv: Optional[List[str]] = None) -> Dict[str, Any]:
     strict_abort = not (args.no_strict_abort or env_strict_disabled)
 
     env_cache_enabled = os.getenv("JOB_CACHE_ENABLED", "true").strip().lower() not in ("false", "0", "no")
-    raw_cache_path = args.cache_path if args.cache_path is not None else os.getenv("JOB_CACHE_PATH", DEFAULT_CACHE_PATH)
-    cache_path = (raw_cache_path or "").strip()
-    cache_enabled = bool(env_cache_enabled and not args.no_cache and cache_path)
+    explicit_cache = args.cache_path if args.cache_path is not None else os.getenv("JOB_CACHE_PATH")
+    if explicit_cache is not None and explicit_cache.strip():
+        resolved_cache = os.path.abspath(explicit_cache.strip())
+    else:
+        resolved_cache = str(get_project_root() / ".cache" / "jobs_history.json")
+    cache_enabled = bool(env_cache_enabled and not args.no_cache and resolved_cache)
 
     if not shadow_mode and not cache_enabled:
         raise ValueError(
@@ -50,7 +54,7 @@ def resolve_cli_options(argv: Optional[List[str]] = None) -> Dict[str, Any]:
         "shadow_mode": shadow_mode,
         "strict_abort": strict_abort,
         "cache_enabled": cache_enabled,
-        "cache_path": os.path.abspath(cache_path) if cache_enabled else None,
+        "cache_path": resolved_cache if cache_enabled else None,
     }
 
 
@@ -146,14 +150,18 @@ def bootstrap():
             )
 
             print("[*] Disparando loop de candidatura atraves do AppController...")
-            result = app_controller.run(request)
-            print("\n==================================================")
-            print("[+] Relatorio Final da Execucao:")
-            print(f"    - Total Processadas: {getattr(result, 'total_processed', len(getattr(result, 'jobs', [])))}")
-            print(f"    - Aplicadas (APPLIED): {getattr(result, 'applied_count', 0)}")
-            print(f"    - Ignoradas Complexas (SKIPPED_COMPLEX): {getattr(result, 'skipped_count', 0)}")
-            print(f"    - Ja Aplicadas (ALREADY_APPLIED): {getattr(result, 'already_applied_count', 0)}")
-            print("==================================================")
+            if hasattr(app_controller, "execute"):
+                summary = app_controller.execute(request)
+                print(f"\n{summary}")
+            else:
+                result = app_controller.run(request)
+                print("\n==================================================")
+                print("[+] Relatorio Final da Execucao:")
+                print(f"    - Total Processadas: {getattr(result, 'total_processed', len(getattr(result, 'jobs', [])))}")
+                print(f"    - Aplicadas (APPLIED): {getattr(result, 'applied_count', 0)}")
+                print(f"    - Ignoradas Complexas (SKIPPED_COMPLEX): {getattr(result, 'skipped_count', 0)}")
+                print(f"    - Ja Aplicadas (ALREADY_APPLIED): {getattr(result, 'already_applied_count', 0)}")
+                print("==================================================")
 
         except (ImportError, AttributeError, NotImplementedError, TypeError) as err:
             print(f"[!] Camada de aplicacao (AppController/AppService) em desenvolvimento pelo Claude: {err}")

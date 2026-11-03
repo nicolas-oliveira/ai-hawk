@@ -6,6 +6,7 @@ import hashlib
 from typing import Optional, List, Dict, Any
 from dotenv import load_dotenv
 from patchright.sync_api import sync_playwright, BrowserContext, Page, Playwright
+from src.infrastructure.paths import get_project_root
 
 load_dotenv()
 
@@ -164,8 +165,13 @@ class BrowserService:
 
         self.channel = channel or os.getenv("BROWSER_CHANNEL", "chromium")
 
-        root_dir = session_root_dir or os.getenv("SESSION_ROOT_DIR", "./sessions")
+        explicit_root = session_root_dir if session_root_dir is not None else os.getenv("SESSION_ROOT_DIR")
+        if explicit_root is not None and explicit_root.strip():
+            root_dir = os.path.abspath(explicit_root.strip())
+        else:
+            root_dir = str(get_project_root() / "sessions")
         self.user_data_dir = os.path.abspath(os.path.join(root_dir, self.platform))
+        print(f"[BrowserService] Diretorio de perfil de sessao: {self.user_data_dir}")
 
         self.playwright: Optional[Playwright] = None
         self.context: Optional[BrowserContext] = None

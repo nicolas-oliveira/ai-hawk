@@ -591,5 +591,50 @@ def test_default_visibility_timeout_is_3000ms_and_constructor_override(monkeypat
     assert custom_observed == [1000, 4500]
 
 
+def test_get_project_root_contains_src_and_notas_md():
+    """Passo A2: Valida funcao unica get_project_root apontando para a raiz do repositorio."""
+    from src.infrastructure.paths import get_project_root
+
+    root = get_project_root()
+    assert root.is_dir()
+    assert (root / "src").is_dir()
+    assert (root / "NOTAS.md").is_file()
+
+
+def test_default_cache_and_profile_anchored_at_project_root_under_chdir(monkeypatch, tmp_path):
+    """
+    Passo A2:
+    1. Mesmo quando os.getcwd() muda para tmp_path, os caminhos padrao do cache de historico
+       e do perfil de sessao continuam ancorados em get_project_root().
+    2. Quando um caminho relativo explicito e passado por CLI (--cache-path) ou env
+       (JOB_CACHE_PATH, SESSION_ROOT_DIR), ele resolve em relacao ao cwd atual (tmp_path).
+    """
+    from src.infrastructure.paths import get_project_root
+    from src.main import resolve_cli_options
+
+    project_root = get_project_root()
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("JOB_CACHE_PATH", raising=False)
+    monkeypatch.delenv("SESSION_ROOT_DIR", raising=False)
+
+    opts_default = resolve_cli_options([])
+    assert opts_default["cache_path"] == str(project_root / ".cache" / "jobs_history.json")
+
+    service_default = BrowserService(platform="linkedin", engine="chromium")
+    assert service_default.user_data_dir.startswith(str(project_root / "sessions"))
+
+    opts_cli_rel = resolve_cli_options(["--cache-path", "./local_dir/custom.json"])
+    assert opts_cli_rel["cache_path"] == str((tmp_path / "local_dir" / "custom.json").resolve())
+
+    monkeypatch.setenv("JOB_CACHE_PATH", "./env_dir/env_cache.json")
+    opts_env_rel = resolve_cli_options([])
+    assert opts_env_rel["cache_path"] == str((tmp_path / "env_dir" / "env_cache.json").resolve())
+
+    monkeypatch.setenv("SESSION_ROOT_DIR", "./env_sessions")
+    service_env_rel = BrowserService(platform="linkedin", engine="chromium")
+    assert service_env_rel.user_data_dir.startswith(str((tmp_path / "env_sessions").resolve()))
+
+
+
 
 

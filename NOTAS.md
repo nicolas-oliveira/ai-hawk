@@ -101,7 +101,7 @@ Claude
 │ ├─● C5 mutante 140 morto, mutação medida do zero
 │ │      → Turno: Agy
 │ ├─● A1 prazo de visibilidade VOLTA a 3000 ms
-│ ├─○ A2 cache e perfil ancorados na raiz, .gitignore
+│ ├─● A2 cache e perfil ancorados na raiz, .gitignore
 │ ├─○ A3 perfil separado por motor
 │ ├─○ A4 Firefox: Xvfb, ou headless real só explícito
 │ ├─○ A5 clone: fluxo base da v1.5 + cenários explícitos
