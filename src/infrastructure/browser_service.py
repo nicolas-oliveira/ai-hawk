@@ -3,6 +3,7 @@ import shutil
 import time
 import random
 import hashlib
+import logging
 from typing import Optional, List, Dict, Any
 from dotenv import load_dotenv
 from patchright.sync_api import sync_playwright, BrowserContext, Page, Playwright
@@ -10,9 +11,43 @@ from src.infrastructure.paths import get_project_root
 
 load_dotenv()
 
+logger = logging.getLogger(__name__)
+
 VALID_ENGINES = ("chromium", "firefox")
 DEFAULT_ENGINE = "chromium"
 DEFAULT_VISIBILITY_TIMEOUT_MS = 3000
+VALID_FIREFOX_HEADLESS_MODES = ("xvfb", "true_headless")
+DEFAULT_FIREFOX_HEADLESS_MODE = "xvfb"
+XVFB_MISSING_ERROR_MSG = (
+    "Firefox em modo headless exige Xvfb para operacao stealth segura, "
+    "mas o executavel 'Xvfb' nao foi encontrado no PATH. "
+    "Instale o pacote com 'sudo apt-get install -y xvfb' ou passe explicitamente "
+    "firefox_headless_mode='true_headless' (ou FIREFOX_HEADLESS_MODE=true_headless) "
+    "apenas para diagnostico."
+)
+
+
+def resolve_firefox_headless_mode(mode: Optional[str] = None) -> str:
+    """
+    Normaliza e valida o modo headless do Firefox ('xvfb' ou 'true_headless').
+    Padrao: 'xvfb'.
+    """
+    if mode is None:
+        raw_env = os.getenv("FIREFOX_HEADLESS_MODE")
+        if raw_env is None or not raw_env.strip():
+            return DEFAULT_FIREFOX_HEADLESS_MODE
+        raw = raw_env
+    else:
+        raw = mode
+
+    normalized = str(raw).strip().lower()
+    if normalized not in VALID_FIREFOX_HEADLESS_MODES:
+        valid_str = ", ".join(VALID_FIREFOX_HEADLESS_MODES)
+        raise ValueError(
+            f"Valor invalido para FIREFOX_HEADLESS_MODE: '{raw}'. "
+            f"Valores validos: {valid_str}."
+        )
+    return normalized
 
 
 def resolve_browser_engine(engine: Optional[str] = None) -> str:
@@ -93,12 +128,18 @@ class _ChromiumLauncher:
 class _FirefoxLauncher:
     """Adaptador de inicializacao sincrona para o motor Firefox (invisible-playwright)."""
 
-    def __init__(self) -> None:
+    def __init__(self, firefox_headless_mode: Optional[str] = None) -> None:
         from invisible_playwright.sync_api import InvisiblePlaywright
 
         self._driver_cls = InvisiblePlaywright
         self._instance: Any = None
         self.context: Optional[BrowserContext] = None
+        self.firefox_headless_mode = resolve_firefox_headless_mode(firefox_headless_mode)
+        self.effective_mode: Optional[str] = None
+        self.xvfb_path: Optional[str] = None
+        self._had_prev_invpw_env: bool = False
+        self._prev_invpw_env_val: Optional[str] = None
+        self._env_modified: bool = False
 
     def start(
         self,
@@ -109,8 +150,32 @@ class _FirefoxLauncher:
         viewport_height: int,
         extra_args: Optional[List[str]] = None,
     ) -> BrowserContext:
-        if headless and not shutil.which("Xvfb"):
-            os.environ.setdefault("INVPW_TRUE_HEADLESS", "1")
+        self._had_prev_invpw_env = "INVPW_TRUE_HEADLESS" in os.environ
+        self._prev_invpw_env_val = os.environ.get("INVPW_TRUE_HEADLESS")
+        self._env_modified = False
+
+        if not headless:
+            self.effective_mode = "headed"
+            self.xvfb_path = shutil.which("Xvfb")
+        elif self.firefox_headless_mode == "true_headless":
+            logger.warning(
+                "[BrowserService] Firefox iniciado em modo 'headless-real' (INVPW_TRUE_HEADLESS=1). "
+                "Modo sem Xvfb enfraquece a camuflagem stealth; use apenas em teste/diagnostico."
+            )
+            os.environ["INVPW_TRUE_HEADLESS"] = "1"
+            self._env_modified = True
+            self.effective_mode = "headless-real"
+            self.xvfb_path = shutil.which("Xvfb")
+        else:
+            xvfb_bin = shutil.which("Xvfb")
+            if not xvfb_bin:
+                raise RuntimeError(XVFB_MISSING_ERROR_MSG)
+            if "INVPW_TRUE_HEADLESS" in os.environ:
+                os.environ.pop("INVPW_TRUE_HEADLESS", None)
+                self._env_modified = True
+            self.effective_mode = "xvfb"
+            self.xvfb_path = xvfb_bin
+
         self._instance = self._driver_cls(
             profile_dir=user_data_dir,
             headless=headless,
@@ -119,21 +184,36 @@ class _FirefoxLauncher:
         self.context = self._instance.__enter__()
         return self.context
 
+    def _restore_env(self) -> None:
+        if not self._env_modified:
+            return
+        if self._had_prev_invpw_env and self._prev_invpw_env_val is not None:
+            os.environ["INVPW_TRUE_HEADLESS"] = self._prev_invpw_env_val
+        else:
+            os.environ.pop("INVPW_TRUE_HEADLESS", None)
+        self._env_modified = False
+
     def stop(self) -> None:
-        if self._instance is not None:
-            try:
-                self._instance.__exit__(None, None, None)
-            except Exception:
-                pass
-            self._instance = None
-        self.context = None
+        try:
+            if self._instance is not None:
+                try:
+                    self._instance.__exit__(None, None, None)
+                except Exception:
+                    pass
+                self._instance = None
+            self.context = None
+        finally:
+            self._restore_env()
 
 
-def create_engine_launcher(engine: Optional[str] = None):
+def create_engine_launcher(
+    engine: Optional[str] = None,
+    firefox_headless_mode: Optional[str] = None,
+):
     """Fabrica isolada de motor de navegador."""
     resolved = resolve_browser_engine(engine)
     if resolved == "firefox":
-        return _FirefoxLauncher()
+        return _FirefoxLauncher(firefox_headless_mode=firefox_headless_mode)
     return _ChromiumLauncher()
 
 
@@ -151,10 +231,19 @@ class BrowserService:
         session_root_dir: Optional[str] = None,
         engine: Optional[str] = None,
         visibility_timeout_ms: int = DEFAULT_VISIBILITY_TIMEOUT_MS,
+        firefox_headless_mode: Optional[str] = None,
     ):
         self.platform = platform
         self.engine = resolve_browser_engine(engine)
-        self._launcher = create_engine_launcher(self.engine)
+        self.firefox_headless_mode = (
+            resolve_firefox_headless_mode(firefox_headless_mode)
+            if self.engine == "firefox"
+            else DEFAULT_FIREFOX_HEADLESS_MODE
+        )
+        self._launcher = create_engine_launcher(
+            self.engine,
+            firefox_headless_mode=self.firefox_headless_mode,
+        )
         self.visibility_timeout_ms = visibility_timeout_ms
 
         if headless is None:
@@ -220,6 +309,56 @@ class BrowserService:
         self._launcher.stop()
         self.context = None
         self.playwright = None
+
+    def get_runtime_metadata(self) -> Dict[str, Optional[str]]:
+        """
+        Retorna metadados auditaveis da sessao ativa nos dois motores (Chromium e Firefox):
+        - engine: 'chromium' ou 'firefox'
+        - effective_mode: 'headless' | 'headed' (Chromium) ou 'xvfb' | 'headless-real' | 'headed' (Firefox)
+        - xvfb_path: caminho do binario Xvfb se disponivel
+        - browser_version: versao real do motor ou extraida do userAgent
+        - user_agent: string navigator.userAgent observada na pagina ativa
+        """
+        if self.engine == "firefox":
+            effective_mode = getattr(self._launcher, "effective_mode", None) or (
+                "headed" if not self.headless else (
+                    "headless-real" if self.firefox_headless_mode == "true_headless" else "xvfb"
+                )
+            )
+            xvfb_path = getattr(self._launcher, "xvfb_path", None) or shutil.which("Xvfb")
+        else:
+            effective_mode = "headless" if self.headless else "headed"
+            xvfb_path = shutil.which("Xvfb")
+
+        user_agent: Optional[str] = None
+        browser_version: Optional[str] = None
+        if self.context is not None:
+            try:
+                page = self.get_page()
+                user_agent = page.evaluate("() => navigator.userAgent")
+            except Exception:
+                user_agent = None
+            try:
+                browser_obj = getattr(self.context, "browser", None)
+                if browser_obj is not None and hasattr(browser_obj, "version"):
+                    ver = browser_obj.version
+                    browser_version = ver() if callable(ver) else str(ver)
+            except Exception:
+                browser_version = None
+
+        if not browser_version and user_agent:
+            for token in ("Firefox/", "Chrome/", "HeadlessChrome/"):
+                if token in user_agent:
+                    browser_version = user_agent.split(token, 1)[1].split(" ", 1)[0].strip()
+                    break
+
+        return {
+            "engine": self.engine,
+            "effective_mode": effective_mode,
+            "xvfb_path": xvfb_path,
+            "browser_version": browser_version,
+            "user_agent": user_agent,
+        }
 
     def navigate(self, url: str, timeout: int = 30000, wait_until: str = "load") -> bool:
         """

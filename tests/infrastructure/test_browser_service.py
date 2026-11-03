@@ -657,6 +657,128 @@ def test_profile_directory_is_separated_by_engine_as_sibling(tmp_path):
     assert chromium_service.user_data_dir != firefox_service.user_data_dir
 
 
+def test_firefox_headless_without_xvfb_raises_clear_runtime_error(monkeypatch, tmp_path):
+    """
+    Passo A4: Em Firefox com headless=True e modo padrao ('xvfb'), se shutil.which('Xvfb')
+    retornar None, falha na hora com RuntimeError instruindo instalar o pacote xvfb
+    ou passar firefox_headless_mode='true_headless' explicitamente.
+    """
+    import shutil
+    from src.infrastructure.browser_service import XVFB_MISSING_ERROR_MSG
+
+    monkeypatch.delenv("FIREFOX_HEADLESS_MODE", raising=False)
+    monkeypatch.delenv("INVPW_TRUE_HEADLESS", raising=False)
+    monkeypatch.setattr(shutil, "which", lambda cmd: None if cmd == "Xvfb" else "/usr/bin/" + cmd)
+
+    service = BrowserService(
+        platform="test_ff_noxvfb",
+        headless=True,
+        engine="firefox",
+        session_root_dir=str(tmp_path),
+    )
+    with pytest.raises(RuntimeError) as exc_info:
+        service.start_session()
+
+    msg = str(exc_info.value)
+    assert msg == XVFB_MISSING_ERROR_MSG
+    assert "sudo apt-get install -y xvfb" in msg
+    assert "true_headless" in msg
+    assert "INVPW_TRUE_HEADLESS" not in os.environ
+
+
+def test_firefox_explicit_true_headless_logs_warning_and_restores_environ(monkeypatch, tmp_path, caplog):
+    """
+    Passo A4: Somente quando firefox_headless_mode='true_headless' (ou FIREFOX_HEADLESS_MODE=true_headless)
+    for passado explicitamente, registra WARNING, liga INVPW_TRUE_HEADLESS=1 apenas durante a sessao
+    e restaura os.environ ao encerrar em close().
+    """
+    monkeypatch.delenv("INVPW_TRUE_HEADLESS", raising=False)
+
+    service = BrowserService(
+        platform="test_ff_true_headless",
+        headless=True,
+        engine="firefox",
+        firefox_headless_mode="true_headless",
+        session_root_dir=str(tmp_path),
+    )
+
+    observed_env_during_launch = {}
+
+    class _FakeInstance:
+        def __init__(self, **kwargs):
+            observed_env_during_launch["val"] = os.environ.get("INVPW_TRUE_HEADLESS")
+
+        def __enter__(self):
+            return object()
+
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            return False
+
+    monkeypatch.setattr(service._launcher, "_driver_cls", _FakeInstance)
+
+    with caplog.at_level("WARNING"):
+        service.start_session()
+        meta = service.get_runtime_metadata()
+        assert meta["engine"] == "firefox"
+        assert meta["effective_mode"] == "headless-real"
+        assert observed_env_during_launch["val"] == "1"
+        assert os.environ.get("INVPW_TRUE_HEADLESS") == "1"
+
+    assert any("headless-real" in rec.message for rec in caplog.records)
+
+    service.close()
+    assert "INVPW_TRUE_HEADLESS" not in os.environ
+
+
+def test_firefox_xvfb_mode_and_runtime_metadata_both_engines(monkeypatch, tmp_path):
+    """
+    Passo A4 (Ajuste c): Valida modo 'xvfb' quando Xvfb esta presente no PATH e
+    confere get_runtime_metadata() para Chromium e Firefox.
+    """
+    import shutil
+
+    monkeypatch.delenv("INVPW_TRUE_HEADLESS", raising=False)
+    monkeypatch.setattr(shutil, "which", lambda cmd: "/usr/bin/Xvfb" if cmd == "Xvfb" else None)
+
+    ff_service = BrowserService(
+        platform="test_ff_xvfb",
+        headless=True,
+        engine="firefox",
+        session_root_dir=str(tmp_path),
+    )
+
+    class _FakeFFInstance:
+        def __init__(self, **kwargs):
+            pass
+
+        def __enter__(self):
+            return object()
+
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            return False
+
+    monkeypatch.setattr(ff_service._launcher, "_driver_cls", _FakeFFInstance)
+    ff_service.start_session()
+    ff_meta = ff_service.get_runtime_metadata()
+    assert ff_meta["engine"] == "firefox"
+    assert ff_meta["effective_mode"] == "xvfb"
+    assert ff_meta["xvfb_path"] == "/usr/bin/Xvfb"
+    assert "INVPW_TRUE_HEADLESS" not in os.environ
+    ff_service.close()
+
+    cr_service = BrowserService(
+        platform="test_cr_meta",
+        headless=True,
+        engine="chromium",
+        session_root_dir=str(tmp_path),
+    )
+    cr_meta = cr_service.get_runtime_metadata()
+    assert cr_meta["engine"] == "chromium"
+    assert cr_meta["effective_mode"] == "headless"
+    assert cr_meta["xvfb_path"] == "/usr/bin/Xvfb"
+
+
+
 
 
 
