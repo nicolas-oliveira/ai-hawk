@@ -38,7 +38,7 @@ class FakeBrowser:
     def has_empty_required_inputs(self, sel): return False
     def modal_signature(self, sel): return ""
     def dismiss_overlay_if_present(self, sel, timeout): return False
-    def wait_for_loader_to_disappear(self, sel, timeout): return True
+    def wait_for_loader_to_disappear(self, sel, timeout): return not self.element_exists(sel)
 
     def get_current_url(self):
         if self._current_url:
@@ -63,7 +63,11 @@ class FakeCache:
     def __init__(self, remembered=None, events: Optional[List[str]] = None) -> None:
         self.remembered = dict(remembered or {})
         self.saved: List = []
+        self.intents: List[str] = []
         self.events = events if events is not None else []
 
     def get(self, job): return self.remembered.get((job.platform, job.url))
     def put(self, job): self.saved.append((job.url, job.status))
+    def record_submitting(self, job):
+        self.events.append("intencao")
+        self.intents.append(job.url)

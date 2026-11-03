@@ -2,7 +2,7 @@
 from src.application.app_service import AbortReason, AppService
 from src.application.dtos.search_request import SearchRequest
 from src.domain.entities.job import JobStatus
-from tests.application.fakes import SEL, FakeBrowser, FakeCache
+from tests.application.fakes import SEL, FakeBrowser, FakeCache, cards
 
 INDICADOR = "[data-x=captcha]"
 SELETORES = {**SEL, "abort_indicator": INDICADOR}
@@ -49,13 +49,17 @@ def test_modal_que_nao_abre_nao_vai_para_o_historico():
 
 
 def test_modal_aberto_segue_o_fluxo_normal():
-    browser = FakeBrowser(visible={SEL["apply_button"], SEL["modal_container"], SEL["submit_button"]})
-    service = AppService(browser)
+    browser = FakeBrowser(
+        visible={SEL["apply_button"], SEL["modal_container"], SEL["submit_button"]},
+        job_cards=cards(1),
+    )
+    browser.on_click[SEL["submit_button"]] = lambda b: b.visible.discard(SEL["modal_container"])
+    service = AppService(browser, FakeCache())
 
     jobs = service.run(_request(strict_abort=True, max_applications=5))
 
     assert service.last_abort_reason is None
-    assert [j.status for j in jobs] == [JobStatus.APPLIED, JobStatus.APPLIED]
+    assert [j.status for j in jobs] == [JobStatus.APPLIED]
 
 
 def test_sem_parada_estrita_modal_ausente_continua_sendo_erro():

@@ -80,7 +80,19 @@ class AppController:
             if status is JobStatus.APPLIED:
                 continue
             lines.append(f"{status.value:<21} {counts[status]}")
+        lines.extend(AppController._manual_review_lines(jobs))
         return "\n".join(lines)
+
+    @staticmethod
+    def _manual_review_lines(jobs: List[Job]) -> List[str]:
+        """Fim do lote: cada vaga que um humano precisa conferir (nada e reenviado)."""
+        pending_review = [job for job in jobs if job.status is JobStatus.MANUAL_REVIEW]
+        if not pending_review:
+            return []
+        lines = ["Revisao manual:"]
+        for job in pending_review:
+            lines.append(f"  - {job.title} | {job.url} | {job.review_reason}")
+        return lines
 
     # ------------------------------------------------------------ telemetria
     @staticmethod
@@ -93,7 +105,8 @@ class AppController:
     ) -> Dict[str, Any]:
         """Funil de conversao de UMA execucao.
 
-        total_read = skipped_complex + applied + errors + already_applied + not_processed
+        total_read = skipped_complex + applied + errors + already_applied + simulated
+        + manual_review + not_processed
         (`not_processed` = vagas lidas que ficaram PENDING, ex.: teto de candidaturas).
         """
         counts = Counter(job.status for job in jobs)
@@ -118,6 +131,7 @@ class AppController:
                 "errors": counts[JobStatus.ERROR],
                 "already_applied": counts[JobStatus.ALREADY_APPLIED],
                 "simulated": counts[JobStatus.SIMULATED],
+                "manual_review": counts[JobStatus.MANUAL_REVIEW],
                 "not_processed": counts[JobStatus.PENDING],
             },
             "conversion": {

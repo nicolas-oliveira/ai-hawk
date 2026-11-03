@@ -1,6 +1,7 @@
 """Shadow Mode (nunca clica em Submit) e parada estrita (tela inesperada aborta o lote)."""
 import pytest
 
+from tests.application.fakes import FakeCache
 from src.application.app_service import AppService
 from src.application.dtos.search_request import LINKEDIN_DEFAULT_SELECTORS, SearchRequest
 from src.domain.entities.job import JobStatus
@@ -39,7 +40,7 @@ def test_shadow_nunca_clica_submit_e_descarta():
 
 def test_sem_shadow_clica_submit():
     b = Fake({SEL["apply_button"], SEL["submit_button"]})
-    AppService(b).run(_req(max_applications=1))
+    AppService(b, FakeCache()).run(_req(max_applications=1))
     assert SEL["submit_button"] in b.clicks
 
 
@@ -144,5 +145,5 @@ def test_assinatura_diferente_ou_vazia_nao_trava():
             if sel == SEL["next_button"]:
                 self.visible = {SEL["apply_button"], SEL["submit_button"]}
     b = Muda({SEL["apply_button"], SEL["next_button"]})
-    jobs = AppService(b).run(_req(max_applications=1))
+    jobs = AppService(b, FakeCache()).run(_req(max_applications=1))
     assert jobs[0].status == JobStatus.APPLIED

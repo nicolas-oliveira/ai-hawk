@@ -8,6 +8,7 @@ import re
 
 import pytest
 
+from tests.application.fakes import FakeCache
 from src.application import app_service as svc_mod
 from src.application.app_service import AppService, JsonJobCache, _TimedBrowser
 from src.application.dtos.search_request import LINKEDIN_DEFAULT_SELECTORS, SearchRequest
@@ -134,7 +135,7 @@ def test_limite_de_candidaturas_para_o_laco(caplog):
     m, s = SEL["modal_container"], SEL["submit_button"]
     browser = FakeBrowser(cards=_cards(3), exists=_only(SEL["apply_button"], s, m))
     with caplog.at_level(logging.INFO):
-        jobs = AppService(browser).run(_req(max_applications=1))
+        jobs = AppService(browser, FakeCache()).run(_req(max_applications=1))
     assert [j.status for j in jobs] == [JobStatus.APPLIED, JobStatus.PENDING, JobStatus.PENDING]
     assert "Limite de 1 candidaturas atingido." in caplog.text
     assert browser.opened.count("https://x.com/jobs/2/") == 0
@@ -145,7 +146,7 @@ def test_freio_registra_erro_e_zera_contador_apos_sucesso(caplog):
     ruins = {"https://x.com/jobs/1/", "https://x.com/jobs/2/", "https://x.com/jobs/4/", "https://x.com/jobs/5/"}
     browser = FakeBrowser(cards=_cards(5), exists=_only(SEL["apply_button"], SEL["submit_button"]),
                           open_raises=ruins)
-    service = AppService(browser)
+    service = AppService(browser, FakeCache())
     jobs = service.run(_req(max_consecutive_errors=3))
     assert [j.status for j in jobs].count(JobStatus.ERROR) == 4
     assert service.last_abort_reason is None
@@ -204,7 +205,7 @@ def test_review_button_opcional_avanca_quando_next_nao_existe():
                 estado["passo"] = 1
 
     browser = Passo(cards=_cards(1), exists=exists)
-    jobs = AppService(browser).run(_req(selectors=sel))
+    jobs = AppService(browser, FakeCache()).run(_req(selectors=sel))
     assert jobs[0].status is JobStatus.APPLIED
     assert browser.clicks == [sel["apply_button"], "button.review", sel["submit_button"]]
 

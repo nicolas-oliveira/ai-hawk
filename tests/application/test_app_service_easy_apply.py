@@ -1,4 +1,5 @@
 import pytest
+from tests.application.fakes import FakeCache
 from src.application.dtos.search_request import SearchRequest
 from src.domain.entities.job import Job, JobStatus
 
@@ -34,7 +35,7 @@ def test_apply_to_job_single_step_direct_submission(mock_browser_service, valid_
 
     request = SearchRequest(**valid_search_request_payload)
     job = Job(**valid_job_payload)
-    app_service = AppService(mock_browser_service)
+    app_service = AppService(mock_browser_service, FakeCache())
     apply_fn = _get_apply_function(app_service)
 
     # Configuracao do DOM mockado
@@ -109,7 +110,7 @@ def test_apply_to_job_multi_step_simple_submission(mock_browser_service, valid_s
 
     request = SearchRequest(**valid_search_request_payload)
     job = Job(**valid_job_payload)
-    app_service = AppService(mock_browser_service)
+    app_service = AppService(mock_browser_service, FakeCache())
     apply_fn = _get_apply_function(app_service)
 
     # has_empty_required_inputs sempre False

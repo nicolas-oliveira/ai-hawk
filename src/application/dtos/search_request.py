@@ -29,6 +29,9 @@ OPTIONAL_SELECTOR_KEYS = (
     "abort_indicator",
     # Regex (re.search, sem diferenciar caixa) sobre a URL atual: desafio por rota.
     "abort_url_pattern",
+    # Elemento que prova o envio (ex.: aviso "candidatura enviada"). Sem ele, o modal
+    # ter fechado conta como confirmacao.
+    "submit_confirmation",
 )
 
 # Rotas de desafio (checkpoint, captcha, trafego incomum, verificacao de telefone).

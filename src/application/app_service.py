@@ -9,7 +9,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional, Protocol, Set
 
 from src.application.dtos.search_request import SearchRequest
-from src.domain.entities.job import Job, JobStatus
+from src.domain.entities.job import Job, JobStatus, SubmissionEvidence
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +49,7 @@ class AbortReason:
     CONSECUTIVE_ERRORS = "{count} erros consecutivos (limite {limit})"
     MODAL_NOT_OPENED = "parada estrita: modal nao abriu em {url}"
     CHALLENGE_URL = "parada estrita: desafio na URL ({current}) em {url}"
+    HISTORY_REQUIRED = "envio real exige historico (cache) ligado; nada foi enviado em {url}"
 
 
 class BrowserPort(Protocol):
@@ -537,9 +538,7 @@ class AppService:
                     self._discard(sel)
                     job.mark_simulated()
                     return
-                self._browser.click(sel["submit_button"])
-                job.mark_submitting()
-                job.mark_applied()
+                self._submit(job, request)
                 return
 
             # `review_button` e opcional: nem toda plataforma tem esse passo.
@@ -562,6 +561,49 @@ class AppService:
         logger.warning("Limite de %d passos do modal excedido; descartando.", MAX_MODAL_STEPS)
         self._discard(sel)
         job.mark_error()
+
+    def _submit(self, job: Job, request: SearchRequest) -> None:
+        """Envio real. 1A: sem historico nada e enviado (a vaga fica PENDING e o lote
+        para). Com historico: grava a intencao ANTES do clique; se nao conseguir
+        gravar, levanta e NAO clica. Depois, o dominio decide: so sucesso confirmado
+        vira APPLIED; o resto vai para revisao manual (nunca ERROR, nunca repete)."""
+        sel = request.selectors
+        if self._cache is None:
+            self._discard(sel)
+            self._stop(AbortReason.HISTORY_REQUIRED.format(url=job.url))
+            return
+        self._cache.record_submitting(job)
+        job.mark_submitting()
+        job.settle_submission(self._send(sel))
+
+    def _send(self, sel: Dict[str, str]) -> SubmissionEvidence:
+        """Clica em Submit e junta o que se observou. Falha no clique ou na
+        observacao e evidencia de envio nao confirmado, nao excecao."""
+        try:
+            self._browser.click(sel["submit_button"])
+        except Exception:
+            logger.exception("Clique de envio falhou; vaga vai para revisao manual.")
+            return SubmissionEvidence(
+                click_completed=False, confirmation_seen=False, modal_still_open=False
+            )
+        try:
+            return self._observe_submission(sel)
+        except Exception:
+            logger.exception("Nao foi possivel observar o envio; vaga vai para revisao manual.")
+            return SubmissionEvidence(
+                click_completed=True, confirmation_seen=False, modal_still_open=False
+            )
+
+    def _observe_submission(self, sel: Dict[str, str]) -> SubmissionEvidence:
+        modal_closed = self._browser.wait_for_loader_to_disappear(
+            sel["modal_container"], timeout=SHORT_TIMEOUT_MS
+        )
+        confirmation = sel.get("submit_confirmation")
+        # Sem seletor de confirmacao no perfil, o modal ter fechado e a confirmacao.
+        seen = self._browser.element_exists(confirmation) if confirmation else modal_closed
+        return SubmissionEvidence(
+            click_completed=True, confirmation_seen=seen, modal_still_open=not modal_closed
+        )
 
     def _discard(self, sel: Dict[str, str]) -> None:
         """Sequencia segura: Fechar -> Descartar (se a confirmacao aparecer)."""
