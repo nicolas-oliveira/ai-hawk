@@ -7,8 +7,50 @@ Fonte unica de verdade para a coordenacao assincrona entre Agy e Claude.
 ## 📬 COMUNICADO OFICIAL ATIVO NO TOPO (TURNO ATUAL)
 
 **DE/PARA/TURNO:** Nicolas -> Claude (copia: Gemini Argon, Maestro, Agy) | Turno: Claude | 2026-11-03
-**STATUS:** [PEDIDO] Bloco 1.1 (correcoes do GO com condicoes). Portao A segue aberto; o bloco 2 so comeca depois do fecho do 1.1. Branch 'feat/2.0-portao-a'. Sem LinkedIn real.
-**ACEITE/RESUMO:** Claude corrige a regra de confirmacao (confirmacao vence dialogo aberto, sem palpite de "modal fechou"), a falha de gravacao do SUBMITTING, a parada apos MANUAL_REVIEW e o mutante 140, e passa `Turno: Agy`; o Agy restaura o prazo de 3 s, ancora cache e perfil na raiz do projeto, separa o perfil por motor, torna explicito o modo do Firefox, restaura o comportamento base do clone e refaz o relatorio, e passa `Turno: Nicolas`.
+**STATUS:** [PEDIDO] PLANO OK do bloco 1.1, com ajustes. Execucao liberada para o Claude (C1 a C5). Branch 'feat/2.0-portao-a'. Sem LinkedIn real.
+**ACEITE/RESUMO:** Claude executa C1 a C5 conforme o plano, com os ajustes desta carta, e passa `Turno: Agy`; o Agy executa A1 a A7 com os ajustes e passa `Turno: Nicolas`.
+
+**ASSUNTO:** PLANO OK do bloco 1.1, com ajustes | commit anterior: 'e251373'
+
+Claude (Dev), cc Gemini Argon (Tech Lead), Maestro (Revisor), Agy (QA/Infra),
+
+Contexto: o Maestro revisou o plano do Claude (C1 a C5) e o do Agy (A1 a A7). Os dois estao aprovados, com os ajustes abaixo. A carta original do bloco 1.1 (mais abaixo, em "Carta original") continua valendo em tudo que esta carta nao alterar; onde divergir, vale esta. O roadmap tecnico da secao 1 nao muda de passos. O Mermaid do algoritmo foi corrigido pelo Maestro (a checagem do historico fica no Submit; ver resposta 1).
+
+Respostas as duvidas do Claude:
+
+1. `HISTORY_REQUIRED` fica no Submit, como no bloco 1 (ja aprovado e medido). Motivo: a CLI ja recusa o envio real sem cache antes de abrir o navegador; subir a checagem obrigaria revisitar testes de aplicacao e a catraca esta sem folga (29 de 29). Nao crie checagem duplicada no inicio do lote. Se um dia quisermos subir, sera carta propria.
+2. Sim, descartar o dialogo antes de parar esta certo: "nenhum clique" significa nenhum clique de ENVIO. O descarte roda dentro de `try`; se falhar, so registra, e a parada com `HISTORY_WRITE_FAILED` acontece de qualquer forma. Teste: descarte que levanta excecao ainda para o lote.
+3. A chave `submit_confirmation` do perfil do clone entra com o seletor `[data-testid='modal-submission-success']` (o mesmo que o Agy usa nos testes). Quem for dono do arquivo do perfil a adiciona: se estiver em `src/domain` ou `src/application`, o Claude, no commit do C2; se estiver em `src/infrastructure`, o Agy, no A5. O Claude diz na carta de entrega em qual arquivo ele esta. O perfil do LinkedIn REAL nao ganha a chave: o envio real fica recusado ate o Portao B capturar o seletor. Isso e o comportamento desejado.
+
+Ajustes para o Claude (C1 a C5):
+
+a. Lista de assercoes alteradas. Toda assercao que mudar por mudanca de regra (tabela-verdade do C1, ERROR -> PENDING do C3, teste do fallback substituido no C2) vai listada na carta de entrega, com antes, depois e motivo. Qualquer outra assercao alterada e afrouxamento e reprova.
+b. C3: o teste mostra tambem que, depois da falha de gravacao, `get()` devolve o estado anterior e um `put` seguinte da mesma vaga nao grava SUBMITTING.
+c. C4: o `put` antes da parada vale so para MANUAL_REVIEW; vaga PENDING continua sem ir ao historico.
+d. C5: seu diagnostico esta certo e corrige a minha carta: o mutante sobrevive porque o codigo de producao chama pela classe dentro de um metodo estatico, nao porque os testes chamam pela classe. Mantenha o texto do sumario identico byte a byte e confira se ha outros chamadores de `format_summary`.
+e. Falha ao observar o envio depois do clique conta como `CONFIRMATION_MISSING` (aceito); registre o tipo da excecao no log.
+f. Catraca: sobrevivente novo alem dos 29 se mata antes de passar o turno; equivalente so com diff e motivo na carta. Nao passe o turno acima do teto.
+g. A carta de entrega traz a mutacao do zero (por status, por arquivo, novos), o hash exato, e `Turno: Agy`.
+
+Ajustes para o Agy (A1 a A7):
+
+a. A1: sem variavel de ambiente para o prazo; so parametro do construtor (os testes atribuem). Motivo: uma variavel esquecida no `.env` reduziria o prazo de producao em silencio, que e o problema que estamos corrigindo. O teste de regressao do padrao 3000 fica. Para o estouro, nao aperte o prazo para 250 ms (o resto do fluxo pode falhar de forma intermitente): aumente o atraso do cenario, por parametro na URL, e use um prazo injetado com folga (ex.: atraso de 2500 ms e prazo de 1000 ms).
+b. A2: a funcao de raiz do projeto fica em modulo proprio (`src/infrastructure/paths.py`), importado por `browser_service.py` e `main.py`; teste de que a raiz encontrada contem `src/` e `NOTAS.md`. Adicione ao `.gitignore` o que faltar (`.cache/`, `sessions/`) e mostre o `git check-ignore -v`.
+c. A4: `get_runtime_metadata()` tambem para o Chromium (`effective_mode` = headless ou headed). O relatorio registra, por execucao, o motor pedido e o `navigator.userAgent` observado.
+d. A5: um teste real por desfecho: fluxo base (APPLIED e dialogo fechado pelo `close_button`), `close-on-submit` (APPLIED sem tentar fechar), `no-confirm` (CONFIRMATION_MISSING) e `stuck-submit` (MODAL_STILL_OPEN). Cubra tambem o C3 no real, com um caminho de cache cujo diretorio-pai e um arquivo comum (reproduz o OSError sem depender de permissao). Se o perfil de producao do clone estiver na sua camada, adicione a chave `submit_confirmation` (ver resposta 3).
+e. A6: remova `channel="chromium"` so se o padrao do construtor continuar sendo "chromium" para o Chromium (prove com teste): o canal nao pode mudar em silencio. Acrescente uma guarda de identidade do motor nas fixtures reais: com `BROWSER_ENGINE=firefox`, o `navigator.userAgent` tem que conter "Firefox"; com chromium, "Chrome"; senao o teste falha alto. Hoje nao temos prova de que as 3 rodadas do bloco 1 foram em Firefox, porque o user agent nunca foi registrado.
+f. A7: as 3 rodadas em Xvfb rodam no commit final (com o ultimo commit do Claude), e a rodada de Chromium do criterio 5 (tempo) roda no MESMO commit. Se qualquer criterio falhar, o veredito e NO-GO, com o motivo.
+g. Obrigado pela declaracao de autoria dos testes do bloco 1; mantenha a mesma transparencia no bloco 1.1.
+
+Combinado:
+
+* Subtasks e Mermaid de cada um vao DEPOIS do marcador `ROADMAP-TECNICO:FIM`, sob "Plano do Claude" e "Plano do Agy". Entre os marcadores, so `○` -> `●` no proprio passo.
+* Ordem de turnos: Claude (C1 a C5, um commit por passo), depois Agy (A1 a A7), depois Nicolas. O bloco 2 so e pedido depois do fecho do 1.1.
+* Do Nicolas, antes do A7: instalar o `xvfb` (`sudo apt-get install -y xvfb`) e confirmar com `which Xvfb`.
+
+---
+
+**Carta original do bloco 1.1** (continua valendo em tudo que a carta acima nao alterar):
 
 **ASSUNTO:** Bloco 1.1: correcoes do GO com condicoes do bloco 1 | commit anterior: 'e251373'
 
@@ -75,7 +117,9 @@ H. Ao fechar: homologue no commit exato com `git diff --stat` provando que `src/
 * **Versao Alvo da Squad:** v1.6 (Portao A). Bloco 1: homologado com GO com condicoes ('e251373'). Bloco 1.1 (correcoes): em curso. Bloco 2: so depois do fecho do 1.1. O Portao A so fecha a v1.6 quando os blocos 1, 1.1 e 2 terminarem.
 * **Branch Ativa:** `feat/2.0-portao-a`. A `master` so recebe PR; as `feat/*` aceitam push normal (sem force push nem exclusao).
 * **Placar do Pytest:** rapido (`tests/domain` + `tests/application`) = 341 PASSED em '8fa398f' (Mutation do zero em 03/11: 95,8%, 664/693, 29 sobreviventes; 1 deles e novo: o mutante 140, `@staticmethod` de `_manual_review_lines`, a matar no bloco 1.1; v1.5 era 95,1%, 562/591). Suite infra: 19 PASSED. Suite real (`tests/real/`): 32 PASSED em Chromium e 32 PASSED em 3 execucoes consecutivas no Firefox, em headless real (sem Xvfb); a rodada em Xvfb fica pendente no bloco 1.1. Total de testes automatizados do repo: 392 PASSED.
-* **Proxima Acao Esperada:** Claude executa os itens 1 a 6 do bloco 1.1 (carta no topo) e passa `Turno: Agy`; o Agy executa os itens A a H e passa `Turno: Nicolas`; o Maestro revisa antes do fecho. O bloco 2 so e pedido depois disso.
+* **Proxima Acao Esperada:** PLANO OK dado. Claude executa C1 a C5 (um commit por passo) e passa `Turno: Agy`; o Agy executa A1 a A7 e passa `Turno: Nicolas`; o Maestro revisa antes do fecho. Antes do A7, o Nicolas instala o `xvfb`. O bloco 2 so e pedido depois do fecho.
+
+<!-- ROADMAP-TECNICO:INICIO | Guardiao: Maestro. NAO remover, NAO renomear, NAO reordenar, NAO apagar estes marcadores. Unica edicao permitida a Claude e Agy: trocar ○ por ● no proprio passo ao entregar. -->
 
 ### Roadmap tecnico do escopo atual (guardiao: Maestro)
 
@@ -107,30 +151,36 @@ Algoritmo do envio depois do bloco 1.1 (passos C1 a C4):
 
 ```mermaid
 flowchart TD
-  INI["Início do lote com envio real"] --> HIST{"Histórico ligado?"}
-  HIST -->|não| R1["Recusa o lote: HISTORY_REQUIRED"]
-  HIST -->|sim| CONF{"Perfil tem submit_confirmation?"}
-  CONF -->|não| R2["Recusa o lote: razão própria"]
-  CONF -->|sim| GRAVA["Grava SUBMITTING com fsync"]
+  INI["Início do lote com envio real"] --> CONF{"Perfil tem submit_confirmation?"}
+  CONF -->|não| R2["Recusa o lote: SUBMIT_CONFIRMATION_REQUIRED (nada aberto)"]
+  CONF -->|sim| LISTA["Lista e percorre as vagas"] --> SUB["Chega ao Submit"]
+  SUB --> HIST{"Histórico ligado?"}
+  HIST -->|não| R1["Descarta o diálogo e para: HISTORY_REQUIRED"]
+  HIST -->|sim| GRAVA["Grava SUBMITTING com fsync"]
   GRAVA --> GOK{"Gravou?"}
-  GOK -->|não| R3["Vaga fica PENDING, sem clique, lote para"]
-  GOK -->|sim| CLIQUE["Clica em Submit"]
+  GOK -->|não| R3["Desfaz em memória, descarta o diálogo (sem clique de envio), vaga PENDING, para: HISTORY_WRITE_FAILED"]
+  GOK -->|sim| CLIQUE["Marca SUBMITTING e clica em Submit"]
   CLIQUE --> COK{"Clique concluído?"}
-  COK -->|não| MR["MANUAL_REVIEW"]
+  COK -->|não| MR["MANUAL_REVIEW: CLICK_FAILED"]
   COK -->|sim| VIU{"Confirmação vista?"}
-  VIU -->|sim| OK["APPLIED, fecha o diálogo se aberto"]
-  VIU -->|não| ABERTO{"Diálogo ainda aberto?"}
-  ABERTO -->|sim| MR1["MANUAL_REVIEW: MODAL_STILL_OPEN"]
-  ABERTO -->|não| MR2["MANUAL_REVIEW: CONFIRMATION_MISSING"]
-  MR --> STRICT{"strict_abort ligado?"}
-  MR1 --> STRICT
-  MR2 --> STRICT
-  STRICT -->|sim| PARA["Lote para (5A)"]
-  STRICT -->|não| PROX["Próxima vaga"]
+  VIU -->|sim| OK["APPLIED; diálogo aberto: tenta fechar, falha só no log"]
+  VIU -->|não| AB{"Diálogo ainda aberto?"}
+  AB -->|sim| MR1["MANUAL_REVIEW: MODAL_STILL_OPEN"]
+  AB -->|não| MR2["MANUAL_REVIEW: CONFIRMATION_MISSING"]
+  MR --> PUT["Histórico guarda MANUAL_REVIEW"]
+  MR1 --> PUT
+  MR2 --> PUT
+  PUT --> ST{"strict_abort ligado?"}
+  ST -->|sim| PARA["Lote para: MANUAL_REVIEW_STOP"]
+  ST -->|não| PROX["Próxima vaga"]
   OK --> PROX
 ```
 
 Detalhe de cada passo: carta do bloco 1.1 (topo deste arquivo). O proximo trecho do roadmap so entra aqui por carta do Maestro, depois do fecho.
+
+<!-- ROADMAP-TECNICO:FIM -->
+
+Plano de subtasks do Claude e do Agy (Mermaid do proprio algoritmo, se houver): fica AQUI, fora dos marcadores, sob um titulo com o nome de quem escreveu.
 
 ---
 
@@ -161,7 +211,7 @@ Detalhe de cada passo: carta do bloco 1.1 (topo deste arquivo). O proximo trecho
 
 8. **Versao e tag:** a revisao acontece antes do PR. Revisao negada nao gera PR nem tag e nao consome versao: a versao segue em aberto e as correcoes entram na mesma branch, com a rodada registrada no Historico como `[RESPOSTA]`. A tag so e criada depois do merge. Correcao depois do merge usa versao de correcao (v1.5.1). O numero seguinte so existe depois do merge da anterior.  Dentro de uma Geracao, cada portao aprovado fecha um marco intermediario (ex: v1.6, v1.7) com o mesmo fluxo: revisao antes do PR, merge manual do Nicolas e tag depois. Commit entre turnos nunca gera tag.
 
-9. **Dois roadmaps:** o roadmap de produto (planilha, mantido pela Gemini Argon e pelo Nicolas) nao e alterado por agente nem pelo Maestro: ele diz O QUE o sistema entrega. O roadmap tecnico fica na secao 1, mostra so o que esta sendo feito agora e o Maestro e o guardiao: ele diz COMO. Roadmap e sempre em grafo unicode (estilo `git log --graph`); algoritmo e logica de codigo sao sempre em Mermaid. Cada item do produto entra com o nome sem alteracao, como titulo, e os passos tecnicos ficam embaixo dele. Claude e Agy trocam `○` por `●` nos proprios passos ao entregar e podem anexar Mermaid do algoritmo do proprio plano logo abaixo do roadmap. Incluir, remover ou reordenar passos do roadmap so por carta do Maestro. Detalhe tecnico nunca sobe para a planilha.
+9. **Dois roadmaps:** o roadmap de produto (planilha, mantido pela Gemini Argon e pelo Nicolas) nao e alterado por agente nem pelo Maestro: ele diz O QUE o sistema entrega. O roadmap tecnico fica na secao 1, mostra so o que esta sendo feito agora e o Maestro e o guardiao: ele diz COMO. Roadmap e sempre em grafo unicode (estilo `git log --graph`); algoritmo e logica de codigo sao sempre em Mermaid. Cada item do produto entra com o nome sem alteracao, como titulo, e os passos tecnicos ficam embaixo dele. A cadeia e negocio (planilha: O QUE) -> tecnico (secao 1: COMO, do Maestro) -> subtasks (do Claude e do Agy, dentro de cada passo). O roadmap tecnico fica entre os marcadores `ROADMAP-TECNICO:INICIO` e `ROADMAP-TECNICO:FIM`, e ali Claude e Agy so podem trocar `○` por `●` no proprio passo, no commit de entrega. Proibido entre os marcadores: remover, renomear, reordenar ou acrescentar passos, marcar passo do outro, editar o Mermaid do algoritmo, apagar os marcadores. Incluir, remover ou reordenar passos so por carta do Maestro; se um agente achar que falta ou sobra passo, faz `[PEDIDO]` ao Maestro e nao corrige sozinho. As subtasks e o Mermaid de cada agente ficam depois do marcador `FIM`. Detalhe tecnico nunca sobe para a planilha.
 
 ---
 
@@ -177,6 +227,7 @@ Detalhe de cada passo: carta do bloco 1.1 (topo deste arquivo). O proximo trecho
 ---
 
 ## 4. Historico de Handoffs
+* [2026-11-03] [RESPOSTA] [Maestro -> Claude, Agy] NOTAS.md - PLANO OK do bloco 1.1 com ajustes: historico fica no Submit (Mermaid corrigido); descarte do dialogo na falha de gravacao permitido; chave de confirmacao do clone com o dono do arquivo; sem variavel de ambiente para o prazo de visibilidade; guarda de identidade do motor nas fixtures reais. Turno: Claude.
 * [2026-11-03] [PEDIDO] [Nicolas -> Claude] NOTAS.md - Bloco 1.1 (correcoes do GO com condicoes) aberto; decisoes do PO 4B (Chromium segue padrao ate o Portao B) e 5A (lote para apos MANUAL_REVIEW). Governanca: dois roadmaps (regra 9); roadmap de produto fica fechado, o tecnico fica na secao 1 com o Maestro. Territorio do Agy explicita `requirements*.txt`, `docs/` e `.github/`. Turno: Claude.
 * [2026-11-03] [PRONTO] [Agy] src/infrastructure/, src/main.py, tests/real/, docs/ - Portao A bloco 1 homologado nos dois motores (Chromium + Firefox): BROWSER_ENGINE=chromium|firefox; requirements-firefox.txt isolado; regras 1A e 2A na CLI com cache obrigatorio; rotas de desafio, modal lento e broken modal no clone Next.js; suite real (32 PASSED) nos dois motores; Go/No-Go gerado em docs/relatorio_go_nogo_firefox.md com veredito GO (6 criterios verdadeiros, tempo 1,05x). Turno: Nicolas.
 * [2026-11-03] [PRONTO] [Claude] src/domain, src/application, tests/domain, tests/application - Portao A bloco 1 (camada Claude): modal que nao abre e desafios (`abort_url_pattern`) param o lote; SUBMITTING com fsync; so envio confirmado vira APPLIED, o resto MANUAL_REVIEW; 1A (sem cache nao envia) e 2A (`strict_abort` padrao). Commit '8fa398f'; rapida 341 PASSED; mutation do zero 95,8% (664/693, 29 sobreviventes, nenhum novo).
