@@ -183,16 +183,55 @@ def test_queda_apos_a_intencao_nunca_reabre_a_vaga():
     assert jobs[0].from_cache is True
 
 
-def test_falha_ao_gravar_a_intencao_nao_clica_em_enviar():
-    class CacheSemDisco(FakeCache):
-        def record_submitting(self, job):
-            raise OSError("disco cheio")
+class _CacheSemDisco(FakeCache):
+    def record_submitting(self, job):
+        raise OSError("disco cheio")
+
+
+def test_falha_ao_gravar_intencao_deixa_vaga_pending_sem_clique_de_envio():
     browser = FakeBrowser(visible=ABERTA)
 
-    _, jobs = _rodar(browser, CacheSemDisco())
+    _, jobs = _rodar(browser, _CacheSemDisco())
 
     assert SEL["submit_button"] not in browser.clicks
-    assert jobs[0].status is JobStatus.ERROR
+    assert browser.clicks[-1] == SEL["close_button"]  # dialogo descartado, nada enviado
+    assert jobs[0].status is JobStatus.PENDING
+
+
+def test_falha_ao_gravar_intencao_para_o_lote():
+    browser = FakeBrowser(visible=ABERTA)
+    cache = _CacheSemDisco()
+
+    service, jobs = _rodar(browser, cache, vagas=(1, 2))
+
+    assert service.last_abort_reason == AbortReason.HISTORY_WRITE_FAILED.format(url=URL_VAGA)
+    assert AbortReason.HISTORY_WRITE_FAILED == (
+        "falha ao gravar a intencao de envio no historico; nada foi enviado em {url}"
+    )
+    assert browser.opened == ["https://x.com/s", URL_VAGA]
+    assert [j.status for j in jobs] == [JobStatus.PENDING, JobStatus.PENDING]
+    assert cache.saved == []
+
+
+def test_falha_ao_gravar_intencao_para_o_lote_mesmo_se_o_descarte_falhar(caplog):
+    browser = FakeBrowser(visible=ABERTA, click_raises={SEL["close_button"]})
+
+    service, jobs = _rodar(browser, _CacheSemDisco(), vagas=(1, 2))
+
+    assert service.last_abort_reason == AbortReason.HISTORY_WRITE_FAILED.format(url=URL_VAGA)
+    assert SEL["submit_button"] not in browser.clicks
+    assert jobs[0].status is JobStatus.PENDING
+    assert "Falha ao gravar a intencao de envio; nada foi enviado." in _mensagens(caplog)
+
+
+def test_sumario_avisa_a_falha_de_gravacao_da_intencao():
+    browser = FakeBrowser(visible=ABERTA)
+    service = AppService(browser, _CacheSemDisco())
+
+    resumo = AppController(service, reports_dir=None).execute(_request())
+
+    motivo = AbortReason.HISTORY_WRITE_FAILED.format(url=URL_VAGA)
+    assert f"Sessao interrompida:  {motivo}" in resumo.splitlines()
 
 
 def test_shadow_mode_nunca_grava_intencao():

@@ -84,6 +84,30 @@ def test_falha_ao_gravar_a_intencao_propaga(tmp_path):
         cache.record_submitting(_job())
 
 
+def _falha_ao_gravar():
+    raise OSError("disco cheio")
+
+
+@pytest.mark.parametrize("anterior", [None, JobStatus.SKIPPED_COMPLEX])
+def test_falha_ao_gravar_intencao_nao_deixa_submitting_na_memoria(tmp_path, monkeypatch, anterior):
+    caminho = str(tmp_path / "historico.json")
+    cache = JsonJobCache(caminho)
+    if anterior is not None:
+        cache.put(_job(anterior))
+    monkeypatch.setattr(cache, "_write_atomic", _falha_ao_gravar)
+
+    with pytest.raises(OSError):
+        cache.record_submitting(_job())
+
+    assert cache.get(_job()) is anterior
+    monkeypatch.undo()
+    cache.put(_job())  # a mesma vaga, ainda PENDING
+    outra = Job(url="https://x.com/jobs/2/", platform="p", title="", company="",
+                status=JobStatus.SKIPPED_COMPLEX)
+    cache.put(outra)  # forca a gravacao de tudo o que esta em memoria
+    assert JsonJobCache(caminho).get(_job()) is anterior
+
+
 def test_falha_ao_gravar_resultado_continua_so_em_memoria(tmp_path):
     arquivo = tmp_path / "arquivo"
     arquivo.write_text("x")

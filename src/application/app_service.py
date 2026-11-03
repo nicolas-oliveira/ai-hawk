@@ -50,6 +50,9 @@ class AbortReason:
     MODAL_NOT_OPENED = "parada estrita: modal nao abriu em {url}"
     CHALLENGE_URL = "parada estrita: desafio na URL ({current}) em {url}"
     HISTORY_REQUIRED = "envio real exige historico (cache) ligado; nada foi enviado em {url}"
+    HISTORY_WRITE_FAILED = (
+        "falha ao gravar a intencao de envio no historico; nada foi enviado em {url}"
+    )
     SUBMIT_CONFIRMATION_REQUIRED = (
         "envio real exige selectors['submit_confirmation']; nenhuma vaga foi aberta"
     )
@@ -243,9 +246,19 @@ class JsonJobCache:
         self._flush()
 
     def record_submitting(self, job: Job) -> None:
-        # Diferente do put: uma falha de gravacao PROPAGA (nao engole).
+        # Diferente do put: uma falha de gravacao PROPAGA (nao engole) e a memoria
+        # volta ao estado anterior, senao o proximo put levaria o SUBMITTING ao disco.
+        jobs, key = self._jobs(), self._key(job)
+        previous = jobs.get(key)
         self._remember(job, JobStatus.SUBMITTING)
-        self._write_atomic()
+        try:
+            self._write_atomic()
+        except Exception:
+            if previous is None:
+                del jobs[key]
+            else:
+                jobs[key] = previous
+            raise
 
     def _remember(self, job: Job, status: JobStatus) -> None:
         self._jobs()[self._key(job)] = {
@@ -572,14 +585,21 @@ class AppService:
     def _submit(self, job: Job, request: SearchRequest) -> None:
         """Envio real. 1A: sem historico nada e enviado (a vaga fica PENDING e o lote
         para). Com historico: grava a intencao ANTES do clique; se nao conseguir
-        gravar, levanta e NAO clica. Depois, o dominio decide: so sucesso confirmado
+        gravar, NAO clica, a vaga fica PENDING e o lote para. Depois, o dominio decide: so sucesso confirmado
         vira APPLIED; o resto vai para revisao manual (nunca ERROR, nunca repete)."""
         sel = request.selectors
         if self._cache is None:
             self._discard(sel)
             self._stop(AbortReason.HISTORY_REQUIRED.format(url=job.url))
             return
-        self._cache.record_submitting(job)
+        try:
+            self._cache.record_submitting(job)
+        except Exception:
+            # Sem intencao gravada nao existe clique de envio: a vaga fica PENDING.
+            logger.exception("Falha ao gravar a intencao de envio; nada foi enviado.")
+            self._discard_quietly(sel)
+            self._stop(AbortReason.HISTORY_WRITE_FAILED.format(url=job.url))
+            return
         job.mark_submitting()
         evidence = self._send(sel)
         job.settle_submission(evidence)
