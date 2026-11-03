@@ -55,6 +55,8 @@ def test_sumario_exato():
         "ALREADY_APPLIED       0",
         "ERROR                 1",
         "SIMULATED             0",
+        "SUBMITTING            0",
+        "MANUAL_REVIEW         0",
     ])
     assert AppController.format_summary(jobs, req) == esperado
 

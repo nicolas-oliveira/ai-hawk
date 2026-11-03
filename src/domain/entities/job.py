@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
 import re
+from typing import Dict, FrozenSet, Optional
 from urllib.parse import parse_qsl, quote, urlencode, urlsplit, urlunsplit
 
 # Parametros de query que IDENTIFICAM a vaga quando o path nao traz o ID
@@ -24,6 +25,73 @@ class JobStatus(StrEnum):
     ERROR = "ERROR"
     # Shadow Mode: percorreu o modal ate o Submit, mas NAO enviou (dry-run).
     SIMULATED = "SIMULATED"
+    # Intencao gravada ANTES do clique de envio, ainda sem resultado.
+    SUBMITTING = "SUBMITTING"
+    # Envio sem sucesso confirmado: um humano confere. Nunca vira ERROR nem e repetido.
+    MANUAL_REVIEW = "MANUAL_REVIEW"
+
+
+class InvalidTransition(ValueError):
+    """Mudanca de status que a maquina de estados do Job nao permite."""
+
+
+class ReviewReason(StrEnum):
+    """Por que uma vaga foi para revisao manual (valor unico, nunca string solta)."""
+
+    CLICK_FAILED = "clique de envio falhou ou estourou o tempo"
+    MODAL_STILL_OPEN = "modal ainda aberto apos o envio"
+    CONFIRMATION_MISSING = "confirmacao de envio ausente"
+    INTERRUPTED_BEFORE_RESULT = "execucao interrompida antes do resultado do envio"
+    ALREADY_IN_REVIEW = "ja estava em revisao manual de uma execucao anterior"
+
+
+# Quem pode ir para quem. Fora desta tabela a transicao e invalida.
+_ALLOWED_TRANSITIONS: Dict[JobStatus, FrozenSet[JobStatus]] = {
+    JobStatus.PENDING: frozenset(
+        {
+            JobStatus.SUBMITTING,
+            JobStatus.SKIPPED_COMPLEX,
+            JobStatus.ERROR,
+            JobStatus.SIMULATED,
+            JobStatus.ALREADY_APPLIED,
+        }
+    ),
+    JobStatus.SUBMITTING: frozenset({JobStatus.APPLIED, JobStatus.MANUAL_REVIEW}),
+}
+
+# O que a memoria de execucoes anteriores pode devolver, e em que vira agora.
+# Envio gravado (SUBMITTING) sem resultado nunca e repetido: vai para revisao.
+_FROM_HISTORY: Dict[JobStatus, JobStatus] = {
+    JobStatus.APPLIED: JobStatus.ALREADY_APPLIED,
+    JobStatus.ALREADY_APPLIED: JobStatus.ALREADY_APPLIED,
+    JobStatus.SKIPPED_COMPLEX: JobStatus.SKIPPED_COMPLEX,
+    JobStatus.MANUAL_REVIEW: JobStatus.MANUAL_REVIEW,
+    JobStatus.SUBMITTING: JobStatus.MANUAL_REVIEW,
+}
+
+
+@dataclass(frozen=True)
+class SubmissionEvidence:
+    """O que se observou depois do clique de envio.
+
+    Regra do dominio: so sucesso CONFIRMADO conta como candidatura enviada.
+    Clique concluido, modal fechado e confirmacao vista: tudo precisa valer.
+    """
+
+    click_completed: bool
+    confirmation_seen: bool
+    modal_still_open: bool
+
+    @property
+    def review_reason(self) -> Optional[ReviewReason]:
+        """Primeira condicao que falhou, ou None quando o envio esta confirmado."""
+        if not self.click_completed:
+            return ReviewReason.CLICK_FAILED
+        if self.modal_still_open:
+            return ReviewReason.MODAL_STILL_OPEN
+        if not self.confirmation_seen:
+            return ReviewReason.CONFIRMATION_MISSING
+        return None
 
 
 @dataclass(eq=False)
@@ -43,6 +111,8 @@ class Job:
     timestamp: datetime = field(default_factory=datetime.now)
     # True quando o status veio do cache local (a vaga nem foi aberta nesta execucao).
     from_cache: bool = False
+    # Preenchido so quando o status e MANUAL_REVIEW.
+    review_reason: Optional[ReviewReason] = None
 
     @staticmethod
     def canonicalize_url(raw_url: str) -> str:
@@ -72,6 +142,54 @@ class Job:
             ]
             query = urlencode(kept, quote_via=quote)
         return urlunsplit((parts.scheme, parts.netloc, path, query, ""))
+
+    # ------------------------------------------------ transicoes com intencao
+    def _transition(self, target: JobStatus) -> None:
+        if target not in _ALLOWED_TRANSITIONS.get(self.status, frozenset()):
+            raise InvalidTransition(f"{self.status.value} -> {target.value} nao e permitido.")
+        self.status = target
+
+    def mark_submitting(self) -> None:
+        self._transition(JobStatus.SUBMITTING)
+
+    def mark_applied(self) -> None:
+        self._transition(JobStatus.APPLIED)
+
+    def mark_manual_review(self, reason: ReviewReason) -> None:
+        self._transition(JobStatus.MANUAL_REVIEW)
+        self.review_reason = reason
+
+    def mark_simulated(self) -> None:
+        self._transition(JobStatus.SIMULATED)
+
+    def mark_skipped_complex(self) -> None:
+        self._transition(JobStatus.SKIPPED_COMPLEX)
+
+    def mark_error(self) -> None:
+        self._transition(JobStatus.ERROR)
+
+    def settle_submission(self, evidence: SubmissionEvidence) -> None:
+        """Fecha um envio SUBMITTING: APPLIED so com sucesso confirmado; qualquer
+        outro desfecho vai para revisao manual (nunca ERROR, nunca nova tentativa)."""
+        reason = evidence.review_reason
+        if reason is None:
+            self.mark_applied()
+        else:
+            self.mark_manual_review(reason)
+
+    def restore_from_history(self, remembered: JobStatus) -> None:
+        """Aplica o que execucoes anteriores lembram desta vaga (so a partir de PENDING)."""
+        target = _FROM_HISTORY.get(remembered)
+        if self.status is not JobStatus.PENDING or target is None:
+            raise InvalidTransition(f"{self.status.value} nao restaura {remembered.value}.")
+        self.status = target
+        self.from_cache = True
+        if target is JobStatus.MANUAL_REVIEW:
+            self.review_reason = (
+                ReviewReason.INTERRUPTED_BEFORE_RESULT
+                if remembered is JobStatus.SUBMITTING
+                else ReviewReason.ALREADY_IN_REVIEW
+            )
 
     def __post_init__(self) -> None:
         if not self.url or not self.url.strip():
