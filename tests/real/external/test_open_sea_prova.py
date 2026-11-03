@@ -69,6 +69,7 @@ def test_prova_app_service_e2e_alvo_cego(open_sea_browser):
         "submit_button": "[data-aihawk-inerte]",
         "close_button": "[data-aihawk-inerte]",
         "discard_button": "[data-aihawk-inerte]",
+        "abort_indicator": "[data-aihawk-challenge]",
     }
 
     req = SearchRequest(

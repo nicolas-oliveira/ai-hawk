@@ -332,15 +332,28 @@ def stress_http_server():
     server.shutdown()
 
 
-@pytest.fixture
-def real_browser_service(temp_session_dir):
-    """Instancia autentica do BrowserService no Chromium do Patchright (Zero Mocks)."""
+@pytest.fixture(scope="module")
+def _module_browser_service(tmp_path_factory):
+    """Instancia autentica do BrowserService compartilhada no modulo para evitar 25 respawns por suíte."""
+    session_dir = str(tmp_path_factory.mktemp("sanctuary_real_session"))
     service = BrowserService(
         platform="sanctuary_real",
         headless=True,
         channel="chromium",
-        session_root_dir=temp_session_dir,
+        session_root_dir=session_dir,
     )
     service.start_session()
     yield service
     service.close()
+    shutil.rmtree(session_dir, ignore_errors=True)
+
+
+@pytest.fixture
+def real_browser_service(_module_browser_service):
+    """Retorna o BrowserService real com estado de pagina limpo entre cada teste."""
+    try:
+        page = _module_browser_service.get_page()
+        page.evaluate("() => { try { window.localStorage.clear(); window.sessionStorage.clear(); } catch(e) {} }")
+    except Exception:
+        pass
+    yield _module_browser_service

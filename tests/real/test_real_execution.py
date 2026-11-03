@@ -1,5 +1,5 @@
 import pytest
-from src.application.app_service import AppService
+from src.application.app_service import AppService, JsonJobCache
 from src.application.dtos.search_request import SearchRequest, LINKEDIN_DEFAULT_SELECTORS
 from src.domain.entities.job import Job, JobStatus
 
@@ -33,7 +33,7 @@ def test_real_lazy_loading_scroll_physical_trigger(real_browser_service, stress_
     assert jobs[4].url == f"{stress_http_server}/jobs/view/205/"
 
 
-def test_real_job_201_async_modal_transition(real_browser_service, stress_http_server):
+def test_real_job_201_async_modal_transition(real_browser_service, stress_http_server, tmp_path):
     """
     SANTUARIO DO PATCHRIGHT - CENARIO 2 (CHOQUE DE REALIDADE):
     O modal abre com delay real de 300ms (animacao/transicao do front-end SPA).
@@ -47,13 +47,14 @@ def test_real_job_201_async_modal_transition(real_browser_service, stress_http_s
         selectors=LINKEDIN_DEFAULT_SELECTORS,
     )
 
-    app_service = AppService(real_browser_service)
+    cache = JsonJobCache(str(tmp_path / "cache.json"))
+    app_service = AppService(real_browser_service, cache=cache)
     app_service._process_job(job, request)
 
     assert job.status == JobStatus.APPLIED
 
 
-def test_real_job_202_advanced_css_trap_honeypot(real_browser_service, stress_http_server):
+def test_real_job_202_advanced_css_trap_honeypot(real_browser_service, stress_http_server, tmp_path):
     """
     SANTUARIO DO PATCHRIGHT - CENARIO 3 (ANTI-BAN & BLINDAGEM):
     Honeypots e bot-traps reais: inputs com display: none, visibility: hidden e pais ocultos.
@@ -68,7 +69,8 @@ def test_real_job_202_advanced_css_trap_honeypot(real_browser_service, stress_ht
         selectors=LINKEDIN_DEFAULT_SELECTORS,
     )
 
-    app_service = AppService(real_browser_service)
+    cache = JsonJobCache(str(tmp_path / "cache.json"))
+    app_service = AppService(real_browser_service, cache=cache)
     app_service._process_job(job, request)
 
     assert job.status == JobStatus.APPLIED
@@ -95,7 +97,7 @@ def test_real_job_203_complex_modal_delayed_discard_popup(real_browser_service, 
     assert job.status == JobStatus.SKIPPED_COMPLEX
 
 
-def test_real_job_204_multi_step_delayed_transition(real_browser_service, stress_http_server):
+def test_real_job_204_multi_step_delayed_transition(real_browser_service, stress_http_server, tmp_path):
     """
     SANTUARIO DO PATCHRIGHT - CENARIO 5:
     Formulario em 2 etapas onde o passo 2 demora 250ms para transicionar apos Next.
@@ -108,7 +110,8 @@ def test_real_job_204_multi_step_delayed_transition(real_browser_service, stress
         selectors=LINKEDIN_DEFAULT_SELECTORS,
     )
 
-    app_service = AppService(real_browser_service)
+    cache = JsonJobCache(str(tmp_path / "cache.json"))
+    app_service = AppService(real_browser_service, cache=cache)
     app_service._process_job(job, request)
 
     assert job.status == JobStatus.APPLIED
@@ -133,7 +136,7 @@ def test_real_job_205_external_redirect_skipped_complex(real_browser_service, st
     assert job.status == JobStatus.SKIPPED_COMPLEX
 
 
-def test_real_full_orchestration_with_max_applications_ceiling(real_browser_service, stress_http_server):
+def test_real_full_orchestration_with_max_applications_ceiling(real_browser_service, stress_http_server, tmp_path):
     """
     SANTUARIO DO PATCHRIGHT - CENARIO 7:
     Loop completo de ponta a ponta com teto de candidaturas max_applications=2.
@@ -146,7 +149,8 @@ def test_real_full_orchestration_with_max_applications_ceiling(real_browser_serv
         max_applications=2,
     )
 
-    app_service = AppService(real_browser_service)
+    cache = JsonJobCache(str(tmp_path / "cache.json"))
+    app_service = AppService(real_browser_service, cache=cache)
     processed_jobs = app_service.run(request)
 
     assert len(processed_jobs) == 5
@@ -213,7 +217,8 @@ def test_real_full_orchestration_with_telemetry_export(real_browser_service, str
         max_applications=2,
     )
 
-    app_service = AppService(real_browser_service)
+    cache = JsonJobCache(str(tmp_path / "cache.json"))
+    app_service = AppService(real_browser_service, cache=cache)
     controller = AppController(app_service, reports_dir=str(tmp_path))
 
     summary = controller.execute(request)
@@ -244,6 +249,7 @@ def test_real_full_orchestration_with_telemetry_export(real_browser_service, str
         + funnel["skipped_complex"]
         + funnel["errors"]
         + funnel["already_applied"]
+        + funnel.get("manual_review", 0)
         + funnel["not_processed"]
     )
 

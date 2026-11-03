@@ -55,9 +55,9 @@ def hostile_clone_server():
             proc.kill()
 
 
-@pytest.fixture
-def hostile_browser():
-    """Sessao real do Chromium (Patchright) isolada para testes contra o clone hostil."""
+@pytest.fixture(scope="module")
+def _module_hostile_browser():
+    """Sessao real do motor ativa isolada por modulo para testes contra o clone hostil."""
     session_dir = os.path.abspath("./tests_scratch/real_hostile_session")
     if os.path.exists(session_dir):
         shutil.rmtree(session_dir, ignore_errors=True)
@@ -77,8 +77,19 @@ def hostile_browser():
 
 
 @pytest.fixture
-def open_sea_browser():
-    """Chromium real (Patchright) isolado para a validacao em mar aberto (somente leitura, sem login)."""
+def hostile_browser(_module_hostile_browser):
+    """Retorna a sessao do motor limpa entre cada teste."""
+    try:
+        page = _module_hostile_browser.get_page()
+        page.evaluate("() => { try { window.localStorage.clear(); window.sessionStorage.clear(); } catch(e) {} }")
+    except Exception:
+        pass
+    yield _module_hostile_browser
+
+
+@pytest.fixture(scope="module")
+def _module_open_sea_browser():
+    """Motor real isolado por modulo para a validacao em mar aberto (somente leitura, sem login)."""
     session_dir = os.path.abspath("./tests_scratch/open_sea_session")
     shutil.rmtree(session_dir, ignore_errors=True)
     service = BrowserService(
@@ -91,3 +102,8 @@ def open_sea_browser():
     yield service
     service.close()
     shutil.rmtree(session_dir, ignore_errors=True)
+
+
+@pytest.fixture
+def open_sea_browser(_module_open_sea_browser):
+    yield _module_open_sea_browser

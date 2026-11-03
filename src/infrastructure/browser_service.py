@@ -11,7 +11,7 @@ load_dotenv()
 
 VALID_ENGINES = ("chromium", "firefox")
 DEFAULT_ENGINE = "chromium"
-DEFAULT_VISIBILITY_TIMEOUT_MS = 3000
+DEFAULT_VISIBILITY_TIMEOUT_MS = 1200
 
 
 def resolve_browser_engine(engine: Optional[str] = None) -> str:
@@ -612,7 +612,7 @@ class BrowserService:
             print(f"[BrowserService.modal_signature] Erro ao obter assinatura do modal {container_selector}: {e}")
             return ""
 
-    def is_visible(self, selector: str, timeout: int = 3000) -> bool:
+    def is_visible(self, selector: str, timeout: int = DEFAULT_VISIBILITY_TIMEOUT_MS) -> bool:
         """
         Verifica se um seletor esta genuinamente visivel na pagina dentro do timeout estipulado.
         """
