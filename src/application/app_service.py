@@ -34,6 +34,7 @@ class AbortReason:
     UNEXPECTED_SCREEN = "parada estrita: tela inesperada ({indicator}) em {url}"
     DOMAIN_DEVIATION = "parada estrita: desvio de dominio ({expected} -> {current}) em {url}"
     CONSECUTIVE_ERRORS = "{count} erros consecutivos (limite {limit})"
+    MODAL_NOT_OPENED = "parada estrita: modal nao abriu em {url}"
 
 
 class BrowserPort(Protocol):
@@ -410,11 +411,23 @@ class AppService:
                 return
 
             self._browser.click(sel["apply_button"])
+            if request.strict_abort and not self._modal_opened(sel):
+                self._stop(AbortReason.MODAL_NOT_OPENED.format(url=job.url))
+                return
             self._run_modal(job, request)
         except Exception:
             logger.exception("Erro ao processar %s", job.url)
             job.mark_error()
             self._discard_quietly(sel)
+
+    def _modal_opened(self, sel: Dict[str, str]) -> bool:
+        # O prazo de espera e o da porta: o AppService nao decide quanto esperar.
+        return self._browser.element_exists(sel["modal_container"])
+
+    def _stop(self, reason: str) -> None:
+        """Encerra o LOTE: registra o motivo e avisa. Quem chama nao clica em mais nada."""
+        self.last_abort_reason = reason
+        logger.error("Sessao interrompida: %s.", reason)
 
     @staticmethod
     def _host(url: str) -> str:
