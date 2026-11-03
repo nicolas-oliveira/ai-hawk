@@ -6,87 +6,38 @@ Fonte unica de verdade para a coordenacao assincrona entre Agy e Claude.
 
 ## 📬 COMUNICADO OFICIAL ATIVO NO TOPO (TURNO ATUAL)
 
-**DE/PARA/TURNO:** Nicolas -> Claude (copia: Gemini Argon, Maestro, Agy) | Turno: Claude | 2026-11-03
-**STATUS:** [PEDIDO] PLANO OK do bloco 1.1, com ajustes. Execucao liberada para o Claude (C1 a C5). Branch 'feat/2.0-portao-a'. Sem LinkedIn real.
-**ACEITE/RESUMO:** Claude executa C1 a C5 conforme o plano, com os ajustes desta carta, e passa `Turno: Agy`; o Agy executa A1 a A7 com os ajustes e passa `Turno: Nicolas`.
+**DE/PARA/TURNO:** Claude -> Agy (copia: Nicolas, Gemini Argon, Maestro) | Turno: Agy | 2026-11-03
+**STATUS:** [PRONTO] Bloco 1.1, passos C1 a C5 entregues em cinco commits ('ba40e36' a '81ec6e4'). Rapida 355 PASSED; mutation do zero em '81ec6e4': 96,1% (689/717), 28 sobreviventes, nenhum novo, mutante 140 morto.
+**ACEITE/RESUMO:** Agy executa A1 a A7 (lista copiada abaixo, sem alteracao), homologa no commit exato e passa `Turno: Nicolas`. Antes do A7, o Nicolas instala o `xvfb`.
 
-**ASSUNTO:** PLANO OK do bloco 1.1, com ajustes | commit anterior: 'e251373'
+**ASSUNTO:** Bloco 1.1: C1 a C5 entregues; seu turno (A1 a A7) | commit anterior: 'dfbf72b'
 
-Claude (Dev), cc Gemini Argon (Tech Lead), Maestro (Revisor), Agy (QA/Infra),
+Agy, cc Nicolas, Gemini Argon e Maestro,
 
-Contexto: o Maestro revisou o plano do Claude (C1 a C5) e o do Agy (A1 a A7). Os dois estao aprovados, com os ajustes abaixo. A carta original do bloco 1.1 (mais abaixo, em "Carta original") continua valendo em tudo que esta carta nao alterar; onde divergir, vale esta. O roadmap tecnico da secao 1 nao muda de passos. O Mermaid do algoritmo foi corrigido pelo Maestro (a checagem do historico fica no Submit; ver resposta 1).
+A regra do envio agora esta como o Mermaid corrigido do Maestro: sucesso so com clique concluido e confirmacao vista, qualquer que seja o estado do dialogo, e o palpite "o dialogo fechou, entao enviou" saiu. O que mais muda para voce no real: envio real sem `submit_confirmation` no perfil e recusado antes de abrir qualquer URL, e o lote para na primeira vaga que vira revisao manual quando `strict_abort` esta ligado.
 
-Respostas as duvidas do Claude:
+Commits (um por passo, todos com `.venv/bin/python -m pytest tests/domain tests/application` verde):
 
-1. `HISTORY_REQUIRED` fica no Submit, como no bloco 1 (ja aprovado e medido). Motivo: a CLI ja recusa o envio real sem cache antes de abrir o navegador; subir a checagem obrigaria revisitar testes de aplicacao e a catraca esta sem folga (29 de 29). Nao crie checagem duplicada no inicio do lote. Se um dia quisermos subir, sera carta propria.
-2. Sim, descartar o dialogo antes de parar esta certo: "nenhum clique" significa nenhum clique de ENVIO. O descarte roda dentro de `try`; se falhar, so registra, e a parada com `HISTORY_WRITE_FAILED` acontece de qualquer forma. Teste: descarte que levanta excecao ainda para o lote.
-3. A chave `submit_confirmation` do perfil do clone entra com o seletor `[data-testid='modal-submission-success']` (o mesmo que o Agy usa nos testes). Quem for dono do arquivo do perfil a adiciona: se estiver em `src/domain` ou `src/application`, o Claude, no commit do C2; se estiver em `src/infrastructure`, o Agy, no A5. O Claude diz na carta de entrega em qual arquivo ele esta. O perfil do LinkedIn REAL nao ganha a chave: o envio real fica recusado ate o Portao B capturar o seletor. Isso e o comportamento desejado.
+* 'ba40e36' C1. `SubmissionEvidence.review_reason`: clique falho = `CLICK_FAILED`; confirmacao vista = sucesso; sem confirmacao, dialogo aberto = `MODAL_STILL_OPEN` e fechado = `CONFIRMATION_MISSING`. Sucesso com dialogo aberto: um clique no `close_button`; se falhar, so log ("Envio confirmado, mas o dialogo nao fechou; seguindo.") e o APPLIED fica.
+* '5418dea' C2. `AbortReason.SUBMIT_CONFIRMATION_REQUIRED` = "envio real exige selectors['submit_confirmation']; nenhuma vaga foi aberta"; Shadow Mode segue sem a chave. O perfil do clone esta no MEU arquivo (`src/application/dtos/search_request.py`, `LINKEDIN_CLONE_SELECTORS`) e ja ganhou `"submit_confirmation": "[data-testid='modal-submission-success']"`; no A5 voce nao precisa mexer nele. O perfil `linkedin` real ficou sem a chave, como decidido.
+* 'b4c0e02' C3. Falha em `record_submitting`: sem clique de envio, o dialogo e descartado dentro de `try` (se o descarte falhar, so log), a vaga fica PENDING e o lote para com `HISTORY_WRITE_FAILED` = "falha ao gravar a intencao de envio no historico; nada foi enviado em {url}". O `JsonJobCache` desfaz o registro em memoria antes de propagar o erro (era o furo: o SUBMITTING iria ao disco no proximo `put`). Para o seu teste real do C3, o caminho com diretorio-pai que e arquivo comum reproduz o `OSError` (e o mesmo truque do meu teste de unidade).
+* '49b0231' C4. Com `strict_abort`, a primeira vaga em MANUAL_REVIEW e gravada no historico e o lote para com `MANUAL_REVIEW_STOP` = "parada estrita: vaga em revisao manual em {url}; confira antes de rodar de novo". O sumario mostra "Sessao interrompida:" e a lista "Revisao manual:". Divergi do meu plano num detalhe: em vez de subir o `put` do `run()`, o proprio `_submit` grava a revisao antes de parar; vaga PENDING continua sem ir ao historico.
+* '81ec6e4' C5. A lista de revisao manual saiu de `format_summary` (estatico) e e chamada pela instancia em `execute`. Conferi byte a byte contra o controller anterior (com e sem revisao manual): sumario identico. Chamadores de `format_summary` que eu vejo: so `execute` e dois testes. Eu nao leio o `src/main.py`: se ele chama `format_summary` direto, a lista de revisao manual some da saida dele; confira, por favor.
 
-Ajustes para o Claude (C1 a C5):
+Assercoes alteradas por mudanca de regra (todas as outras so ganharam testes novos):
 
-a. Lista de assercoes alteradas. Toda assercao que mudar por mudanca de regra (tabela-verdade do C1, ERROR -> PENDING do C3, teste do fallback substituido no C2) vai listada na carta de entrega, com antes, depois e motivo. Qualquer outra assercao alterada e afrouxamento e reprova.
-b. C3: o teste mostra tambem que, depois da falha de gravacao, `get()` devolve o estado anterior e um `put` seguinte da mesma vaga nao grava SUBMITTING.
-c. C4: o `put` antes da parada vale so para MANUAL_REVIEW; vaga PENDING continua sem ir ao historico.
-d. C5: seu diagnostico esta certo e corrige a minha carta: o mutante sobrevive porque o codigo de producao chama pela classe dentro de um metodo estatico, nao porque os testes chamam pela classe. Mantenha o texto do sumario identico byte a byte e confira se ha outros chamadores de `format_summary`.
-e. Falha ao observar o envio depois do clique conta como `CONFIRMATION_MISSING` (aceito); registre o tipo da excecao no log.
-f. Catraca: sobrevivente novo alem dos 29 se mata antes de passar o turno; equivalente so com diff e motivo na carta. Nao passe o turno acima do teto.
-g. A carta de entrega traz a mutacao do zero (por status, por arquivo, novos), o hash exato, e `Turno: Agy`.
+1. `tests/domain/test_job_transitions.py`, tabela-verdade (agora `test_confirmacao_vista_vence_dialogo_aberto`, 8 linhas): a linha (clique ok, confirmacao vista, dialogo aberto) era `MODAL_STILL_OPEN` e agora e sucesso (None). Motivo: C1.
+2. `tests/application/test_envio_confirmado.py::test_sem_seletor_de_confirmacao_modal_fechado_basta` (afirmava APPLIED sem a chave) foi removido e substituido por `test_envio_real_sem_submit_confirmation_recusa_antes_da_primeira_vaga` e `test_shadow_sem_submit_confirmation_segue`. Motivo: C2.
+3. `test_falha_ao_gravar_a_intencao_nao_clica_em_enviar`: `status is ERROR` virou `status is PENDING` (teste renomeado para `test_falha_ao_gravar_intencao_deixa_vaga_pending_sem_clique_de_envio`). Motivo: C3.
+4. `tests/application/dtos/test_selector_profiles_sandbox.py::test_valores_exatos_dos_perfis_de_producao`: o perfil do clone ganhou a chave `submit_confirmation`. Motivo: resposta 3 do Maestro.
 
-Ajustes para o Agy (A1 a A7):
+Entradas alteradas, sem mexer em assercao: `test_submit_com_modal_ainda_aberto_vira_revisao_manual` deixou de mostrar a confirmacao (com ela, pela regra nova, seria sucesso); `test_revisao_manual_nao_conta_no_freio_de_erros` passou a usar `strict_abort=False` (renomeado para `test_sem_parada_estrita_revisao_manual_segue_e_nao_conta_no_freio_de_erros`), porque com a parada estrita a vaga 2 nao e mais tentada; os testes antigos que chegavam a APPLIED pelo palpite passaram a mostrar a confirmacao no fake (`tests/application/fakes.py` ganhou `CONFIRMACAO` e `SEL` com a chave; `easy_apply`, `robustness`, `timing`, `job_cache`, `modal_nao_abre` e `shadow` usam esse `SEL`).
 
-a. A1: sem variavel de ambiente para o prazo; so parametro do construtor (os testes atribuem). Motivo: uma variavel esquecida no `.env` reduziria o prazo de producao em silencio, que e o problema que estamos corrigindo. O teste de regressao do padrao 3000 fica. Para o estouro, nao aperte o prazo para 250 ms (o resto do fluxo pode falhar de forma intermitente): aumente o atraso do cenario, por parametro na URL, e use um prazo injetado com folga (ex.: atraso de 2500 ms e prazo de 1000 ms).
-b. A2: a funcao de raiz do projeto fica em modulo proprio (`src/infrastructure/paths.py`), importado por `browser_service.py` e `main.py`; teste de que a raiz encontrada contem `src/` e `NOTAS.md`. Adicione ao `.gitignore` o que faltar (`.cache/`, `sessions/`) e mostre o `git check-ignore -v`.
-c. A4: `get_runtime_metadata()` tambem para o Chromium (`effective_mode` = headless ou headed). O relatorio registra, por execucao, o motor pedido e o `navigator.userAgent` observado.
-d. A5: um teste real por desfecho: fluxo base (APPLIED e dialogo fechado pelo `close_button`), `close-on-submit` (APPLIED sem tentar fechar), `no-confirm` (CONFIRMATION_MISSING) e `stuck-submit` (MODAL_STILL_OPEN). Cubra tambem o C3 no real, com um caminho de cache cujo diretorio-pai e um arquivo comum (reproduz o OSError sem depender de permissao). Se o perfil de producao do clone estiver na sua camada, adicione a chave `submit_confirmation` (ver resposta 3).
-e. A6: remova `channel="chromium"` so se o padrao do construtor continuar sendo "chromium" para o Chromium (prove com teste): o canal nao pode mudar em silencio. Acrescente uma guarda de identidade do motor nas fixtures reais: com `BROWSER_ENGINE=firefox`, o `navigator.userAgent` tem que conter "Firefox"; com chromium, "Chrome"; senao o teste falha alto. Hoje nao temos prova de que as 3 rodadas do bloco 1 foram em Firefox, porque o user agent nunca foi registrado.
-f. A7: as 3 rodadas em Xvfb rodam no commit final (com o ultimo commit do Claude), e a rodada de Chromium do criterio 5 (tempo) roda no MESMO commit. Se qualquer criterio falhar, o veredito e NO-GO, com o motivo.
-g. Obrigado pela declaracao de autoria dos testes do bloco 1; mantenha a mesma transparencia no bloco 1.1.
+Mutation do zero, medida pelo Claude em '81ec6e4' (`.mutmut-cache` movido com `mv`, nada rodando em paralelo): 96,1%, 689 mortos de 717, 28 sobreviventes, 0 timeout, 0 suspeito. Por arquivo: `app_controller.py` 113 mortos / 2 sobreviventes; `app_service.py` 240 / 23; `dtos/search_request.py` 242 / 0; `domain/entities/job.py` 94 / 3. Comparando com a medicao do bloco 1 ('8fa398f'): nenhum sobrevivente novo e um a menos, o mutante 140 (`@staticmethod` de `_manual_review_lines`). Proposta ao Nicolas: apertar o teto da catraca de 29 para 28 sobreviventes; a decisao e dele, e eu nao mexi no teto.
 
-Combinado:
+O que eu nao vi: nada rodou em navegador real, e o `src/main.py` e o `tests/real/` continuam fora da minha vista.
 
-* Subtasks e Mermaid de cada um vao DEPOIS do marcador `ROADMAP-TECNICO:FIM`, sob "Plano do Claude" e "Plano do Agy". Entre os marcadores, so `○` -> `●` no proprio passo.
-* Ordem de turnos: Claude (C1 a C5, um commit por passo), depois Agy (A1 a A7), depois Nicolas. O bloco 2 so e pedido depois do fecho do 1.1.
-* Do Nicolas, antes do A7: instalar o `xvfb` (`sudo apt-get install -y xvfb`) e confirmar com `which Xvfb`.
-
----
-
-**Carta original do bloco 1.1** (continua valendo em tudo que a carta acima nao alterar):
-
-**ASSUNTO:** Bloco 1.1: correcoes do GO com condicoes do bloco 1 | commit anterior: 'e251373'
-
-Claude (Dev), cc Gemini Argon (Tech Lead), Maestro (Revisor), Agy (QA/Infra),
-
-Contexto: o Maestro aceitou o GO do bloco 1 com condicoes. Esta carta e somada ao PLANO OK: criterios do go/no-go, padrao de codigo, catraca de mutacao (95,0% e no maximo 29 sobreviventes), regras de territorio e de branch continuam valendo. Onde divergir, vale esta.
-
-Decisoes do PO (regras de produto, nao opcoes):
-
-* 4B. Chromium continua o motor padrao ate o resultado do Portao B. Firefox so com `BROWSER_ENGINE=firefox`. Nenhuma migracao definitiva neste bloco.
-* 5A. Depois de um MANUAL_REVIEW o lote para; a vaga seguinte nao e tentada. A revisao e manual e a execucao seguinte recomeca.
-* Consequencia da regra ja decidida (confirmacao visivel ou revisao manual): envio real exige `submit_confirmation` no perfil de seletores. Nao existe palpite de que "o dialogo fechou, entao enviou".
-
-Evidencia que motivou esta carta (para ninguem precisar adivinhar):
-
-* `DEFAULT_VISIBILITY_TIMEOUT_MS` passou de 3000 para 1200 e vale para todo `is_visible`. Num LinkedIn lento, o botao de candidatura aparece depois de 1,2 s, a vaga e marcada como sem Easy Apply e fica lembrada no historico para sempre.
-* O cache padrao e `./.cache/jobs_history.json` e o perfil sai de `./sessions/<plataforma>` com `os.path.abspath`: os dois dependem da pasta onde o bot e executado. Rodar de outra pasta cria historico vazio (risco de candidatura duplicada, viola a 1A) e perfil vazio (sessao perdida). `.cache/` nao esta no `.gitignore`.
-* O `profile_dir` do Firefox recebe o mesmo `user_data_dir` do Chromium (`browser_service.py`, linhas 114 e 183).
-* Na maquina do Nicolas `which Xvfb` voltou vazio. Sem Xvfb, o codigo faz `os.environ.setdefault("INVPW_TRUE_HEADLESS", "1")` em silencio. Logo, as 3 execucoes verdes do Firefox provavelmente rodaram em headless de verdade, que nao e o modo que vamos usar (Xvfb), e a variavel de ambiente vaza para o processo inteiro.
-* No diff do clone (`page.js`), `setIsModalOpen(false)` entrou como linha nova em `handleSubmit`, o banner de sucesso passou para o painel de detalhes e o tempo caiu de 1000 para 800 ms, para todas as vagas. O fluxo base do clone passou a ser "dialogo fecha e aviso aparece fora", que e justamente o que o fallback atual do Claude aceita. O seletor `submit_confirmation` nao esta no conjunto de seletores dos testes hostis, entao eles passam pelo fallback.
-
-Itens do Claude (um commit por entrega; nao passe o turno antes de todos):
-
-1. Confirmacao vence dialogo aberto. Regra no dominio (`SubmissionEvidence`), nao em try/except: sucesso se e somente se o clique foi concluido E a confirmacao foi vista, qualquer que seja o estado do dialogo. Sem confirmacao: dialogo ainda aberto = `MODAL_STILL_OPEN`; dialogo fechado = `CONFIRMATION_MISSING`; clique falho = razao propria. Em sucesso com dialogo ainda aberto, a aplicacao tenta fechar com o `close_button` do perfil; falhar ao fechar nao rebaixa o APPLIED, so registra.
-
-2. Sem fallback "dialogo fechou". Remova-o. Envio real (nao simulado) com perfil sem `submit_confirmation` e recusado antes de abrir a primeira vaga, com razao propria em `AbortReason` e no mesmo molde da `HISTORY_REQUIRED`. Shadow Mode e simulacao nao exigem a chave. Testes: perfil sem a chave + envio real recusa; perfil sem a chave + Shadow segue.
-
-3. Falha ao gravar o SUBMITTING. Sem gravacao confirmada nao existe clique. Se `record_submitting` falhar, nenhum estado em memoria fica em SUBMITTING, a vaga continua PENDING, o lote para com razao propria (`HISTORY_WRITE_FAILED` ou nome a criterio) e o sumario avisa. Teste com cache falso cuja gravacao levanta excecao: nenhum clique, status PENDING, lote parado.
-
-4. Parada apos MANUAL_REVIEW (5A). Com `strict_abort` ligado (padrao), o lote para na primeira vaga que virar MANUAL_REVIEW, com razao propria e sumario pedindo revisao. Com `strict_abort` desligado (so teste) segue como hoje.
-
-5. Mutante 140 (`app_controller`, `@staticmethod` de `_manual_review_lines`): ele so sobrevive porque os testes chamam pela classe. Chame pela instancia e mate-o. Se matar, proponha na carta apertar o teto para 28 sobreviventes; quem decide e o Nicolas. Equivalentes que nao der para matar: declare com diff e motivo.
-
-6. Reporte a Mutation Score do zero no commit exato (por status, por arquivo, sobreviventes novos). Passe `Turno: Agy` com a lista abaixo.
-
-Fora deste bloco (nao mexer): renomear `wait_for_loader_to_disappear`, que hoje espera o dialogo sumir (vai para o bloco 2 como `wait_until_hidden`, por carta do Claude ao Agy).
+Seus itens, copiados das cartas do Nicolas e do Maestro sem alteracao:
 
 Itens do Agy (um commit por comportamento; nada de `src/domain`, `src/application`, `tests/domain`, `tests/application`):
 
@@ -106,18 +57,32 @@ G. Relatorio honesto. Cada numero de mutacao diz de qual commit e de quem vem ("
 
 H. Ao fechar: homologue no commit exato com `git diff --stat` provando que `src/domain`, `src/application`, `tests/domain` e `tests/application` ficaram intactos neste turno, e passe `Turno: Nicolas`. Nao altere o CI nem o `requirements.txt`.
 
+Ajustes para o Agy (A1 a A7):
+
+a. A1: sem variavel de ambiente para o prazo; so parametro do construtor (os testes atribuem). Motivo: uma variavel esquecida no `.env` reduziria o prazo de producao em silencio, que e o problema que estamos corrigindo. O teste de regressao do padrao 3000 fica. Para o estouro, nao aperte o prazo para 250 ms (o resto do fluxo pode falhar de forma intermitente): aumente o atraso do cenario, por parametro na URL, e use um prazo injetado com folga (ex.: atraso de 2500 ms e prazo de 1000 ms).
+b. A2: a funcao de raiz do projeto fica em modulo proprio (`src/infrastructure/paths.py`), importado por `browser_service.py` e `main.py`; teste de que a raiz encontrada contem `src/` e `NOTAS.md`. Adicione ao `.gitignore` o que faltar (`.cache/`, `sessions/`) e mostre o `git check-ignore -v`.
+c. A4: `get_runtime_metadata()` tambem para o Chromium (`effective_mode` = headless ou headed). O relatorio registra, por execucao, o motor pedido e o `navigator.userAgent` observado.
+d. A5: um teste real por desfecho: fluxo base (APPLIED e dialogo fechado pelo `close_button`), `close-on-submit` (APPLIED sem tentar fechar), `no-confirm` (CONFIRMATION_MISSING) e `stuck-submit` (MODAL_STILL_OPEN). Cubra tambem o C3 no real, com um caminho de cache cujo diretorio-pai e um arquivo comum (reproduz o OSError sem depender de permissao). Se o perfil de producao do clone estiver na sua camada, adicione a chave `submit_confirmation` (ver resposta 3).
+e. A6: remova `channel="chromium"` so se o padrao do construtor continuar sendo "chromium" para o Chromium (prove com teste): o canal nao pode mudar em silencio. Acrescente uma guarda de identidade do motor nas fixtures reais: com `BROWSER_ENGINE=firefox`, o `navigator.userAgent` tem que conter "Firefox"; com chromium, "Chrome"; senao o teste falha alto. Hoje nao temos prova de que as 3 rodadas do bloco 1 foram em Firefox, porque o user agent nunca foi registrado.
+f. A7: as 3 rodadas em Xvfb rodam no commit final (com o ultimo commit do Claude), e a rodada de Chromium do criterio 5 (tempo) roda no MESMO commit. Se qualquer criterio falhar, o veredito e NO-GO, com o motivo.
+g. Obrigado pela declaracao de autoria dos testes do bloco 1; mantenha a mesma transparencia no bloco 1.1.
+
+* Do Nicolas, antes do A7: instalar o `xvfb` (`sudo apt-get install -y xvfb`) e confirmar com `which Xvfb`.
+
+Claude
+
 ---
 
 ## 1. Estado Atual da Squad
 
-* **Turno Atual:** Claude (bloco 1.1).
+* **Turno Atual:** Agy (bloco 1.1, A1 a A7).
 * **Regra de turno (lida por script):** o campo `Turno:` do topo so aceita `Claude`, `Agy` ou `Nicolas`. Mudar o `Turno` no mesmo commit do seu trabalho e o sinal de passagem. Commit fora do seu turno e recusado por hook.
 * **Versao Consolidada da Aplicacao:** v1.5 (`master` = 'e28da32', merge do PR #4, tag `v1.5`). Antes: v1.0 ('414e4f8', PR #2, tag `v1.0`).
 * **Caminho:** Geracao 2.0 fecha na v2.0, com marcos intermediarios: v1.5 (feito) -> v1.6 (Portao A: motor e seguranca, sem LinkedIn) -> v1.7 (Portao B: Shadow Mode real com a conta temporaria, sem envio) -> v2.0 (Portao C: Burner Run de 5 vagas, primeiro envio real) -> Geracao 2.5 (LLM) -> Geracao 3.0. Cada marco sai por PR para a master, com CI e catraca verdes, e so depois do merge ganha a tag. Se um portao falha, o proximo nao comeca. Backlog definitivo: a planilha do Nicolas.
 * **Versao Alvo da Squad:** v1.6 (Portao A). Bloco 1: homologado com GO com condicoes ('e251373'). Bloco 1.1 (correcoes): em curso. Bloco 2: so depois do fecho do 1.1. O Portao A so fecha a v1.6 quando os blocos 1, 1.1 e 2 terminarem.
 * **Branch Ativa:** `feat/2.0-portao-a`. A `master` so recebe PR; as `feat/*` aceitam push normal (sem force push nem exclusao).
-* **Placar do Pytest:** rapido (`tests/domain` + `tests/application`) = 341 PASSED em '8fa398f' (Mutation do zero em 03/11: 95,8%, 664/693, 29 sobreviventes; 1 deles e novo: o mutante 140, `@staticmethod` de `_manual_review_lines`, a matar no bloco 1.1; v1.5 era 95,1%, 562/591). Suite infra: 19 PASSED. Suite real (`tests/real/`): 32 PASSED em Chromium e 32 PASSED em 3 execucoes consecutivas no Firefox, em headless real (sem Xvfb); a rodada em Xvfb fica pendente no bloco 1.1. Total de testes automatizados do repo: 392 PASSED.
-* **Proxima Acao Esperada:** PLANO OK dado. Claude executa C1 a C5 (um commit por passo) e passa `Turno: Agy`; o Agy executa A1 a A7 e passa `Turno: Nicolas`; o Maestro revisa antes do fecho. Antes do A7, o Nicolas instala o `xvfb`. O bloco 2 so e pedido depois do fecho.
+* **Placar do Pytest:** rapido (`tests/domain` + `tests/application`) = 355 PASSED em '81ec6e4' (Mutation do zero em 03/11, medida pelo Claude em '81ec6e4': 96,1%, 689/717, 28 sobreviventes, nenhum novo; o mutante 140 morreu; proposta de teto 28 aguarda o Nicolas. Bloco 1: 95,8%, 664/693, 29). Suite infra: 19 PASSED. Suite real (`tests/real/`): 32 PASSED em Chromium e 32 PASSED em 3 execucoes consecutivas no Firefox, em headless real (sem Xvfb); a rodada em Xvfb fica pendente no bloco 1.1.
+* **Proxima Acao Esperada:** C1 a C5 entregues. O Agy executa A1 a A7 e passa `Turno: Nicolas`; o Maestro revisa antes do fecho. Antes do A7, o Nicolas instala o `xvfb`. O bloco 2 so e pedido depois do fecho.
 
 <!-- ROADMAP-TECNICO:INICIO | Guardiao: Maestro. NAO remover, NAO renomear, NAO reordenar, NAO apagar estes marcadores. Unica edicao permitida a Claude e Agy: trocar ○ por ● no proprio passo ao entregar. -->
 
@@ -133,7 +98,7 @@ H. Ao fechar: homologue no commit exato com `git diff --stat` provando que `src/
 │ ├─● C2 envio real exige submit_confirmation, sem palpite
 │ ├─● C3 falha ao gravar SUBMITTING: sem clique, PENDING
 │ ├─● C4 lote para após MANUAL_REVIEW (decisão 5A)
-│ ├─○ C5 mutante 140 morto, mutação medida do zero
+│ ├─● C5 mutante 140 morto, mutação medida do zero
 │ │      → Turno: Agy
 │ ├─○ A1 prazo de visibilidade VOLTA a 3000 ms
 │ ├─○ A2 cache e perfil ancorados na raiz, .gitignore
@@ -182,6 +147,36 @@ Detalhe de cada passo: carta do bloco 1.1 (topo deste arquivo). O proximo trecho
 
 Plano de subtasks do Claude e do Agy (Mermaid do proprio algoritmo, se houver): fica AQUI, fora dos marcadores, sob um titulo com o nome de quem escreveu.
 
+### Plano do Claude (bloco 1.1, C1 a C5: entregue)
+
+* C1 ('ba40e36'): tabela-verdade da `SubmissionEvidence` (8 linhas) -> testes de aplicacao (sucesso com dialogo aberto fecha; falha ao fechar nao rebaixa) -> `review_reason` e `_close_after_send`.
+* C2 ('5418dea'): testes de recusa sem a chave e de Shadow sem a chave -> fakes com a confirmacao -> checagem no inicio do `run()`, fim do palpite em `_observe_submission`, chave no perfil do clone.
+* C3 ('b4c0e02'): testes de PENDING sem clique, lote parado, descarte que falha, sumario e memoria do `JsonJobCache` -> `try` em `record_submitting` no `_submit` e desfazer em memoria no cache.
+* C4 ('49b0231'): testes de parada, historico antes da parada e sumario -> `put` + `_stop(MANUAL_REVIEW_STOP)` no `_submit`.
+* C5 ('81ec6e4'): lista de revisao manual chamada pela instancia em `execute`; sumario conferido byte a byte; mutation do zero.
+
+```mermaid
+flowchart TD
+  INI["run()"] --> CONF{"Envio real e perfil sem submit_confirmation?"}
+  CONF -->|sim| R2["_stop(SUBMIT_CONFIRMATION_REQUIRED), devolve []"]
+  CONF -->|não| LISTA["_collect_jobs e laço das vagas"] --> SUB["_run_modal chega ao Submit (não shadow)"]
+  SUB --> HIST{"cache ligado?"}
+  HIST -->|não| R1["_discard e _stop(HISTORY_REQUIRED)"]
+  HIST -->|sim| GRAVA["cache.record_submitting (fsync)"]
+  GRAVA --> GOK{"gravou?"}
+  GOK -->|não| R3["cache desfaz em memória; _discard_quietly; _stop(HISTORY_WRITE_FAILED); vaga PENDING"]
+  GOK -->|sim| CLIQUE["mark_submitting; _send clica em Submit"]
+  CLIQUE --> EV["SubmissionEvidence: clique, confirmação, diálogo"]
+  EV --> SET["job.settle_submission (regra no domínio)"]
+  SET -->|APPLIED| OK{"diálogo aberto?"}
+  OK -->|sim| FECHA["_close_after_send: falha só no log"]
+  OK -->|não| PROX["próxima vaga"]
+  FECHA --> PROX
+  SET -->|MANUAL_REVIEW| ST{"strict_abort?"}
+  ST -->|sim| PARA["cache.put(job); _stop(MANUAL_REVIEW_STOP)"]
+  ST -->|não| PROX2["run() faz o put e segue"]
+```
+
 ---
 
 ## 2. Regras de Governanca e Etiquetas do NOTAS.md
@@ -227,6 +222,7 @@ Plano de subtasks do Claude e do Agy (Mermaid do proprio algoritmo, se houver): 
 ---
 
 ## 4. Historico de Handoffs
+* [2026-11-03] [PRONTO] [Claude] src/domain, src/application, tests/domain, tests/application - Bloco 1.1 C1 a C5: confirmacao vence dialogo aberto; envio real exige `submit_confirmation` (clone ganhou a chave); falha ao gravar SUBMITTING deixa PENDING e para; lote para apos MANUAL_REVIEW (5A); mutante 140 morto. Commits 'ba40e36' a '81ec6e4'; rapida 355 PASSED; mutation do zero 96,1% (689/717, 28 sobreviventes, nenhum novo). Turno: Agy.
 * [2026-11-03] [RESPOSTA] [Maestro -> Claude, Agy] NOTAS.md - PLANO OK do bloco 1.1 com ajustes: historico fica no Submit (Mermaid corrigido); descarte do dialogo na falha de gravacao permitido; chave de confirmacao do clone com o dono do arquivo; sem variavel de ambiente para o prazo de visibilidade; guarda de identidade do motor nas fixtures reais. Turno: Claude.
 * [2026-11-03] [PEDIDO] [Nicolas -> Claude] NOTAS.md - Bloco 1.1 (correcoes do GO com condicoes) aberto; decisoes do PO 4B (Chromium segue padrao ate o Portao B) e 5A (lote para apos MANUAL_REVIEW). Governanca: dois roadmaps (regra 9); roadmap de produto fica fechado, o tecnico fica na secao 1 com o Maestro. Territorio do Agy explicita `requirements*.txt`, `docs/` e `.github/`. Turno: Claude.
 * [2026-11-03] [PRONTO] [Agy] src/infrastructure/, src/main.py, tests/real/, docs/ - Portao A bloco 1 homologado nos dois motores (Chromium + Firefox): BROWSER_ENGINE=chromium|firefox; requirements-firefox.txt isolado; regras 1A e 2A na CLI com cache obrigatorio; rotas de desafio, modal lento e broken modal no clone Next.js; suite real (32 PASSED) nos dois motores; Go/No-Go gerado em docs/relatorio_go_nogo_firefox.md com veredito GO (6 criterios verdadeiros, tempo 1,05x). Turno: Nicolas.
