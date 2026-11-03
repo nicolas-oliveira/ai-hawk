@@ -16,6 +16,8 @@ def _request(confirmacao=True, **kw):
     seletores = {**SEL, "abort_url_pattern": CHALLENGE_URL_PATTERN}
     if confirmacao:
         seletores["submit_confirmation"] = CONFIRMACAO
+    else:
+        del seletores["submit_confirmation"]
     return SearchRequest(
         platform="p", static_urls=["https://x.com/s"], selectors=seletores,
         max_applications=5, max_consecutive_errors=1, **kw,
@@ -57,13 +59,26 @@ def test_envio_confirmado_vira_applied_e_vai_para_o_historico():
     assert cache.saved == [(URL_VAGA, JobStatus.APPLIED)]
 
 
-def test_sem_seletor_de_confirmacao_modal_fechado_basta():
+def test_envio_real_sem_submit_confirmation_recusa_antes_da_primeira_vaga():
     browser = FakeBrowser(visible=ABERTA)
-    _envio_fecha_o_modal(browser, confirma=False)
+    cache = FakeCache()
 
-    _, jobs = _rodar(browser, request=_request(confirmacao=False))
+    service, jobs = _rodar(browser, cache, _request(confirmacao=False))
 
-    assert jobs[0].status is JobStatus.APPLIED
+    assert service.last_abort_reason == AbortReason.SUBMIT_CONFIRMATION_REQUIRED
+    assert AbortReason.SUBMIT_CONFIRMATION_REQUIRED == (
+        "envio real exige selectors['submit_confirmation']; nenhuma vaga foi aberta"
+    )
+    assert (jobs, browser.opened, browser.clicks, cache.intents) == ([], [], [], [])
+
+
+def test_shadow_sem_submit_confirmation_segue():
+    browser = FakeBrowser(visible=ABERTA)
+
+    service, jobs = _rodar(browser, request=_request(confirmacao=False, shadow_mode=True))
+
+    assert service.last_abort_reason is None
+    assert jobs[0].status is JobStatus.SIMULATED
 
 
 def test_submit_sem_confirmacao_vira_revisao_manual():

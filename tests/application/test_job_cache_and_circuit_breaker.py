@@ -5,8 +5,9 @@ import pytest
 
 from src.application.app_service import AppService, JsonJobCache, CACHEABLE_STATUSES
 from src.application.app_controller import AppController
-from src.application.dtos.search_request import SearchRequest, LINKEDIN_DEFAULT_SELECTORS
+from src.application.dtos.search_request import SearchRequest
 from src.domain.entities.job import Job, JobStatus
+from tests.application.fakes import SEL
 
 
 def test_json_job_cache_put_get_roundtrip(tmp_path):
@@ -56,7 +57,7 @@ def test_app_service_cache_hit_does_not_consume_max_applications(tmp_path, mock_
     request = SearchRequest(
         platform="linkedin",
         static_urls=["https://www.linkedin.com/jobs/search"],
-        selectors=LINKEDIN_DEFAULT_SELECTORS,
+        selectors=SEL,
         max_applications=1,  # Cota de 1
     )
 
@@ -85,7 +86,7 @@ def test_app_service_circuit_breaker_consecutive_errors(mock_browser_service):
     request = SearchRequest(
         platform="linkedin",
         static_urls=["https://www.linkedin.com/jobs/search"],
-        selectors=LINKEDIN_DEFAULT_SELECTORS,
+        selectors=SEL,
         max_consecutive_errors=3,
         max_applications=10,
     )
@@ -120,7 +121,7 @@ def test_app_service_circuit_breaker_resets_on_success(mock_browser_service):
     request = SearchRequest(
         platform="linkedin",
         static_urls=["https://www.linkedin.com/jobs/search"],
-        selectors=LINKEDIN_DEFAULT_SELECTORS,
+        selectors=SEL,
         max_consecutive_errors=3,
         max_applications=10,
     )

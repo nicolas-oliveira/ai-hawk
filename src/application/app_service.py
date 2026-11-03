@@ -50,6 +50,9 @@ class AbortReason:
     MODAL_NOT_OPENED = "parada estrita: modal nao abriu em {url}"
     CHALLENGE_URL = "parada estrita: desafio na URL ({current}) em {url}"
     HISTORY_REQUIRED = "envio real exige historico (cache) ligado; nada foi enviado em {url}"
+    SUBMIT_CONFIRMATION_REQUIRED = (
+        "envio real exige selectors['submit_confirmation']; nenhuma vaga foi aberta"
+    )
 
 
 class BrowserPort(Protocol):
@@ -297,6 +300,10 @@ class AppService:
         """Executa a sessao e devolve todas as vagas lidas, com status."""
         self.last_abort_reason = None
         self.timings.clear()
+        if not request.shadow_mode and not request.selectors.get("submit_confirmation"):
+            # Sem sinal de confirmacao nao ha como saber se enviou: nada e aberto.
+            self._stop(AbortReason.SUBMIT_CONFIRMATION_REQUIRED)
+            return []
         jobs = self._collect_jobs(request)
         if self.last_abort_reason:  # parada estrita ja na listagem: nada e processado
             self._log_timing_summary()
@@ -604,9 +611,7 @@ class AppService:
         modal_closed = self._browser.wait_for_loader_to_disappear(
             sel["modal_container"], timeout=SHORT_TIMEOUT_MS
         )
-        confirmation = sel.get("submit_confirmation")
-        # Sem seletor de confirmacao no perfil, o modal ter fechado e a confirmacao.
-        seen = self._browser.element_exists(confirmation) if confirmation else modal_closed
+        seen = self._browser.element_exists(sel["submit_confirmation"])
         return SubmissionEvidence(
             click_completed=True, confirmation_seen=seen, modal_still_open=not modal_closed
         )

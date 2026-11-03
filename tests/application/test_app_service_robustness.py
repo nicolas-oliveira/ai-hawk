@@ -8,13 +8,13 @@ import re
 
 import pytest
 
-from tests.application.fakes import FakeCache
+from tests.application.fakes import SEL as SEL_COM_CONFIRMACAO, FakeCache
 from src.application import app_service as svc_mod
 from src.application.app_service import AppService, JsonJobCache, _TimedBrowser
-from src.application.dtos.search_request import LINKEDIN_DEFAULT_SELECTORS, SearchRequest
+from src.application.dtos.search_request import SearchRequest
 from src.domain.entities.job import Job, JobStatus
 
-SEL = dict(LINKEDIN_DEFAULT_SELECTORS)
+SEL = dict(SEL_COM_CONFIRMACAO)
 
 
 class FakeBrowser:
@@ -133,7 +133,7 @@ def test_timeout_do_overlay_e_constantes():
 # ----------------------------------------------------------- laco principal
 def test_limite_de_candidaturas_para_o_laco(caplog):
     m, s = SEL["modal_container"], SEL["submit_button"]
-    browser = FakeBrowser(cards=_cards(3), exists=_only(SEL["apply_button"], s, m))
+    browser = FakeBrowser(cards=_cards(3), exists=_only(SEL["apply_button"], s, m, SEL["submit_confirmation"]))
     with caplog.at_level(logging.INFO):
         jobs = AppService(browser, FakeCache()).run(_req(max_applications=1))
     assert [j.status for j in jobs] == [JobStatus.APPLIED, JobStatus.PENDING, JobStatus.PENDING]
@@ -194,7 +194,7 @@ def test_review_button_opcional_avanca_quando_next_nao_existe():
     def exists(s):
         if s == sel["apply_button"]:
             return True
-        if s == sel["submit_button"]:
+        if s in (sel["submit_button"], sel["submit_confirmation"]):
             return estado["passo"] >= 1
         return s == "button.review" and estado["passo"] == 0
 

@@ -75,6 +75,7 @@ def test_valores_exatos_dos_perfis_de_producao():
         "modal_container": "[role='dialog']",
         "abort_url_pattern": CHALLENGE_URL_PATTERN,
         "abort_indicator": "[data-aihawk-challenge]",
+        "submit_confirmation": "[data-testid='modal-submission-success']",
     }
     assert O == {
         "jobs_list_container": ".oxd-table-body",

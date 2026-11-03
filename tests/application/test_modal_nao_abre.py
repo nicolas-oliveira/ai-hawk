@@ -53,7 +53,10 @@ def test_modal_aberto_segue_o_fluxo_normal():
         visible={SEL["apply_button"], SEL["modal_container"], SEL["submit_button"]},
         job_cards=cards(1),
     )
-    browser.on_click[SEL["submit_button"]] = lambda b: b.visible.discard(SEL["modal_container"])
+    def envia(b):
+        b.visible.discard(SEL["modal_container"])
+        b.visible.add(SEL["submit_confirmation"])
+    browser.on_click[SEL["submit_button"]] = envia
     service = AppService(browser, FakeCache())
 
     jobs = service.run(_request(strict_abort=True, max_applications=5))

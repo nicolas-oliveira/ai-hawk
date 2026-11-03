@@ -130,7 +130,7 @@ H. Ao fechar: homologue no commit exato com `git diff --stat` provando que `src/
 │
 ○ [G2.0 - Bloco 1.1] Correções do GO (prazo de 3s para 1,2s, cache/perfil na raiz, Xvfb)
 │ ├─● C1 confirmação vale mesmo com diálogo aberto
-│ ├─○ C2 envio real exige submit_confirmation, sem palpite
+│ ├─● C2 envio real exige submit_confirmation, sem palpite
 │ ├─○ C3 falha ao gravar SUBMITTING: sem clique, PENDING
 │ ├─○ C4 lote para após MANUAL_REVIEW (decisão 5A)
 │ ├─○ C5 mutante 140 morto, mutação medida do zero

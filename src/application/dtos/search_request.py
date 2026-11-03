@@ -84,6 +84,7 @@ LINKEDIN_CLONE_SELECTORS: Dict[str, str] = {
     "modal_container": "[role='dialog']",
     "abort_url_pattern": CHALLENGE_URL_PATTERN,
     "abort_indicator": CHALLENGE_MARKER,
+    "submit_confirmation": "[data-testid='modal-submission-success']",
 }
 
 # OrangeHRM (modulo Recruitment, demo open-source). NAO validado em DOM real:

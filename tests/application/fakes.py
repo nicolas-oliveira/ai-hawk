@@ -3,7 +3,9 @@ from typing import Callable, Dict, List, Optional
 
 from src.application.dtos.search_request import LINKEDIN_DEFAULT_SELECTORS
 
-SEL: Dict[str, str] = dict(LINKEDIN_DEFAULT_SELECTORS)
+# Perfil do LinkedIn + o sinal de confirmacao que o envio real exige.
+CONFIRMACAO = "[data-x=confirmacao-de-envio]"
+SEL: Dict[str, str] = {**LINKEDIN_DEFAULT_SELECTORS, "submit_confirmation": CONFIRMACAO}
 
 
 def cards(*ids: int) -> List[Dict[str, str]]:

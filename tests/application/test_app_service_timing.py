@@ -91,9 +91,10 @@ def test_run_zera_as_medicoes_da_sessao_anterior():
     service = AppService(inner)
     service.timings.append(CallTiming("velho", "", 9.0, "None"))
 
-    from src.application.dtos.search_request import SELECTOR_PROFILES, SearchRequest
+    from src.application.dtos.search_request import SearchRequest
+    from tests.application.fakes import SEL
 
-    service.run(SearchRequest(platform="p", static_urls=["http://x/"], selectors=SELECTOR_PROFILES["linkedin"]))
+    service.run(SearchRequest(platform="p", static_urls=["http://x/"], selectors=SEL))
 
     assert all(t.method != "velho" for t in service.timings)
     assert any(t.method == "open_url" for t in service.timings)
