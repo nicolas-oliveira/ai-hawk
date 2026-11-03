@@ -23,6 +23,75 @@ const INITIAL_JOBS = [
   },
 ];
 
+const SCENARIO_JOBS = {
+  "job-challenge": {
+    id: "job-challenge",
+    title: "Vaga Desafio Anti-Bot",
+    company: "SecOps Corp",
+    location: "Remoto",
+    description: "Vaga protegida por desafio de segurança ao abrir os detalhes.",
+    complex: false,
+    challengeOnDetail: true,
+  },
+  "job-broken-modal": {
+    id: "job-broken-modal",
+    title: "Vaga Modal Inoperante",
+    company: "NullDialog Corp",
+    location: "Remoto",
+    description: "Vaga cujo botão de candidatura não abre nenhum diálogo.",
+    complex: false,
+    brokenModal: true,
+  },
+  "job-slow-modal": {
+    id: "job-slow-modal",
+    title: "Vaga Modal Lento",
+    company: "Async Corp",
+    location: "Remoto",
+    description: "Vaga cujo modal abre com atraso dentro do prazo da porta.",
+    complex: false,
+    slowModal: true,
+  },
+  "job-stuck-submit": {
+    id: "job-stuck-submit",
+    title: "Vaga Modal Preso no Submit",
+    company: "Stuck Corp",
+    location: "Remoto",
+    description: "Vaga cujo modal não fecha após o clique em Submit.",
+    complex: false,
+    stuckSubmit: true,
+  },
+  "job-no-confirm": {
+    id: "job-no-confirm",
+    title: "Vaga Sem Aviso de Confirmacao",
+    company: "Silent Corp",
+    location: "Remoto",
+    description: "Vaga cujo modal fecha após o Submit sem exibir banner de confirmação.",
+    complex: false,
+    noConfirmSubmit: true,
+  },
+};
+
+const ALL_JOBS = [...INITIAL_JOBS, ...Object.values(SCENARIO_JOBS)];
+
+function resolveScenarioJobs(scenario) {
+  if (scenario === "job-challenge") {
+    return [SCENARIO_JOBS["job-challenge"], INITIAL_JOBS[0]];
+  }
+  if (scenario === "broken-modal") {
+    return [SCENARIO_JOBS["job-broken-modal"], INITIAL_JOBS[0]];
+  }
+  if (scenario === "slow-modal") {
+    return [SCENARIO_JOBS["job-slow-modal"]];
+  }
+  if (scenario === "stuck-submit") {
+    return [SCENARIO_JOBS["job-stuck-submit"]];
+  }
+  if (scenario === "no-confirm") {
+    return [SCENARIO_JOBS["job-no-confirm"]];
+  }
+  return INITIAL_JOBS;
+}
+
 export default function Home() {
   const [seed, setSeed] = useState("init");
   const [wrapperVariant, setWrapperVariant] = useState(0);
@@ -63,15 +132,17 @@ export default function Home() {
 
     // Simula Lazy Loading da lista inicial de vagas (1.2s)
     const jobsTimer = setTimeout(() => {
-      setJobs(INITIAL_JOBS);
-      setJobsLoading(false);
       const params = new URLSearchParams(window.location.search);
+      const scenarioParam = params.get("scenario");
+      const activeJobs = resolveScenarioJobs(scenarioParam);
+      setJobs(activeJobs);
+      setJobsLoading(false);
       const jobIdParam = params.get("jobId");
       if (jobIdParam) {
         if (jobIdParam === "honeypot-job") {
           triggerHoneypot("Navegou diretamente para a URL da vaga Honeypot oculta");
         } else {
-          const matched = INITIAL_JOBS.find((j) => j.id === jobIdParam);
+          const matched = ALL_JOBS.find((j) => j.id === jobIdParam);
           if (matched) {
             setSelectedJob(matched);
           }
@@ -122,11 +193,21 @@ export default function Home() {
       triggerHoneypot("Tentou abrir modal com Overlay Intrusivo ativo (bypass de z-index)");
       return;
     }
-    setStepLoading(true);
-    setIsModalOpen(true);
+    if (selectedJob?.brokenModal) {
+      return;
+    }
     setModalStep(1);
     setSubmitted(false);
     setWrapperVariant((prev) => (prev + 1) % 3);
+    if (selectedJob?.slowModal) {
+      setTimeout(() => {
+        setIsModalOpen(true);
+        setStepLoading(false);
+      }, 600);
+      return;
+    }
+    setStepLoading(true);
+    setIsModalOpen(true);
     setTimeout(() => {
       setStepLoading(false);
     }, 1100);
@@ -145,13 +226,21 @@ export default function Home() {
     if (e) e.preventDefault();
     setStepLoading(true);
     setTimeout(() => {
-      setSubmitted(true);
       setStepLoading(false);
+      if (selectedJob?.stuckSubmit) {
+        return;
+      }
+      setIsModalOpen(false);
+      if (selectedJob?.noConfirmSubmit) {
+        setSubmitted(false);
+        return;
+      }
+      setSubmitted(true);
       window.sessionStorage.setItem(
         "modal_submission_success",
         "Candidatura enviada com sucesso!"
       );
-    }, 1000);
+    }, 800);
   };
 
   const handleCloseModal = () => {
@@ -342,54 +431,82 @@ export default function Home() {
               Carregando detalhes da vaga...
             </div>
           ) : selectedJob ? (
-            renderMutatedWrapper(
-              <div className={"details-content-" + seed}>
-                <div className={"border-b pb-4 mb-4 details-header-" + seed}>
-                  <h2 className={"text-2xl font-bold text-gray-900"}>{selectedJob.title}</h2>
-                  <p className={"text-md text-gray-600 font-medium"}>{selectedJob.company}</p>
-                  <p className={"text-sm text-gray-500"}>{selectedJob.location}</p>
-
-                  <div className={"mt-4 flex gap-3 relative action-bar-" + seed}>
-                    {/* 3. HONEYPOT: Botão de candidatura falso fora da tela */}
-                    <button
-                      type="button"
-                      style={{
-                        opacity: 0,
-                        position: "absolute",
-                        left: "-9999px",
-                        pointerEvents: "none",
-                      }}
-                      tabIndex={-1}
-                      aria-hidden="true"
-                      onClick={() =>
-                        triggerHoneypot("Clicou no botão Candidatura Simplificada oculto (left: -9999px)")
-                      }
-                      className={"btn-apply-trap-" + seed}
+            selectedJob.challengeOnDetail ? (
+              <div
+                data-aihawk-challenge="captcha"
+                data-testid="captcha-challenge"
+                className="p-8 border-2 border-red-400 bg-red-50 rounded text-center"
+              >
+                <h2 className="text-xl font-bold text-red-800 mb-2">
+                  Verificação de Segurança na Vaga
+                </h2>
+                <p className="text-sm text-red-700">
+                  Desafio anti-bot ativado ao acessar o detalhe desta vaga.
+                </p>
+              </div>
+            ) : (
+              renderMutatedWrapper(
+                <div className={"details-content-" + seed}>
+                  {submitted && (
+                    <div
+                      data-testid="modal-submission-success"
+                      className={"mb-4 p-4 bg-green-50 border border-green-400 rounded text-center success-state-" + seed}
                     >
-                      Candidatura Simplificada
-                    </button>
+                      <p className={"text-green-700 font-bold text-lg mb-1"}>
+                        Candidatura enviada com sucesso!
+                      </p>
+                      <p className={"text-sm text-gray-600"}>
+                        Sua aplicação foi submetida à {selectedJob?.company}.
+                      </p>
+                    </div>
+                  )}
+                  <div className={"border-b pb-4 mb-4 details-header-" + seed}>
+                    <h2 className={"text-2xl font-bold text-gray-900"}>{selectedJob.title}</h2>
+                    <p className={"text-md text-gray-600 font-medium"}>{selectedJob.company}</p>
+                    <p className={"text-sm text-gray-500"}>{selectedJob.location}</p>
 
-                    {/* Botão Real */}
-                    <button
-                      type="button"
-                      id={`btn-apply-${seed}`}
-                      onClick={handleOpenModal}
-                      className={
-                        "bg-blue-600 text-white px-5 py-2 rounded-full font-semibold hover:bg-blue-700 transition btn-apply-" +
-                        seed
-                      }
-                    >
-                      Candidatura Simplificada
-                    </button>
+                    <div className={"mt-4 flex gap-3 relative action-bar-" + seed}>
+                      {/* 3. HONEYPOT: Botão de candidatura falso fora da tela */}
+                      <button
+                        type="button"
+                        style={{
+                          opacity: 0,
+                          position: "absolute",
+                          left: "-9999px",
+                          pointerEvents: "none",
+                        }}
+                        tabIndex={-1}
+                        aria-hidden="true"
+                        onClick={() =>
+                          triggerHoneypot("Clicou no botão Candidatura Simplificada oculto (left: -9999px)")
+                        }
+                        className={"btn-apply-trap-" + seed}
+                      >
+                        Candidatura Simplificada
+                      </button>
+
+                      {/* Botão Real */}
+                      <button
+                        type="button"
+                        id={`btn-apply-${seed}`}
+                        onClick={handleOpenModal}
+                        className={
+                          "bg-blue-600 text-white px-5 py-2 rounded-full font-semibold hover:bg-blue-700 transition btn-apply-" +
+                          seed
+                        }
+                      >
+                        Candidatura Simplificada
+                      </button>
+                    </div>
                   </div>
-                </div>
 
-                <div className={"text-gray-800 leading-relaxed description-body-" + seed}>
-                  <h4 className={"font-semibold mb-2"}>Sobre a vaga</h4>
-                  <p>{selectedJob.description}</p>
-                </div>
-              </div>,
-              "job-detail-mutation"
+                  <div className={"text-gray-800 leading-relaxed description-body-" + seed}>
+                    <h4 className={"font-semibold mb-2"}>Sobre a vaga</h4>
+                    <p>{selectedJob.description}</p>
+                  </div>
+                </div>,
+                "job-detail-mutation"
+              )
             )
           ) : (
             <div className={"text-center py-12 text-gray-500 placeholder-" + seed}>
