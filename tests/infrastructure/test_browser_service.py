@@ -461,3 +461,50 @@ def test_browser_service_get_current_url(temp_session_dir):
     finally:
         service.close()
 
+
+def test_browser_engine_default_and_normalization(monkeypatch, temp_session_dir):
+    """Valida que BROWSER_ENGINE ausente assume 'chromium' e normaliza strip+lower no parametro e env."""
+    from src.infrastructure.browser_service import resolve_browser_engine
+
+    monkeypatch.delenv("BROWSER_ENGINE", raising=False)
+    assert resolve_browser_engine() == "chromium"
+    service_default = BrowserService(session_root_dir=temp_session_dir)
+    assert service_default.engine == "chromium"
+
+    monkeypatch.setenv("BROWSER_ENGINE", "  FIREFOX \n")
+    assert resolve_browser_engine() == "firefox"
+    service_env = BrowserService(session_root_dir=temp_session_dir)
+    assert service_env.engine == "firefox"
+
+    assert resolve_browser_engine("  ChRoMiUm  ") == "chromium"
+    assert resolve_browser_engine("  FiReFoX\t") == "firefox"
+
+
+def test_browser_engine_invalid_value_fails_immediately_with_valid_options(monkeypatch, temp_session_dir):
+    """Valida falha imediata para valor invalido de BROWSER_ENGINE listando os valores validos."""
+    for invalid in ("webkit", "safari", "chrome_custom", ""):
+        with pytest.raises(ValueError) as exc_info:
+            BrowserService(engine=invalid, session_root_dir=temp_session_dir)
+        msg = str(exc_info.value)
+        assert "chromium" in msg
+        assert "firefox" in msg
+
+    monkeypatch.setenv("BROWSER_ENGINE", "opera")
+    with pytest.raises(ValueError) as exc_env:
+        BrowserService(session_root_dir=temp_session_dir)
+    assert "chromium" in str(exc_env.value)
+    assert "firefox" in str(exc_env.value)
+
+
+def test_browser_engine_chromium_does_not_import_invisible_playwright(monkeypatch, temp_session_dir):
+    """Garante que o caminho padrao chromium funciona mesmo sem invisible_playwright instalado."""
+    monkeypatch.setitem(sys.modules, "invisible_playwright", None)
+    monkeypatch.setitem(sys.modules, "invisible_playwright.sync_api", None)
+
+    service = BrowserService(engine="chromium", session_root_dir=temp_session_dir)
+    assert service.engine == "chromium"
+
+    with pytest.raises(ImportError):
+        BrowserService(engine="firefox", session_root_dir=temp_session_dir)
+
+

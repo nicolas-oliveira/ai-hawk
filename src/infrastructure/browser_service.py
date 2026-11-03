@@ -9,10 +9,136 @@ from patchright.sync_api import sync_playwright, BrowserContext, Page, Playwrigh
 
 load_dotenv()
 
+VALID_ENGINES = ("chromium", "firefox")
+DEFAULT_ENGINE = "chromium"
+DEFAULT_VISIBILITY_TIMEOUT_MS = 3000
+
+
+def resolve_browser_engine(engine: Optional[str] = None) -> str:
+    """
+    Normaliza (strip + lower) e valida o motor do navegador.
+    Ausente vale 'chromium'. Qualquer outro valor falha na hora listando os validos.
+    """
+    if engine is None:
+        raw_env = os.getenv("BROWSER_ENGINE")
+        if raw_env is None or not raw_env.strip():
+            return DEFAULT_ENGINE
+        raw = raw_env
+    else:
+        raw = engine
+
+    normalized = str(raw).strip().lower()
+    if normalized not in VALID_ENGINES:
+        valid_str = ", ".join(VALID_ENGINES)
+        raise ValueError(
+            f"Valor invalido para BROWSER_ENGINE: '{raw}'. "
+            f"Valores validos: {valid_str}."
+        )
+    return normalized
+
+
+class _ChromiumLauncher:
+    """Adaptador de inicializacao sincrona para o motor Chromium (Patchright)."""
+
+    def __init__(self) -> None:
+        self.playwright: Optional[Playwright] = None
+        self.context: Optional[BrowserContext] = None
+
+    def start(
+        self,
+        user_data_dir: str,
+        headless: bool,
+        channel: str,
+        viewport_width: int,
+        viewport_height: int,
+        extra_args: Optional[List[str]] = None,
+    ) -> BrowserContext:
+        self.playwright = sync_playwright().start()
+        args = [
+            "--disable-blink-features=AutomationControlled",
+            "--no-first-run",
+            "--no-default-browser-check",
+        ]
+        if extra_args:
+            args.extend(extra_args)
+
+        launch_kwargs: Dict[str, Any] = {
+            "user_data_dir": user_data_dir,
+            "headless": headless,
+            "args": args,
+            "viewport": {"width": viewport_width, "height": viewport_height},
+        }
+        if channel == "chrome" and shutil.which("google-chrome"):
+            launch_kwargs["channel"] = "chrome"
+
+        self.context = self.playwright.chromium.launch_persistent_context(**launch_kwargs)
+        return self.context
+
+    def stop(self) -> None:
+        if self.context:
+            try:
+                self.context.close()
+            except Exception:
+                pass
+            self.context = None
+        if self.playwright:
+            try:
+                self.playwright.stop()
+            except Exception:
+                pass
+            self.playwright = None
+
+
+class _FirefoxLauncher:
+    """Adaptador de inicializacao sincrona para o motor Firefox (invisible-playwright)."""
+
+    def __init__(self) -> None:
+        from invisible_playwright.sync_api import InvisiblePlaywright
+
+        self._driver_cls = InvisiblePlaywright
+        self._instance: Any = None
+        self.context: Optional[BrowserContext] = None
+
+    def start(
+        self,
+        user_data_dir: str,
+        headless: bool,
+        channel: str,
+        viewport_width: int,
+        viewport_height: int,
+        extra_args: Optional[List[str]] = None,
+    ) -> BrowserContext:
+        if headless and not shutil.which("Xvfb"):
+            os.environ.setdefault("INVPW_TRUE_HEADLESS", "1")
+        self._instance = self._driver_cls(
+            profile_dir=user_data_dir,
+            headless=headless,
+            extra_args=extra_args,
+        )
+        self.context = self._instance.__enter__()
+        return self.context
+
+    def stop(self) -> None:
+        if self._instance is not None:
+            try:
+                self._instance.__exit__(None, None, None)
+            except Exception:
+                pass
+            self._instance = None
+        self.context = None
+
+
+def create_engine_launcher(engine: Optional[str] = None):
+    """Fabrica isolada de motor de navegador."""
+    resolved = resolve_browser_engine(engine)
+    if resolved == "firefox":
+        return _FirefoxLauncher()
+    return _ChromiumLauncher()
+
 
 class BrowserService:
     """
-    Servico de Infraestrutura para gerenciamento do navegador via Patchright (API Sincrona).
+    Servico de Infraestrutura para gerenciamento do navegador (Chromium/Firefox).
     Totalmente agnostico de plataforma, linear, com sessoes persistentes e stealth nativo.
     """
 
@@ -22,10 +148,12 @@ class BrowserService:
         headless: Optional[bool] = None,
         channel: Optional[str] = None,
         session_root_dir: Optional[str] = None,
+        engine: Optional[str] = None,
     ):
         self.platform = platform
+        self.engine = resolve_browser_engine(engine)
+        self._launcher = create_engine_launcher(self.engine)
 
-        # Leitura de variaveis de ambiente com fallbacks defensivos
         if headless is None:
             env_headless = os.getenv("HEADLESS", "false").lower()
             self.headless = env_headless in ("true", "1", "yes")
@@ -51,31 +179,15 @@ class BrowserService:
         Cria o diretorio de sessao se necessario.
         """
         os.makedirs(self.user_data_dir, exist_ok=True)
-
-        self.playwright = sync_playwright().start()
-
-        args = [
-            "--disable-blink-features=AutomationControlled",
-            "--no-first-run",
-            "--no-default-browser-check",
-        ]
-        if extra_args:
-            args.extend(extra_args)
-
-        launch_kwargs = {
-            "user_data_dir": self.user_data_dir,
-            "headless": self.headless,
-            "args": args,
-            "viewport": {"width": viewport_width, "height": viewport_height},
-        }
-
-        # Se channel for 'chrome', tenta usar o canal Chrome nativo do sistema
-        if self.channel == "chrome" and shutil.which("google-chrome"):
-            launch_kwargs["channel"] = "chrome"
-
-        self.context = self.playwright.chromium.launch_persistent_context(
-            **launch_kwargs
+        self.context = self._launcher.start(
+            user_data_dir=self.user_data_dir,
+            headless=self.headless,
+            channel=self.channel,
+            viewport_width=viewport_width,
+            viewport_height=viewport_height,
+            extra_args=extra_args,
         )
+        self.playwright = getattr(self._launcher, "playwright", None)
         return self.context
 
     def get_page(self) -> Page:
@@ -93,22 +205,12 @@ class BrowserService:
 
     def close(self) -> None:
         """
-        Encerra com seguranca o contexto e o driver do Patchright (sincrono),
+        Encerra com seguranca o contexto e o driver do motor ativo (sincrono),
         garantindo a persistencia do cache e cookies de sessao.
         """
-        if self.context:
-            try:
-                self.context.close()
-            except Exception:
-                pass
-            self.context = None
-
-        if self.playwright:
-            try:
-                self.playwright.stop()
-            except Exception:
-                pass
-            self.playwright = None
+        self._launcher.stop()
+        self.context = None
+        self.playwright = None
 
     def navigate(self, url: str, timeout: int = 30000, wait_until: str = "load") -> bool:
         """
