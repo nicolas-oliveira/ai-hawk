@@ -5,12 +5,6 @@
       "Bash(rm -rf .mutmut-cache)",
       "Bash(gh pr view:*)"
     ],
-    "ask": [
-      "Bash(git push:*)",
-      "Bash(gh pr create:*)",
-      "Bash(git checkout:*)",
-      "Bash(git switch:*)"
-    ],
     "deny": [
       "Bash(git stash:*)",
       "Read(./src/infrastructure/**)",
@@ -50,7 +44,14 @@
       "Bash(git rebase:*)",
       "Bash(git filter-branch:*)",
       "Bash(git commit --amend:*)",
-      "Bash(rm -rf:*)"
+      "Bash(rm -rf:*)",
+      "Edit(./ROADMAP.md)"
+    ],
+    "ask": [
+      "Bash(git push:*)",
+      "Bash(gh pr create:*)",
+      "Bash(git checkout:*)",
+      "Bash(git switch:*)"
     ]
   }
 }
