@@ -59,6 +59,9 @@ class AbortReason:
     SUBMIT_CONFIRMATION_REQUIRED = (
         "envio real exige selectors['submit_confirmation']; nenhuma vaga foi aberta"
     )
+    JOB_STATE_REQUIRED = (
+        "envio real exige selectors['applied_state']; nenhuma vaga foi aberta"
+    )
 
 
 class BrowserPort(Protocol):
@@ -112,6 +115,13 @@ class BrowserPort(Protocol):
         """Fecha overlays intrusivos (cookies, premium) se estiverem visiveis.
         True se clicou; False se nao havia nada. Nunca levanta por ausencia.
         `timeout` em ms."""
+
+    def job_shows_applied(self, selector: str, timeout: int) -> bool:
+        """Estado da vaga: True se a pagina mostra a vaga como JA CANDIDATADA, isto e,
+        se `selector` casa com um elemento visivel. `timeout` em ms: 0 = leitura
+        instantanea, sem esperar (usada antes de abrir); > 0 = espera a visibilidade
+        ate `timeout` (usada depois do envio, quando a pagina muda sem pressa).
+        Levanta excecao se a pagina nao puder ser lida."""
 
     def wait_until_hidden(self, selector: str, timeout: int) -> bool:
         """Espera DINAMICA (sem sleep) o elemento (loader, dialogo...) sumir. True se
@@ -320,6 +330,10 @@ class AppService:
             # Sem sinal de confirmacao nao ha como saber se enviou: nada e aberto.
             self._stop(AbortReason.SUBMIT_CONFIRMATION_REQUIRED)
             return []
+        if not request.shadow_mode and not request.selectors.get("applied_state"):
+            # Sem o estado da pagina nao ha segunda barreira anti-duplicada.
+            self._stop(AbortReason.JOB_STATE_REQUIRED)
+            return []
         jobs = self._collect_jobs(request)
         if self.last_abort_reason:  # parada estrita ja na listagem: nada e processado
             self._log_timing_summary()
@@ -464,8 +478,19 @@ class AppService:
             if self._strict_abort(job.url, request):
                 return
 
+            applied_state = sel.get("applied_state")
+            if applied_state and self._browser.job_shows_applied(applied_state, timeout=0):
+                self._mark_already_applied(job)
+                return
+
             if not self._browser.element_exists(sel["apply_button"]):
-                # Sem Easy Apply (candidatura externa ou ja enviada): fora do
+                # O selo pode pintar depois da leitura instantanea: o prazo do botao ja passou.
+                if applied_state and self._browser.job_shows_applied(
+                    applied_state, timeout=SHORT_TIMEOUT_MS
+                ):
+                    self._mark_already_applied(job)
+                    return
+                # Sem Easy Apply (candidatura externa): fora do
                 # escopo da v1.0. Decisao a validar pelo QA/Nicolas.
                 logger.info("Sem botao de candidatura visivel (%s): %s", sel["apply_button"], job.url)
                 job.mark_skipped_complex()
@@ -480,6 +505,11 @@ class AppService:
             logger.exception("Erro ao processar %s", job.url)
             job.mark_error()
             self._discard_quietly(sel)
+
+    @staticmethod
+    def _mark_already_applied(job: Job) -> None:
+        logger.info("Pagina mostra a vaga como ja candidatada; dialogo nao aberto: %s", job.url)
+        job.mark_already_applied()
 
     def _modal_opened(self, sel: Dict[str, str]) -> bool:
         # O prazo de espera e o da porta: o AppService nao decide quanto esperar.
@@ -639,8 +669,12 @@ class AppService:
             sel["modal_container"], timeout=SHORT_TIMEOUT_MS
         )
         seen = self._browser.element_exists(sel["submit_confirmation"])
+        applied = self._browser.job_shows_applied(sel["applied_state"], timeout=SHORT_TIMEOUT_MS)
         return SubmissionEvidence(
-            click_completed=True, confirmation_seen=seen, modal_still_open=not modal_closed
+            click_completed=True,
+            confirmation_seen=seen,
+            modal_still_open=not modal_closed,
+            applied_state_seen=applied,
         )
 
     def _discard(self, sel: Dict[str, str]) -> None:

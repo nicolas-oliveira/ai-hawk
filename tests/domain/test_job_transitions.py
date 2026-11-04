@@ -68,27 +68,52 @@ def test_vaga_nova_nao_tem_motivo_de_revisao():
     assert _job().review_reason is None
 
 
+def _linhas_da_evidencia():
+    """Tabela-verdade completa (16 linhas): clique, confirmacao, estado, dialogo."""
+    for clique in (True, False):
+        for confirmacao in (True, False):
+            for estado in (True, False):
+                for modal in (True, False):
+                    if not clique:
+                        motivo = ReviewReason.CLICK_FAILED
+                    elif confirmacao and estado:
+                        motivo = None  # so sucesso confirmado dos DOIS lados, qualquer dialogo
+                    elif confirmacao:
+                        motivo = ReviewReason.STATE_NOT_CONFIRMED
+                    elif estado:
+                        motivo = ReviewReason.STATE_WITHOUT_CONFIRMATION
+                    elif modal:
+                        motivo = ReviewReason.MODAL_STILL_OPEN
+                    else:
+                        motivo = ReviewReason.CONFIRMATION_MISSING
+                    yield clique, confirmacao, estado, modal, motivo
+
+
+@pytest.mark.parametrize("clique,confirmacao,estado,modal,motivo", list(_linhas_da_evidencia()))
+def test_confirmacao_e_estado_decidem_o_envio(clique, confirmacao, estado, modal, motivo):
+    ev = SubmissionEvidence(clique, confirmacao, modal, estado)
+    assert ev.review_reason is motivo
+
+
 @pytest.mark.parametrize(
-    "clique,confirmacao,modal,motivo",
+    "clique,confirmacao,estado,modal,motivo",
     [
-        (True, True, False, None),
-        (True, True, True, None),
-        (False, True, False, ReviewReason.CLICK_FAILED),
-        (False, True, True, ReviewReason.CLICK_FAILED),
-        (False, False, False, ReviewReason.CLICK_FAILED),
-        (False, False, True, ReviewReason.CLICK_FAILED),
-        (True, False, True, ReviewReason.MODAL_STILL_OPEN),
-        (True, False, False, ReviewReason.CONFIRMATION_MISSING),
+        (True, True, True, True, None),
+        (True, True, False, False, ReviewReason.STATE_NOT_CONFIRMED),
+        (True, False, True, False, ReviewReason.STATE_WITHOUT_CONFIRMATION),
+        (True, False, False, True, ReviewReason.MODAL_STILL_OPEN),
+        (True, False, False, False, ReviewReason.CONFIRMATION_MISSING),
+        (False, True, True, False, ReviewReason.CLICK_FAILED),
     ],
 )
-def test_confirmacao_vista_vence_dialogo_aberto(clique, confirmacao, modal, motivo):
-    ev = SubmissionEvidence(clique, confirmacao, modal)
-    assert ev.review_reason is motivo
+def test_linhas_da_tabela_escritas_a_mao(clique, confirmacao, estado, modal, motivo):
+    # Independente do gerador acima: se a regra e o gerador errarem juntos, esta pega.
+    assert SubmissionEvidence(clique, confirmacao, modal, estado).review_reason is motivo
 
 
 def test_envio_confirmado_vira_applied():
     job = _job(S.SUBMITTING)
-    job.settle_submission(SubmissionEvidence(True, True, False))
+    job.settle_submission(SubmissionEvidence(True, True, False, True))
     assert job.status is S.APPLIED and job.review_reason is None
 
 
@@ -101,7 +126,7 @@ def test_envio_sem_confirmacao_vira_revisao_manual_e_nao_error():
 
 def test_settle_exige_envio_em_andamento():
     with pytest.raises(InvalidTransition):
-        _job(S.PENDING).settle_submission(SubmissionEvidence(True, True, False))
+        _job(S.PENDING).settle_submission(SubmissionEvidence(True, True, False, True))
 
 
 @pytest.mark.parametrize(
@@ -142,6 +167,8 @@ def test_historico_recusa_com_mensagem_exata():
         (ReviewReason.CLICK_FAILED, "clique de envio falhou ou estourou o tempo"),
         (ReviewReason.MODAL_STILL_OPEN, "modal ainda aberto apos o envio"),
         (ReviewReason.CONFIRMATION_MISSING, "confirmacao de envio ausente"),
+        (ReviewReason.STATE_NOT_CONFIRMED, "confirmacao vista, mas a pagina nao mostra a vaga como candidatada"),
+        (ReviewReason.STATE_WITHOUT_CONFIRMATION, "pagina mostra a vaga como candidatada, mas sem confirmacao de envio"),
         (ReviewReason.INTERRUPTED_BEFORE_RESULT, "execucao interrompida antes do resultado do envio"),
         (ReviewReason.ALREADY_IN_REVIEW, "ja estava em revisao manual de uma execucao anterior"),
     ],
@@ -152,14 +179,26 @@ def test_motivos_de_revisao_tem_texto_fixo(motivo, texto):
 
 def test_evidencia_e_imutavel():
     with pytest.raises(dataclasses.FrozenInstanceError):
-        SubmissionEvidence(True, True, False).click_completed = False
+        SubmissionEvidence(True, True, False, True).click_completed = False
 
 
 def test_evidencia_so_com_clique_nao_traz_confirmacao_nem_modal_aberto():
     ev = SubmissionEvidence(click_completed=False)
-    assert (ev.confirmation_seen, ev.modal_still_open) == (False, False)
+    assert (ev.confirmation_seen, ev.modal_still_open, ev.applied_state_seen) == (False, False, False)
 
 
 def test_canonicalize_url_e_estatico_tambem_pela_instancia():
     job = Job(url="https://x.com/jobs/1/", platform="p", title="", company="")
     assert job.canonicalize_url("https://x.com/jobs/1234567/?a=1#f") == "https://x.com/jobs/1234567/"
+
+
+def test_vaga_pendente_pode_virar_already_applied_pela_pagina():
+    job = _job(S.PENDING)
+    job.mark_already_applied()
+    assert (job.status, job.review_reason, job.from_cache) == (S.ALREADY_APPLIED, None, False)
+
+
+@pytest.mark.parametrize("origem", [S.SUBMITTING, S.APPLIED, S.ERROR, S.MANUAL_REVIEW])
+def test_already_applied_so_a_partir_de_pending(origem):
+    with pytest.raises(InvalidTransition):
+        _job(origem).mark_already_applied()

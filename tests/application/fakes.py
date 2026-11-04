@@ -5,7 +5,12 @@ from src.application.dtos.search_request import LINKEDIN_DEFAULT_SELECTORS
 
 # Perfil do LinkedIn + o sinal de confirmacao que o envio real exige.
 CONFIRMACAO = "[data-x=confirmacao-de-envio]"
-SEL: Dict[str, str] = {**LINKEDIN_DEFAULT_SELECTORS, "submit_confirmation": CONFIRMACAO}
+APLICADA = "[data-x=vaga-candidatada]"
+SEL: Dict[str, str] = {
+    **LINKEDIN_DEFAULT_SELECTORS,
+    "submit_confirmation": CONFIRMACAO,
+    "applied_state": APLICADA,
+}
 
 
 def cards(*ids: int) -> List[Dict[str, str]]:
@@ -23,6 +28,7 @@ class FakeBrowser:
         exists: Optional[Callable[["FakeBrowser", str], bool]] = None,
         current_url: Optional[Callable[["FakeBrowser"], str]] = None,
         click_raises=(),
+        applied_before: bool = False,
     ) -> None:
         self.visible = set(visible)
         self.job_cards = cards(1, 2) if job_cards is None else job_cards
@@ -32,6 +38,9 @@ class FakeBrowser:
         self.on_click: Dict[str, Callable[["FakeBrowser"], None]] = {}
         self.clicks: List[str] = []
         self.opened: List[str] = []
+        # A pagina ja mostra a vaga como candidatada ao abrir (leitura com timeout=0).
+        self.applied_before = applied_before
+        self.state_reads: List[tuple] = []
 
     def open_url(self, url): self.opened.append(url)
     def scroll_container_to_end(self, sel): pass
@@ -41,6 +50,10 @@ class FakeBrowser:
     def modal_signature(self, sel): return ""
     def dismiss_overlay_if_present(self, sel, timeout): return False
     def wait_until_hidden(self, sel, timeout): return not self.element_exists(sel)
+
+    def job_shows_applied(self, sel, timeout):
+        self.state_reads.append((sel, timeout))
+        return self.applied_before if timeout == 0 else self.element_exists(sel)
 
     def get_current_url(self):
         if self._current_url:

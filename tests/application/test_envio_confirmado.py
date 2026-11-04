@@ -5,7 +5,7 @@ from src.application.app_controller import AppController
 from src.application.app_service import AbortReason, AppService
 from src.application.dtos.search_request import CHALLENGE_URL_PATTERN, SearchRequest
 from src.domain.entities.job import JobStatus, ReviewReason
-from tests.application.fakes import SEL, FakeBrowser, FakeCache, cards
+from tests.application.fakes import APLICADA, SEL, FakeBrowser, FakeCache, cards
 
 CONFIRMACAO = "[data-x=enviado]"
 URL_VAGA = "https://x.com/jobs/1/"
@@ -28,7 +28,7 @@ def _envio_fecha_o_modal(browser, confirma=True):
     def ao_enviar(b):
         b.visible.discard(SEL["modal_container"])
         if confirma:
-            b.visible.add(CONFIRMACAO)
+            b.visible.update({CONFIRMACAO, APLICADA})
     browser.on_click[SEL["submit_button"]] = ao_enviar
 
 
@@ -102,7 +102,7 @@ def test_submit_com_modal_ainda_aberto_vira_revisao_manual():
 
 def test_confirmacao_com_dialogo_aberto_vira_applied_e_fecha_o_dialogo():
     browser = FakeBrowser(visible=ABERTA)
-    browser.on_click[SEL["submit_button"]] = lambda b: b.visible.add(CONFIRMACAO)
+    browser.on_click[SEL["submit_button"]] = lambda b: b.visible.update({CONFIRMACAO, APLICADA})
 
     _, jobs = _rodar(browser)
 
@@ -121,7 +121,7 @@ def test_dialogo_fechado_apos_envio_confirmado_nao_e_fechado_de_novo():
 
 def test_falha_ao_fechar_dialogo_apos_envio_nao_rebaixa_applied(caplog):
     browser = FakeBrowser(visible=ABERTA, click_raises={SEL["close_button"]})
-    browser.on_click[SEL["submit_button"]] = lambda b: b.visible.add(CONFIRMACAO)
+    browser.on_click[SEL["submit_button"]] = lambda b: b.visible.update({CONFIRMACAO, APLICADA})
     cache = FakeCache()
 
     service, jobs = _rodar(browser, cache)

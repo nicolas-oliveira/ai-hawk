@@ -24,6 +24,7 @@ class Fake:
     def modal_signature(self, sel): return ""
     def dismiss_overlay_if_present(self, sel, timeout): return False
     def wait_until_hidden(self, sel, timeout): return True
+    def job_shows_applied(self, sel, timeout): return bool(timeout) and sel in self.visible
 
 
 def _req(**kw):
@@ -143,7 +144,7 @@ def test_assinatura_diferente_ou_vazia_nao_trava():
         def click(self, sel):
             super().click(sel)
             if sel == SEL["next_button"]:
-                self.visible = {SEL["apply_button"], SEL["submit_button"], SEL["submit_confirmation"]}
+                self.visible = {SEL["apply_button"], SEL["submit_button"], SEL["submit_confirmation"], SEL["applied_state"]}
     b = Muda({SEL["apply_button"], SEL["next_button"]})
     jobs = AppService(b, FakeCache()).run(_req(max_applications=1))
     assert jobs[0].status == JobStatus.APPLIED

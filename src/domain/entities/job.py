@@ -41,6 +41,10 @@ class ReviewReason(StrEnum):
     CLICK_FAILED = "clique de envio falhou ou estourou o tempo"
     MODAL_STILL_OPEN = "modal ainda aberto apos o envio"
     CONFIRMATION_MISSING = "confirmacao de envio ausente"
+    STATE_NOT_CONFIRMED = "confirmacao vista, mas a pagina nao mostra a vaga como candidatada"
+    STATE_WITHOUT_CONFIRMATION = (
+        "pagina mostra a vaga como candidatada, mas sem confirmacao de envio"
+    )
     INTERRUPTED_BEFORE_RESULT = "execucao interrompida antes do resultado do envio"
     ALREADY_IN_REVIEW = "ja estava em revisao manual de uma execucao anterior"
 
@@ -75,13 +79,15 @@ class SubmissionEvidence:
     """O que se observou depois do clique de envio.
 
     Regra do dominio: so sucesso CONFIRMADO conta como candidatura enviada.
-    Sucesso se e somente se o clique foi concluido E a confirmacao foi vista,
-    qualquer que seja o estado do dialogo.
+    Sucesso se e somente se o clique foi concluido E a confirmacao foi vista E a
+    pagina passou a mostrar a vaga como candidatada (segunda evidencia), qualquer
+    que seja o estado do dialogo. Uma evidencia sem a outra nunca vira APPLIED.
     """
 
     click_completed: bool
     confirmation_seen: bool = False
     modal_still_open: bool = False
+    applied_state_seen: bool = False
 
     @property
     def review_reason(self) -> Optional[ReviewReason]:
@@ -89,7 +95,9 @@ class SubmissionEvidence:
         if not self.click_completed:
             return ReviewReason.CLICK_FAILED
         if self.confirmation_seen:
-            return None
+            return None if self.applied_state_seen else ReviewReason.STATE_NOT_CONFIRMED
+        if self.applied_state_seen:
+            return ReviewReason.STATE_WITHOUT_CONFIRMATION
         if self.modal_still_open:
             return ReviewReason.MODAL_STILL_OPEN
         return ReviewReason.CONFIRMATION_MISSING
@@ -162,6 +170,9 @@ class Job:
 
     def mark_simulated(self) -> None:
         self._transition(JobStatus.SIMULATED)
+
+    def mark_already_applied(self) -> None:
+        self._transition(JobStatus.ALREADY_APPLIED)
 
     def mark_skipped_complex(self) -> None:
         self._transition(JobStatus.SKIPPED_COMPLEX)

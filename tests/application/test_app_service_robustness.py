@@ -59,6 +59,9 @@ class FakeBrowser:
     def wait_until_hidden(self, sel, timeout):
         return True
 
+    def job_shows_applied(self, sel, timeout):
+        return bool(timeout) and self.exists(sel)  # timeout=0: antes de abrir, nada candidatado
+
 
 def _req(selectors=None, urls=("https://x.com/s",), **kw):
     return SearchRequest(platform="linkedin", static_urls=list(urls),
@@ -133,7 +136,7 @@ def test_timeout_do_overlay_e_constantes():
 # ----------------------------------------------------------- laco principal
 def test_limite_de_candidaturas_para_o_laco(caplog):
     m, s = SEL["modal_container"], SEL["submit_button"]
-    browser = FakeBrowser(cards=_cards(3), exists=_only(SEL["apply_button"], s, m, SEL["submit_confirmation"]))
+    browser = FakeBrowser(cards=_cards(3), exists=_only(SEL["apply_button"], s, m, SEL["submit_confirmation"], SEL["applied_state"]))
     with caplog.at_level(logging.INFO):
         jobs = AppService(browser, FakeCache()).run(_req(max_applications=1))
     assert [j.status for j in jobs] == [JobStatus.APPLIED, JobStatus.PENDING, JobStatus.PENDING]
@@ -194,7 +197,7 @@ def test_review_button_opcional_avanca_quando_next_nao_existe():
     def exists(s):
         if s == sel["apply_button"]:
             return True
-        if s in (sel["submit_button"], sel["submit_confirmation"]):
+        if s in (sel["submit_button"], sel["submit_confirmation"], sel["applied_state"]):
             return estado["passo"] >= 1
         return s == "button.review" and estado["passo"] == 0
 

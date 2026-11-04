@@ -1,13 +1,18 @@
 import pytest
-from tests.application.fakes import CONFIRMACAO, FakeCache
+from tests.application.fakes import APLICADA, CONFIRMACAO, FakeCache
 from src.application.dtos.search_request import SearchRequest
 from src.domain.entities.job import Job, JobStatus
 
 
 def _com_confirmacao(payload):
     """Envio real exige o sinal de confirmacao no perfil."""
-    seletores = {**payload["selectors"], "submit_confirmation": CONFIRMACAO}
+    seletores = {**payload["selectors"], "submit_confirmation": CONFIRMACAO, "applied_state": APLICADA}
     return SearchRequest(**{**payload, "selectors": seletores}, strict_abort=False)
+
+
+def _estado_muda_so_depois_do_envio(browser):
+    """Antes de abrir a pagina nao mostra candidatura; depois do envio mostra."""
+    browser.job_shows_applied.side_effect = lambda sel, timeout: timeout != 0
 
 
 def _get_apply_function(app_service):
@@ -40,6 +45,8 @@ def test_apply_to_job_single_step_direct_submission(mock_browser_service, valid_
     from src.application.app_service import AppService
 
     request = _com_confirmacao(valid_search_request_payload)
+
+    _estado_muda_so_depois_do_envio(mock_browser_service)
     job = Job(**valid_job_payload)
     app_service = AppService(mock_browser_service, FakeCache())
     apply_fn = _get_apply_function(app_service)
@@ -115,6 +122,8 @@ def test_apply_to_job_multi_step_simple_submission(mock_browser_service, valid_s
     from src.application.app_service import AppService
 
     request = _com_confirmacao(valid_search_request_payload)
+
+    _estado_muda_so_depois_do_envio(mock_browser_service)
     job = Job(**valid_job_payload)
     app_service = AppService(mock_browser_service, FakeCache())
     apply_fn = _get_apply_function(app_service)
@@ -207,6 +216,7 @@ def test_run_orchestration_respects_max_applications_ceiling(mock_browser_servic
     payload = dict(valid_search_request_payload)
     payload["max_applications"] = 2
     request = _com_confirmacao(payload)
+    _estado_muda_so_depois_do_envio(mock_browser_service)
 
     # 5 vagas extraidas
     mock_jobs = [

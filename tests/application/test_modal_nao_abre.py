@@ -55,7 +55,7 @@ def test_modal_aberto_segue_o_fluxo_normal():
     )
     def envia(b):
         b.visible.discard(SEL["modal_container"])
-        b.visible.add(SEL["submit_confirmation"])
+        b.visible.update({SEL["submit_confirmation"], SEL["applied_state"]})
     browser.on_click[SEL["submit_button"]] = envia
     service = AppService(browser, FakeCache())
 

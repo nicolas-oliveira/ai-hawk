@@ -32,6 +32,9 @@ OPTIONAL_SELECTOR_KEYS = (
     # Elemento que prova o envio (ex.: aviso "candidatura enviada"). Sem ele, o modal
     # ter fechado conta como confirmacao.
     "submit_confirmation",
+    # Selo que a pagina mostra quando a vaga ja foi candidatada (segunda barreira
+    # anti-duplicada). Envio real exige; Shadow Mode dispensa.
+    "applied_state",
 )
 
 # Rotas de desafio (checkpoint, captcha, trafego incomum, verificacao de telefone).
@@ -85,6 +88,7 @@ LINKEDIN_CLONE_SELECTORS: Dict[str, str] = {
     "abort_url_pattern": CHALLENGE_URL_PATTERN,
     "abort_indicator": CHALLENGE_MARKER,
     "submit_confirmation": "[data-testid='modal-submission-success']",
+    "applied_state": "[data-testid='job-applied']",
 }
 
 # OrangeHRM (modulo Recruitment, demo open-source). NAO validado em DOM real:
