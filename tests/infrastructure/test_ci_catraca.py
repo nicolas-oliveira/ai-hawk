@@ -1,7 +1,7 @@
 """
 Testes automatizados da lógica de validação da Catraca de Mutação do CI (.github/workflows/ci.yml).
-Prova que o gate do CI falha estritamente abaixo do piso (score < 99.0%), acima do teto (survived > 4),
-ou com total de mutantes insuficiente (< 500), e aprova no patamar homologado (teto 4, score >= 99.0%).
+Prova que o gate do CI falha estritamente abaixo do piso (score < 99.0%), acima do teto (survived > 3),
+ou com total de mutantes insuficiente (< 500), e aprova no patamar homologado (teto 3, score >= 99.0%).
 """
 import sqlite3
 import subprocess
@@ -21,8 +21,8 @@ print(f'Catraca Mutation: {{killed}}/{{total}} mortos ({{score:.1f}}%), {{surviv
 if total < 500:
     print(f'ERRO: Menos mutantes testados do que o esperado ({{total}} < 500)!')
     sys.exit(1)
-if survived > 4:
-    print(f'ERRO: Catraca violada! {{survived}} sobreviventes > teto de 4.')
+if survived > 3:
+    print(f'ERRO: Catraca violada! {{survived}} sobreviventes > teto de 3.')
     sys.exit(1)
 if score < 99.0:
     print(f'ERRO: Score {{score:.1f}}% abaixo do piso homologado de 99.0%!')
@@ -52,29 +52,29 @@ def _run_ci_gate(db_path: Path) -> subprocess.CompletedProcess:
 
 
 def test_ci_catraca_accepts_homologated_baseline(tmp_path):
-    """Cenário homologado Bloco 2: 737 mortos, 4 sobreviventes (score 99.5%, total 741)."""
+    """Cenário homologado pós-C4 ('e54568b'): 737 mortos, 3 sobreviventes (score 99.6%, total 740)."""
     db_path = tmp_path / ".mutmut-cache"
-    _create_mock_cache(db_path, killed=737, survived=4)
+    _create_mock_cache(db_path, killed=737, survived=3)
     res = _run_ci_gate(db_path)
     assert res.returncode == 0
-    assert "Catraca Mutation: 737/741 mortos (99.5%), 4 sobreviventes" in res.stdout
+    assert "Catraca Mutation: 737/740 mortos (99.6%), 3 sobreviventes" in res.stdout
 
 
-def test_ci_catraca_accepts_post_c4_improvement(tmp_path):
-    """Cenário projetado pós-C4: 738 mortos, 3 sobreviventes (score 99.6%)."""
+def test_ci_catraca_accepts_further_improvement(tmp_path):
+    """Cenário de evolução futura: 738 mortos, 2 sobreviventes (score 99.7%)."""
     db_path = tmp_path / ".mutmut-cache"
-    _create_mock_cache(db_path, killed=738, survived=3)
+    _create_mock_cache(db_path, killed=738, survived=2)
     res = _run_ci_gate(db_path)
     assert res.returncode == 0
 
 
 def test_ci_catraca_fails_when_survivors_exceed_ceiling(tmp_path):
-    """Cenário de violação de teto: 5 sobreviventes (> 4). Deve reprovar no CI."""
+    """Cenário de violação de teto: 4 sobreviventes (> 3). Deve reprovar no CI."""
     db_path = tmp_path / ".mutmut-cache"
-    _create_mock_cache(db_path, killed=736, survived=5)
+    _create_mock_cache(db_path, killed=736, survived=4)
     res = _run_ci_gate(db_path)
     assert res.returncode == 1
-    assert "ERRO: Catraca violada! 5 sobreviventes > teto de 4." in res.stdout
+    assert "ERRO: Catraca violada! 4 sobreviventes > teto de 3." in res.stdout
 
 
 def test_ci_catraca_fails_when_score_below_floor_99(tmp_path):
@@ -84,7 +84,6 @@ def test_ci_catraca_fails_when_score_below_floor_99(tmp_path):
     _create_mock_cache(db_path, killed=500, survived=6)
     res = _run_ci_gate(db_path)
     assert res.returncode == 1
-    # Reprova no teto primeiro se survived > 4
     assert "Catraca violada" in res.stdout or "abaixo do piso" in res.stdout
 
 

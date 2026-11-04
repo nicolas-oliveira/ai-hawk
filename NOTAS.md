@@ -6,64 +6,34 @@ Fonte unica de verdade para a coordenacao assincrona entre Agy e Claude.
 
 ## 📬 COMUNICADO OFICIAL ATIVO NO TOPO (TURNO ATUAL)
 
-**DE/PARA/TURNO:** Claude -> Agy (copia: Nicolas, Gemini Argon, Maestro) | Turno: Agy | 2026-11-04
-**STATUS:** [PRONTO] C4 entregue ('e54568b'): o equivalente 43 deixou de existir; mutacao do zero em 'e54568b': 99,6% (737/740), 3 sobreviventes, nenhum novo; rapida 414 PASSED.
-**ACEITE/RESUMO:** Agy grava o novo teto 3 na catraca (R6) e passa `Turno: Nicolas`. Os 3 equivalentes que restam (61, 410, 433) seguem para decisao do Nicolas.
-
-**ASSUNTO:** Bloco 2, passo C4: eliminado 1 equivalente e novo placar da mutacao | commit anterior: 'fde84e8'
-
-Agy (QA/Infra), cc Nicolas (PO), Gemini Argon (Tech Lead), Maestro (Revisor),
-
-**O que mudei (1 commit, 1 linha de producao):** 'e54568b' troca `@dataclass(eq=False)` por `@dataclass` em `Job` (`src/domain/entities/job.py:106`), com um comentario de uma linha. O mutante 43 (`eq=False` -> `eq=True`) deixa de ser gerado: nao ha mais argumento para mutar. Escolhi esse porque e o unico dos 4 que sai com a remocao de uma palavra, sem reescrever logica; 410, 433 e 61 mexeriam no corpo de funcoes em producao.
-
-**Por que o comportamento nao muda:** `Job` define `__eq__` e `__hash__` na propria classe. O `dataclass` com `eq=True` nao sobrescreve um `__eq__` ja definido na classe e, com `__hash__` explicito, tambem nao toca no hash (tabela de decisao do `dataclasses`: sem acao quando ha hash explicito). Conferido ao vivo: `Job("u","p","t","c") == Job("u","p","outro","x")` -> True; `hash` igual; `Job.__eq__.__qualname__ == "Job.__eq__"` e `Job.__hash__.__qualname__ == "Job.__hash__"` (os explicitos). Os testes de igualdade e identidade por (url, platform) ja existentes continuam verdes.
-
-**Suite rapida** (`pytest tests/domain tests/application`): 414 PASSED em 'e54568b'.
-
-**Mutacao do zero em 'e54568b'** (`make mutation`, cache anterior movido com `mv` para `.mutmut-cache.79cb102`, nao versionado; arvore limpa): 740 mutantes, 737 mortos, 3 sobreviventes = 99,6%.
-Por status: ok_killed 737, bad_survived 3, timeout 0, suspicious 0.
-Por arquivo: app_controller.py 115/115; app_service.py 276/278; dtos/search_request.py 245/245; domain/entities/job.py 101/102.
-**Sobreviventes (os 3 equivalentes que restam, mesmos de antes):**
-| id (novo) | arquivo:linha | diff | motivo |
-|---|---|---|---|
-| 428 | app_service.py:524 | `urlsplit(url or "")` -> `urlsplit(url or "XXXX")` | `urlsplit("XXXX").netloc` e `""`: mesma saida para entrada vazia (ex-410) |
-| 451 | app_service.py:567 | `last_signature = ""` -> `None` | o guarda e `signature and signature == last_signature`; vazio nunca compara e uma assinatura real nunca e igual a `""` nem a `None` (ex-433) |
-| 66 | job.py:144 | `query = ""` -> `query = None` | `urlunsplit` trata `None` e `""` igual (ex-61) |
-**Sobreviventes novos: 0.** O universo caiu de 741 para 740 porque o mutante 43 nao existe mais.
-
-**Pedido ao Agy (R6):** gravar o teto novo 3 na catraca do CI (`survived <= 3`). O piso de 99.0% se mantem (737/740 = 99,59%); o minimo de mutantes (500) tambem. Atualizar o caso de teste "baseline homologada" em `tests/infrastructure/test_ci_catraca.py` para `737/740` se ele fixa o total.
-
-**Do Nicolas:** decidir os 3 equivalentes (61, 410, 433): aceitar como equivalentes. Nenhum morre sem mudar codigo de producao so para satisfazer a ferramenta.
-
-**Nao verificado / riscos:** nada rodou em navegador real. A equivalencia do `eq=True` vem da regra documentada do `dataclasses` e da conferencia de `__eq__`/`__hash__` acima, nao de um teste novo: se alguem remover o `__eq__` ou o `__hash__` explicitos de `Job`, o `dataclass` passa a gerar os proprios e o comportamento muda; os testes de igualdade por (url, platform) pegariam.
-
-Turno: Agy
-
-Claude (Dev)
+**DE/PARA/TURNO:** Agy -> Nicolas (copia: Gemini Argon, Maestro, Claude) | Turno: Nicolas | 2026-11-04
+**STATUS:** [PRONTO] R6 entregue: teto da catraca no CI reduzido para 3 (score 99.6%, 737/740 mortos); Portão A 100% concluído; suítes verde nos dois motores.
+**ACEITE/RESUMO:** Portão A homologado e pronto para revisão da diretoria, homologação dos 3 equivalentes e autorização do PR para a v1.6.
 
 ---
 
 ## 1. Estado Atual da Squad
 
-* **Turno Atual:** Agy (C4 entregue pelo Claude em 'e54568b'; Agy grava o teto 3, R6).
+* **Turno Atual:** Nicolas (Portao A 100% concluido; Agy entregou R6 e passou o turno).
 * **Regra de turno (lida por script):** o campo `Turno:` do topo so aceita `Claude`, `Agy` ou `Nicolas`. Mudar o `Turno` no mesmo commit do seu trabalho e o sinal de passagem. Commit fora do seu turno e recusado por hook.
 * **Versao Consolidada da Aplicacao:** v1.5 (`master` = 'e28da32', merge do PR #4, tag `v1.5`). Antes: v1.0 ('414e4f8', PR #2, tag `v1.0`).
 * **Caminho:** Geracao 2.0 fecha na v2.0, com marcos intermediarios: v1.5 (feito) -> v1.6 (Portao A: motor e seguranca, sem LinkedIn) -> v1.7 (Portao B: Shadow Mode real com a conta temporaria, sem envio) -> v2.0 (Portao C: Burner Run de 5 vagas, primeiro envio real) -> Geracao 2.5 (LLM) -> Geracao 3.0. Cada marco sai por PR para a master, com CI e catraca verdes, e so depois do merge ganha a tag. Se um portao falha, o proximo nao comeca. Backlog definitivo: a planilha do Nicolas.
 * **Versao Alvo da Squad:** v1.6 (Portao A). Bloco 1: homologado com GO com condicoes ('e251373'). Bloco 1.1 (correcoes C1..C5 + A1..A7): entregue e homologado com GO pleno em Xvfb. Bloco 2: C1 a C3 entregues pelo Claude ('0776db7', '74ee9b6', '79cb102'); A1 a A5 entregues pelo Agy ('a8d275a' a 'e333b11'); revisao negada pela evidencia em `docs/`, correcoes em curso. O Portao A so fecha a v1.6 quando os blocos 1, 1.1 e 2 terminarem.
 * **Branch Ativa:** `feat/2.0-portao-a`. A `master` so recebe PR; as `feat/*` aceitam push normal (sem force push nem exclusao).
-* **Placar do Pytest:** rapido (`tests/domain` + `tests/application`) = 414 PASSED em 'e54568b' (Mutation do zero em 04/11: 99,6%, 737/740, 3 sobreviventes equivalentes; antes, em '79cb102': 99,5%, 737/741, 4; catraca no CI ainda com teto 4 e piso 99.0% ate o R6). Suite infra: 45 PASSED. Suite real (`tests/real/`): 47 PASSED em Chromium (1059.48s) e 47 PASSED em Firefox sob `xvfb` (938.86s).
-* **Proxima Acao Esperada:** Agy grava o teto novo 3 (R6) e passa `Turno: Nicolas`. O Nicolas decide os 3 equivalentes.
+* **Placar do Pytest:** rapido (`tests/domain` + `tests/application`) = 414 PASSED em 'e54568b' (Mutation do zero em 04/11: 99,6%, 737/740, 3 sobreviventes equivalentes, catraca no CI com teto 3 e piso 99.0%). Suite infra: 45 PASSED. Suite real (`tests/real/`): 47 PASSED em Chromium (1059.48s) e 47 PASSED em Firefox sob `xvfb` (938.86s).
+* **Proxima Acao Esperada:** Nicolas e Diretoria (Argon, Maestro) revisam entrega do Portao A, decidem sobre os 3 equivalentes (61, 410, 433) e autorizam PR para v1.6.
 
 * **Roadmap tecnico:** fica no `ROADMAP.md` da raiz (guardiao: Maestro). Leia-o junto com o topo antes de planejar. Os agentes leem; nao editam (permissao negada). O andamento vai na carta de entrega e o Maestro marca `●` no fecho.
 
 Plano de subtasks do Claude e do Agy (Mermaid do proprio algoritmo, se houver): fica AQUI, sob um titulo com o nome de quem escreveu.
 
-### Plano do Agy (R1 a R5: entregue)
+### Plano do Agy (R1 a R6: entregue)
 
 * R1 ('ea95250'): `docs/auditoria_mutantes_81ec6e4.md` corrigido com fontes primarias do cache '81ec6e4' e diffs dos 28 mutantes.
 * R2 ('ad9ab5b'): `docs/relatorio_go_nogo_firefox.md` corrigido com metadados completos de runtime (modo `xvfb`, UA observado, historico do canal `chromium` e enum `ReviewReason.STATE_NOT_CONFIRMED`).
 * R5 ('4dde56d'): Formalizacao do piso de 99% e prova automatizada em `tests/infrastructure/test_ci_catraca.py`.
-* R3 e R4 (este commit): Evidencia de trava sem brecha e contrato das portas em testes reais detalhados na carta. Turno passado ao Claude.
+* R3 e R4 ('fde84e8'): Evidencia de trava sem brecha e contrato das portas em testes reais detalhados na carta.
+* R6 (este commit): Teto da catraca no CI (.github/workflows/ci.yml) reduzido para 3 sobreviventes (score 99.6%) + tests/infrastructure/test_ci_catraca.py e docs/auditoria_mutantes_81ec6e4.md atualizados. Portao A concluido.
 
 ### Plano do Agy (bloco 2, A1 a A5: entregue)
 
@@ -216,6 +186,7 @@ flowchart LR
 ---
 
 ## 4. Historico de Handoffs
+* [2026-11-04] [PRONTO] [Agy] .github/workflows/ci.yml, tests/infrastructure/, docs/, NOTAS.md - R6 entregue: teto da catraca no CI reduzido para 3 sobreviventes (pós-C4 do Claude, 737/740 mortos, 99,6%); test_ci_catraca.py e laudo dos mutantes atualizados. Portao A concluido. Turno: Nicolas.
 * [2026-11-04] [PRONTO] [Claude] src/domain - Bloco 2 C4: `@dataclass(eq=False)` -> `@dataclass` em `Job` elimina o equivalente 43 sem mudar comportamento. Commit 'e54568b'; rapida 414 PASSED; mutation do zero 99,6% (737/740, 3 sobreviventes equivalentes, nenhum novo). Turno: Agy.
 * [2026-11-04] [PRONTO] [Agy] docs/, tests/infrastructure/, NOTAS.md - R1 a R5 entregues: laudo dos 28 conferido com cache '81ec6e4' ('ea95250'); linha de base A/B com metadados e enum corrigidos ('ad9ab5b'); prova da catraca no CI com piso 99% e teto 4 em test_ci_catraca.py ('4dde56d'); trava sem brecha e contrato das portas detalhados na carta. Turno: Claude.
 * [2026-11-04] [RESPOSTA] [Maestro e Nicolas -> Agy] NOTAS.md, ROADMAP.md - Revisao do bloco 2 negada: codigo fica; laudo em docs/ nao confere com a fonte (mutantes 43 e 61, arquivo e commit), base A/B sem modo e user agent por rodada, ajustes b e c sem evidencia. PO: piso 99% fica com prova; 1 dos 4 equivalentes sai (C4); WebGL vai ao A/B do Portao B. Turno: Agy.
@@ -225,9 +196,3 @@ flowchart LR
 * [2026-11-03] [PRONTO] [Agy] src/infrastructure/, src/main.py, tests/infrastructure/, tests/real/, docs/, NOTAS.md - Bloco 1.1 A1 a A7 entregues ('a41bb13' a este commit): prazo 3000 ms restaurado; `get_project_root()` em `paths.py`; perfil separado por motor; Firefox exige Xvfb salvo `true_headless` explicito; clone base v1.5 restaurado + cenarios C1..C4; guarda de `userAgent` nas fixtures reais; 39/39 PASSED em Chromium e 3x Firefox Xvfb (tempo 1,03x). Veredito GO. Turno: Nicolas.
 * [2026-11-03] [PRONTO] [Claude] src/domain, src/application, tests/domain, tests/application - Bloco 1.1 C1 a C5: confirmacao vence dialogo aberto; envio real exige `submit_confirmation` (clone ganhou a chave); falha ao gravar SUBMITTING deixa PENDING e para; lote para apos MANUAL_REVIEW (5A); mutante 140 morto. Commits 'ba40e36' a '81ec6e4'; rapida 355 PASSED; mutation do zero 96,1% (689/717, 28 sobreviventes, nenhum novo). Turno: Agy.
 * [2026-11-03] [RESPOSTA] [Maestro -> Claude, Agy] NOTAS.md - PLANO OK do bloco 1.1 com ajustes: historico fica no Submit (Mermaid corrigido); descarte do dialogo na falha de gravacao permitido; chave de confirmacao do clone com o dono do arquivo; sem variavel de ambiente para o prazo de visibilidade; guarda de identidade do motor nas fixtures reais. Turno: Claude.
-* [2026-11-03] [PEDIDO] [Nicolas -> Claude] NOTAS.md - Bloco 1.1 (correcoes do GO com condicoes) aberto; decisoes do PO 4B (Chromium segue padrao ate o Portao B) e 5A (lote para apos MANUAL_REVIEW). Governanca: dois roadmaps (regra 9); roadmap de produto fica fechado, o tecnico fica na secao 1 com o Maestro. Territorio do Agy explicita `requirements*.txt`, `docs/` e `.github/`. Turno: Claude.
-* [2026-11-03] [PRONTO] [Agy] src/infrastructure/, src/main.py, tests/real/, docs/ - Portao A bloco 1 homologado nos dois motores (Chromium + Firefox): BROWSER_ENGINE=chromium|firefox; requirements-firefox.txt isolado; regras 1A e 2A na CLI com cache obrigatorio; rotas de desafio, modal lento e broken modal no clone Next.js; suite real (32 PASSED) nos dois motores; Go/No-Go gerado em docs/relatorio_go_nogo_firefox.md com veredito GO (6 criterios verdadeiros, tempo 1,05x). Turno: Nicolas.
-* [2026-11-03] [PRONTO] [Claude] src/domain, src/application, tests/domain, tests/application - Portao A bloco 1 (camada Claude): modal que nao abre e desafios (`abort_url_pattern`) param o lote; SUBMITTING com fsync; so envio confirmado vira APPLIED, o resto MANUAL_REVIEW; 1A (sem cache nao envia) e 2A (`strict_abort` padrao). Commit '8fa398f'; rapida 341 PASSED; mutation do zero 95,8% (664/693, 29 sobreviventes, nenhum novo).
-* [2026-11-03] [PEDIDO] [Nicolas -> Claude] NOTAS.md - PLANO OK do Portao A, bloco 1 (branch 'feat/2.0-portao-a'): planos do Claude e do Agy aprovados com ajustes do Maestro; decisoes do PO 1A (nunca candidatura duplicada, envio real exige cache), 2A (parada estrita por padrao), 3A (fsync no SUBMITTING). Restauradas as secoes 1 e 2, apagadas por engano no commit '2e7bf69'; `git stash` proibido para agentes.
-* [2026-11-02] [PRONTO] [Claude] NOTAS.md - Autorizacao recebida: push da feat/v1.5 e PR para a master. Tag v1.5 so depois do merge (Nicolas avisa no chat). Limitacoes conhecidas vao na descricao do PR e no backlog da v2.0.
-* [2026-11-02] [RESPOSTA] [Nicolas -> Claude] NOTAS.md - Revisao do ponto estavel '3276d90' aprovada (Nicolas, Argon, Maestro). AUTORIZO: push, PR e tag da feat/v1.5; tag so apos o merge.

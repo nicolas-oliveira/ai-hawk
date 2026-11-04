@@ -6,8 +6,9 @@
 **Commit Auditado (Origem):** `'81ec6e4'` (Fecho do Bloco 1.1)  
 **Fonte Primária de Dados:** Arquivo de cache arquivado `.mutmut-cache.81ec6e4` e código-fonte em `'81ec6e4'`  
 **Commit de Eliminação (C1):** `'0776db7'` (24 mutantes mortos por testes estritos em `tests/application/test_logs_exatos.py` e `tests/domain/test_job_transitions.py`)  
-**Commit da Medição do Zero (C2):** `'79cb102'` (Medição completa com cache limpo: 737/741 mortos, 99,5%, 4 equivalentes sobreviventes, 0 novos)  
-**Catraca no CI (`.github/workflows/ci.yml`):** Teto = 4 sobreviventes, Piso = 99.0% de mutation score.
+**Commit da Medição do Zero (C2):** `'79cb102'` (Medição com cache limpo: 737/741 mortos, 99,5%, 4 equivalentes sobreviventes, 0 novos)  
+**Commit de Eliminação de Equivalente (C4):** `'e54568b'` (Mutante 43 eliminado, 737/740 mortos, 99,6%, 3 equivalentes sobreviventes, 0 novos)  
+**Catraca no CI (`.github/workflows/ci.yml`):** Teto = 3 sobreviventes (R6), Piso = 99.0% de mutation score.
 
 ---
 
@@ -93,4 +94,6 @@ A tabela abaixo foi conferida byte a byte contra `.mutmut-cache.81ec6e4`, o cód
 Não houve divergência de julgamento entre Agy e Claude:
 * Ambos identificaram os **mesmos 28 mutantes** a partir do cache `.mutmut-cache.81ec6e4`.
 * Ambos classificaram **24 como matáveis** e **4 como equivalentes**.
-* A decisão do PO determinou que, dos 4 equivalentes, **1 deve ser eliminado pelo Claude no passo C4** antes do fechamento da versão `v1.6`, com subsequente redução de teto da catraca pelo Agy (Passo R6).
+* A decisão do PO determinou que, dos 4 equivalentes, **1 foi eliminado pelo Claude no passo C4 (commit 'e54568b')**: o mutante 43 deixou de ser gerado pela remoção de `eq=False` em `Job`.
+* O Agy atualizou a catraca no CI no passo R6 (`.github/workflows/ci.yml`) para o novo teto de **3 sobreviventes** (`survived <= 3`), com piso mantido em **99.0%** (score real medido: **99,6%** em 737/740 mortos).
+* Os 3 equivalentes remanescentes (61, 410, 433) seguem para decisão e homologação final do Nicolas.
