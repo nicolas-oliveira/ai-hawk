@@ -25,53 +25,61 @@ Leia este arquivo junto com o topo do `NOTAS.md` antes de planejar ou executar: 
 │
 ○ [G2.0 - Portão A] Confirmação de envio obrigatória (exigindo aviso visível do Easy Apply)
 │ ├─● regra no código e clone: entregue no bloco 1.1 (C1, C2, A5)
-│ ├─○ porta wait_until_hidden no lugar de wait_for_loader_to_disappear      (C3, A3)
+│ ├─○ porta wait_until_hidden no lugar de wait_for_loader_to_disappear      (C3 ●, A3: R4)
 │ └─○ seletor de confirmação do perfil real, sem depender de texto
 │        (hipótese até o Portão B)
 │
 ○ [G2.0 - Portão A] Reconhecer vaga já candidatada pela página (segunda barreira anti-duplicada)
-│ ├─○ domínio: já candidatada pela página vira ALREADY_APPLIED sem abrir o diálogo   (C2)
-│ ├─○ porta: ler o estado da vaga (Claude pede, Agy implementa)                      (C2, A3)
-│ ├─○ pós-envio: reler o estado como segunda evidência do APPLIED                    (C2)
-│ ├─○ regra de combinação confirmação × estado: plano do Claude                      (C2)
-│ ├─○ clone: vaga já candidatada e vaga que muda de estado após envio                (A3)
+│ ├─● domínio: já candidatada pela página vira ALREADY_APPLIED sem abrir o diálogo   (C2)
+│ ├─○ porta: ler o estado da vaga (Claude pede, Agy implementa)            (C2 ●, A3: R4)
+│ ├─● pós-envio: reler o estado como segunda evidência do APPLIED                    (C2)
+│ ├─● regra de combinação confirmação × estado: plano do Claude                      (C2)
+│ ├─○ clone: vaga já candidatada e vaga que muda de estado após envio           (A3: R4)
 │ └─○ seletor do perfil real sem depender de texto (hipótese até o Portão B)
 │
 ○ [G2.0 - Portão A] Resíduos da esteira (proibir git stash e mover mutmut-cache)
 │ ├─○ git stash negado nas permissões dos dois (Claude: feito; Agy: Nicolas confirma)
 │ ├─● regra 7: mover .mutmut-cache em vez de rm -rf
-│ ├─○ hook de pre-push, script de instalação, AGENTS.md                              (A5)
+│ ├─● hooks versionados, script de instalação, AGENTS.md                             (A5)
 │ ├─○ cota do modelo, "só Nicolas troca de branch", regras PR-only
 │ └─○ magc: detector de ocioso com shell em segundo plano (Nicolas)
 │
-○ [técnico] Sobreviventes da mutação, um a um (teto 28, só desce)                    (C1, A4)
-│ ├─○ lista dos 28: arquivo, linha, diff, causa, classificação
-│ └─○ matar os matáveis; equivalente só com diff e motivo
+○ [técnico] Sobreviventes da mutação, um a um (teto só desce)                        (C1, A4)
+│ ├─● lista dos 28: arquivo, linha, diff, causa, classificação     (Claude, 79cb102)
+│ ├─● matar os matáveis: 24 mortos, 4 equivalentes                 (Claude, 79cb102)
+│ ├─○ laudo em docs/ conferido com a fonte                                      (R1)
+│ ├─○ piso de 99% formalizado e provado no CI                                   (R5)
+│ └─○ 1 dos 4 equivalentes eliminado (C4) → teto novo gravado (R6)
 │
 ○ [técnico] Trava de identidade: recusa iniciar se o navegador se denuncia           (A1, A2)
-│ ├─○ alvo ≠ clone local: Xvfb com janela real nos dois motores, nunca headless
-│ ├─○ levantamento dos sinais que denunciam automação, medidos no clone (Agy)
-│ ├─○ recusa iniciar se qualquer sinal verificável denunciar
-│ └─○ bateria real nos dois motores em Xvfb: linha de base do A/B
+│ ├─○ alvo ≠ clone local: Xvfb com janela real nos dois motores, nunca headless (R2)
+│ ├─● levantamento dos sinais que denunciam automação, medidos no clone (Agy)
+│ ├─○ recusa iniciar se qualquer sinal verificável denunciar: prova sem brecha  (R3)
+│ └─○ bateria real nos dois motores em Xvfb: base A/B com modo e UA por rodada  (R2)
 │
-◆ v1.6  Portão A  (PR + tag)
+○ [técnico] Fecho do Portão A: revisão do Maestro com o Nicolas → AUTORIZO → PR
+│
+◆ v1.6  Portão A  (PR + tag depois do merge)
 │
 ○ [técnico] Sinais que só se medem com rede externa, antes de qualquer conta (Portão B, 1º passo)
 │ ├─○ medidos por motor em Xvfb, fora do LinkedIn
-│ └─○ documentar as chamadas de rede do motor ao iniciar (ipify, GitHub)
+│ ├─○ documentar as chamadas de rede do motor ao iniciar (ipify, GitHub)
+│ └─○ WebGL por motor como critério do A/B, sem viés (decisão 3 do PO)
 │
 ○ [G2.0 - Portão B] Validação no LinkedIn real sem envio (conta temporária)
 │ ├─○ (Nicolas) criar a conta temporária, idioma fixo, IP de saída separado
 │ ├─○ perfil por identidade: .profiles/<identity_id>, proxy por env,
 │ │      trava ^https?://, flush de disco ao fechar
 │ ├─○ modo assistido: navegador visível, para e avisa no desafio, sem resolver
+│ ├─○ PRIMEIRA RODADA À VISTA: o Nicolas assiste o bot logar, buscar,
+│ │      abrir vagas e preencher o Easy Apply até o Submit, sem enviar
 │ ├─○ capturar os seletores reais: confirmação e já candidatada
 │ └─○ candidatar à mão a 1 vaga e confirmar que o bot a reconhece
 │
 ○ [G2.0 - Portão B] Shadow Mode nos dois motores (Chromium vs Firefox em Xvfb)
 │ ├─○ critérios de "vencer" escritos ANTES de rodar (como no GO)
 │ ├─○ mesma conta, mesmos filtros, um motor por vez
-│ ├─○ registrar checkpoints, desvios e tempos por motor
+│ ├─○ registrar checkpoints, desvios, sinais e tempos por motor
 │ └─○ salvar offline as telas reais de bloqueio e virar fixtures do sandbox
 │
 ○ [G2.0 - Portão B] Decisão de motor padrão pelo Nicolas com base no Shadow Mode
@@ -85,7 +93,7 @@ Leia este arquivo junto com o topo do `NOTAS.md` antes de planejar ou executar: 
 ◆ v2.0  Portão C
 ```
 
-## Algoritmo do envio (como ficou no bloco 1.1)
+## Algoritmo do envio (bloco 1.1; o bloco 2 acrescentou a leitura do estado da vaga, abaixo)
 
 
 ```mermaid
@@ -113,4 +121,28 @@ flowchart TD
   ST -->|sim| PARA["Lote para: MANUAL_REVIEW_STOP"]
   ST -->|não| PROX["Próxima vaga"]
   OK --> PROX
+```
+
+## Algoritmo da vaga ja candidatada (bloco 2, C2 do Claude)
+
+```mermaid
+flowchart TD
+  OPEN["Abre a vaga e prepara a pagina"] --> SA{"Parada estrita?"}
+  SA -->|sim| F0["Para (vaga PENDING)"]
+  SA -->|nao| S0{"Pagina ja mostra candidatada? (leitura instantanea)"}
+  S0 -->|sim| AA["ALREADY_APPLIED, sem dialogo, sem clique"]
+  S0 -->|nao| BTN{"Botao de candidatura visivel?"}
+  BTN -->|nao| S1{"Selo aparece com espera curta?"}
+  S1 -->|sim| AA
+  S1 -->|nao| SK["SKIPPED_COMPLEX"]
+  BTN -->|sim| MODAL["Modal: 3C, historico, SUBMITTING"] --> ENV["Clique de envio e observacao"]
+  ENV --> COMB{"Confirmacao x estado da pagina"}
+  COMB -->|"vista e candidatada"| OK["APPLIED"]
+  COMB -->|"vista, estado nao mudou"| M1["MANUAL_REVIEW: STATE_NOT_CONFIRMED"]
+  COMB -->|"ausente, candidatada"| M2["MANUAL_REVIEW: STATE_WITHOUT_CONFIRMATION"]
+  COMB -->|"ausente, nao mudou"| M3["MANUAL_REVIEW: MODAL_STILL_OPEN ou CONFIRMATION_MISSING"]
+  M1 --> P{"strict_abort?"}
+  M2 --> P
+  M3 --> P
+  P -->|sim| PARA["Lote para: MANUAL_REVIEW_STOP"]
 ```
