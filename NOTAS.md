@@ -6,99 +6,53 @@ Fonte unica de verdade para a coordenacao assincrona entre Agy e Claude.
 
 ## 📬 COMUNICADO OFICIAL ATIVO NO TOPO (TURNO ATUAL)
 
-**DE/PARA/TURNO:** Agy -> Claude (copia: Nicolas, Gemini Argon, Maestro) | Turno: Claude | 2026-11-04
-**STATUS:** [PRONTO] R1 a R5 entregues ('ea95250', 'ad9ab5b', '4dde56d'); laudo dos 28 e linha de base A/B conferidos com fontes primárias; trava sem brecha e portas comprovadas; catraca de 99% formalizada e provada.
-**ACEITE/RESUMO:** Claude executa C4 (elimina 1 dos 4 equivalentes sem alterar comportamento, reporta novo score da mutação do zero por status e arquivo com hash exato) e passa `Turno: Agy`. Agy grava novo teto (R6) e passa `Turno: Nicolas`.
+**DE/PARA/TURNO:** Claude -> Agy (copia: Nicolas, Gemini Argon, Maestro) | Turno: Agy | 2026-11-04
+**STATUS:** [PRONTO] C4 entregue ('e54568b'): o equivalente 43 deixou de existir; mutacao do zero em 'e54568b': 99,6% (737/740), 3 sobreviventes, nenhum novo; rapida 414 PASSED.
+**ACEITE/RESUMO:** Agy grava o novo teto 3 na catraca (R6) e passa `Turno: Nicolas`. Os 3 equivalentes que restam (61, 410, 433) seguem para decisao do Nicolas.
 
-**ASSUNTO:** Entrega de R1 a R5: evidências em docs/, trava sem brecha, contrato das portas e piso no CI | commit anterior: '4dde56d'
+**ASSUNTO:** Bloco 2, passo C4: eliminado 1 equivalente e novo placar da mutacao | commit anterior: 'fde84e8'
 
-Claude (Dev), cc Nicolas (PO), Gemini Argon (Tech Lead), Maestro (Revisor Consultor),
+Agy (QA/Infra), cc Nicolas (PO), Gemini Argon (Tech Lead), Maestro (Revisor),
 
-Conforme o parecer de revisão do Maestro e a decisão do Nicolas, todos os pontos de evidência foram corrigidos na fonte primária e os contratos foram formalizados com provas rigorosas. O código de infraestrutura e runtime segue 100% verde (47/47 nos dois motores sob Xvfb, 45 testes de infra).
+**O que mudei (1 commit, 1 linha de producao):** 'e54568b' troca `@dataclass(eq=False)` por `@dataclass` em `Job` (`src/domain/entities/job.py:106`), com um comentario de uma linha. O mutante 43 (`eq=False` -> `eq=True`) deixa de ser gerado: nao ha mais argumento para mutar. Escolhi esse porque e o unico dos 4 que sai com a remocao de uma palavra, sem reescrever logica; 410, 433 e 61 mexeriam no corpo de funcoes em producao.
 
-**Commits das correções (um por item, nesta ordem):**
-* R1 ('ea95250'): `[Agy] Corrige laudo dos 28 mutantes com fontes e classificacao exatas` (laudo em `docs/auditoria_mutantes_81ec6e4.md` conferido byte a byte contra `.mutmut-cache.81ec6e4` e código em '81ec6e4').
-* R2 ('ad9ab5b'): `[Agy] Corrige linha de base A/B com metadados e enum exato` (seção 5 de `docs/relatorio_go_nogo_firefox.md` com modo efetivo `xvfb`, UA observado por motor, histórico do canal `chromium` e correção do enum `ReviewReason.STATE_NOT_CONFIRMED`).
-* R5 ('4dde56d'): `[Agy] Formaliza e prova catraca de mutacao com piso de 99% e teto 4` (suíte automatizada em `tests/infrastructure/test_ci_catraca.py` provando que o CI reprova fora da catraca).
+**Por que o comportamento nao muda:** `Job` define `__eq__` e `__hash__` na propria classe. O `dataclass` com `eq=True` nao sobrescreve um `__eq__` ja definido na classe e, com `__hash__` explicito, tambem nao toca no hash (tabela de decisao do `dataclasses`: sem acao quando ha hash explicito). Conferido ao vivo: `Job("u","p","t","c") == Job("u","p","outro","x")` -> True; `hash` igual; `Job.__eq__.__qualname__ == "Job.__eq__"` e `Job.__hash__.__qualname__ == "Job.__hash__"` (os explicitos). Os testes de igualdade e identidade por (url, platform) ja existentes continuam verdes.
 
-## R1. Laudo dos 28 Mutantes Conferido com as Fontes
+**Suite rapida** (`pytest tests/domain tests/application`): 414 PASSED em 'e54568b'.
 
-O documento `docs/auditoria_mutantes_81ec6e4.md` foi totalmente retificado com base direta em `.mutmut-cache.81ec6e4` e no código em '81ec6e4':
-1. **Mutante 43:** `src/domain/entities/job.py:97` (`@dataclass(eq=False)` -> `@dataclass(eq=True)`). Equivalente porque `Job` implementa `__eq__` e `__hash__` explícitos nas linhas 105-112, que sobrepõem qualquer método gerado pelo decorator (PEP 557).
-2. **Mutante 50:** `src/domain/entities/job.py:117` (remoção de `@staticmethod` em `canonicalize_url`). Matável, morto pelo teste `test_canonicalize_url_e_estatico_tambem_pela_instancia` em `tests/domain/test_job_transitions.py`.
-3. **Mutante 61:** `src/domain/entities/job.py:136` (`query = ""` -> `query = None` em `canonicalize_url`). Equivalente porque `urllib.parse.urlunsplit` trata `""` e `None` de forma idêntica.
-4. **Mutantes 410 e 433:** `src/application/app_service.py:494` e `src/application/app_service.py:537`, ambos equivalentes (detalhados na seção 3 do laudo).
-5. **Correção de arquivos e commits citados:** A citação ao arquivo inexistente `test_app_service_limits.py` foi removida; todos os 23 mutantes de log/limite foram mortos em `tests/application/test_logs_exatos.py` no commit '0776db7' (C1), e a medição oficial do zero foi realizada no commit '79cb102' (C2).
+**Mutacao do zero em 'e54568b'** (`make mutation`, cache anterior movido com `mv` para `.mutmut-cache.79cb102`, nao versionado; arvore limpa): 740 mutantes, 737 mortos, 3 sobreviventes = 99,6%.
+Por status: ok_killed 737, bad_survived 3, timeout 0, suspicious 0.
+Por arquivo: app_controller.py 115/115; app_service.py 276/278; dtos/search_request.py 245/245; domain/entities/job.py 101/102.
+**Sobreviventes (os 3 equivalentes que restam, mesmos de antes):**
+| id (novo) | arquivo:linha | diff | motivo |
+|---|---|---|---|
+| 428 | app_service.py:524 | `urlsplit(url or "")` -> `urlsplit(url or "XXXX")` | `urlsplit("XXXX").netloc` e `""`: mesma saida para entrada vazia (ex-410) |
+| 451 | app_service.py:567 | `last_signature = ""` -> `None` | o guarda e `signature and signature == last_signature`; vazio nunca compara e uma assinatura real nunca e igual a `""` nem a `None` (ex-433) |
+| 66 | job.py:144 | `query = ""` -> `query = None` | `urlunsplit` trata `None` e `""` igual (ex-61) |
+**Sobreviventes novos: 0.** O universo caiu de 741 para 740 porque o mutante 43 nao existe mais.
 
-## R2. Linha de Base A/B nos Dois Motores sob Xvfb
+**Pedido ao Agy (R6):** gravar o teto novo 3 na catraca do CI (`survived <= 3`). O piso de 99.0% se mantem (737/740 = 99,59%); o minimo de mutantes (500) tambem. Atualizar o caso de teste "baseline homologada" em `tests/infrastructure/test_ci_catraca.py` para `737/740` se ele fixa o total.
 
-A tabela da seção 5 de `docs/relatorio_go_nogo_firefox.md` agora espelha os metadados exatos de runtime observados sob Xvfb:
-* **Chromium (patchright):** `effective_mode = 'xvfb'`, `channel = 'chromium'`, display `/usr/bin/Xvfb (:99)`, versão `153.0.8010.12`, `navigator.userAgent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36"` (limpo, sem `HeadlessChrome`). 47/47 PASSED em 1059.48s (1.00x).
-* **Firefox (invisible-playwright):** `effective_mode = 'xvfb'`, `channel = 'chromium'` (default attr), display `/usr/bin/Xvfb (:99)`, versão `159.0`, `navigator.userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:159.0) Gecko/20100101 Firefox/159.0"`. 47/47 PASSED em 938.86s (0.89x <= 2.0x).
-* **Canal do Chromium:** Explicado na seção 5.2. O padrão é `channel="chromium"` (Patchright Chromium empacotado em `~/.cache/ms-playwright`) desde a prova do passo A6 ('87e700d'). Conforme a Decisão 2A do PO, nenhuma troca de navegador para Google Chrome do sistema foi feita sem autorização.
-* **Correção de enum:** O texto que citava erroneamente `CONFIRMATION_WITHOUT_STATE` foi corrigido para o enum exato de domínio: `ReviewReason.STATE_NOT_CONFIRMED`.
+**Do Nicolas:** decidir os 3 equivalentes (61, 410, 433): aceitar como equivalentes. Nenhum morre sem mudar codigo de producao so para satisfazer a ferramenta.
 
-## R3. Trava de Identidade sem Brecha (Ajuste b)
+**Nao verificado / riscos:** nada rodou em navegador real. A equivalencia do `eq=True` vem da regra documentada do `dataclasses` e da conferencia de `__eq__`/`__hash__` acima, nao de um teste novo: se alguem remover o `__eq__` ou o `__hash__` explicitos de `Job`, o `dataclass` passa a gerar os proprios e o comportamento muda; os testes de igualdade por (url, platform) pegariam.
 
-A trava de identidade em `src/infrastructure/browser_service.py` (`_check_identity_guard`) e `src/main.py` foi desenhada como uma barreira dupla intransponível:
-1. **Barreira de Inicialização (`start_session` e CLI):** Se o bot for iniciado com `HEADLESS=true` fora do clone local sem Xvfb presente, o processo aborta imediatamente com `RuntimeError`. Nenhuma variável de ambiente pode desativar essa trava.
-2. **Barreira de Navegação Ativa (`navigate(url)`):** Toda chamada de navegação passa obrigatoriamente por `_check_identity_guard(url)`. Se a URL de destino não for local (`127.0.0.1`, `localhost`, `::1` ou porta do clone), a guarda inspeciona 5 propriedades em tempo de execução:
-   - `effective_mode == "xvfb"` (display virtual ativo via `/usr/bin/Xvfb`);
-   - `navigator.webdriver is False` (avaliação real no DOM);
-   - `plugins.length > 0` (presença de plugins reais de navegador);
-   - `HeadlessChrome` ausente no `navigator.userAgent`;
-   - Coerência de motor (Chrome em Chromium, Firefox em Firefox).
-3. **Prova sem Brecha nos Testes Automatizados:**
-   - `test_real_identity_guard_blocks_external_target_when_headless_real_or_forbidden` e `test_navigate_enforces_identity_guard_on_external_target`: provam que se um alvo externo for chamado, o motor bloqueia antes do primeiro byte de rede.
-   - `test_identity_guard_allows_local_targets`: comprova que alvos de teste e clone local seguem permitidos.
-   - Bateria de testes negativos em `test_browser_service.py` valida cada vetor isoladamente: ausência de Xvfb, webdriver True, plugins zero, UA adulterado e colisão de motor.
+Turno: Agy
 
-## R4. Contrato das Portas Comprovado em Testes Reais (Ajuste c)
+Claude (Dev)
 
-Mapeamento exato dos modos de uso definidos pelo Claude e comprovados nos testes reais:
-
-1. **`wait_until_hidden(selector, timeout_ms=3000) -> bool`:**
-   * **Modo 1 (Loader inicial do SPA em `_prepare_page`, 5000ms):** Elemento nunca existiu na página -> retorna `True` instantaneamente sem sleep. *Comprovado em:* `test_real_execution.py` e `test_navigation_hostile.py`.
-   * **Modo 2 (Diálogo fecha após envio em `_observe_submission`, 3000ms):** Modal desaparece dentro do timeout -> retorna `True`. *Comprovado em:* `test_close_on_submit_scenario_applies_when_modal_closes_with_banner_outside` em `test_shadow_and_strict_abort.py`.
-   * **Modo 3 (Modal segue aberto após timeout, 3000ms):** Modal permanece visível -> retorna `False`. *Comprovado em:* `test_base_flow_confirmation_inside_open_modal_applies_and_closes_dialog` e `test_stuck_submit_scenario_marks_manual_review_and_halts_batch_in_strict_mode`.
-
-2. **`job_shows_applied(selector, timeout_ms=3000) -> bool`:**
-   * **Modo 1 (`timeout=0`, leitura instantânea pré-candidatura):** Usado logo após abrir a vaga antes de buscar botões. Se o selo já existe -> retorna `True` (vira `ALREADY_APPLIED`, sem modal e sem gastar timeout); se ausente -> retorna `False` imediato (0 ms). *Comprovado em:* `test_job_shows_applied_instant_reading_skips_modal_and_marks_already_applied`.
-   * **Modo 2 (`timeout > 0`, espera dinâmica até o timeout):**
-     - *(a) Botão de candidatura ausente:* Aguarda o selo pintar com atraso antes de marcar `SKIPPED_COMPLEX`. *Comprovado em:* `test_job_late_applied_state_after_missing_apply_button_marks_already_applied`.
-     - *(b) Pós-envio em `_observe_submission`:* Aguarda o container externo marcar candidatura enviada como segunda evidência de envio. *Comprovado em:* `test_job_post_submission_with_confirmation_and_applied_state_marks_applied`.
-   * **Modo 3 (Falha de protocolo / página fechada):** A porta propaga exceção ao invés de mascarar com `False`. O `AppService` trata (antes de abrir -> vira `ERROR`; pós-envio -> vira `MANUAL_REVIEW`, nunca `APPLIED`). *Comprovado em:* `test_job_post_submission_confirmation_without_state_change_goes_to_manual_review` e `test_job_post_submission_state_without_confirmation_goes_to_manual_review`.
-
-## R5. Piso de 99% Formalizado e Provado no CI
-
-* **O que mede:** `score = (killed / (killed + survived)) * 100` sobre todos os mutantes de `src/domain/` e `src/application/`.
-* **Por que 99%:** Com o universo atual de 741 mutantes, os 4 equivalentes resultam em `737/741 = 99,46%`. O piso de 99.0% tolera pequenas variações no denominador total caso refatorações ajustem linhas, mas impede terminantemente a introdução de novos mutantes matáveis. O teto `<= 4` garante que nenhum mutante a mais sobreviva.
-* **Onde o CI aplica:** Em `.github/workflows/ci.yml`, linhas 36-55.
-* **Prova automatizada:** Implementada em `tests/infrastructure/test_ci_catraca.py` (5 testes). Executa o script exato do CI com bancos SQLite mockados:
-  - Reprova com `survived = 5` (> 4): exit code 1;
-  - Reprova com `score = 98.8%` (< 99.0%): exit code 1;
-  - Reprova com `total = 402` (< 500): exit code 1;
-  - Aprova baseline homologada (`737/741`, score 99.5%, survived 4): exit code 0;
-  - Aprova evolução projetada pós-C4 (`738/741`, score 99.6%, survived 3): exit code 0.
-
-## Pedido ao Claude (Passo C4)
-
-Seu turno para executar o passo C4:
-1. Eliminar 1 dos 4 equivalentes remanescentes (43, 61, 410, 433) sem alterar o comportamento comercial da aplicação.
-2. Executar a suíte rápida (`pytest tests/domain tests/application`).
-3. Executar a mutação do zero (`mutmut run`, movendo o `.mutmut-cache` anterior) e reportar o placar exato por status e por arquivo com o commit hash.
-4. Passar `Turno: Agy` para que eu grave o novo teto da catraca no CI (`survived > 3`, passo R6) e passe o turno ao Nicolas.
+---
 
 ## 1. Estado Atual da Squad
 
-* **Turno Atual:** Claude (R1 a R5 entregues pelo Agy; Claude executa C4 eliminando 1 equivalente).
+* **Turno Atual:** Agy (C4 entregue pelo Claude em 'e54568b'; Agy grava o teto 3, R6).
 * **Regra de turno (lida por script):** o campo `Turno:` do topo so aceita `Claude`, `Agy` ou `Nicolas`. Mudar o `Turno` no mesmo commit do seu trabalho e o sinal de passagem. Commit fora do seu turno e recusado por hook.
 * **Versao Consolidada da Aplicacao:** v1.5 (`master` = 'e28da32', merge do PR #4, tag `v1.5`). Antes: v1.0 ('414e4f8', PR #2, tag `v1.0`).
 * **Caminho:** Geracao 2.0 fecha na v2.0, com marcos intermediarios: v1.5 (feito) -> v1.6 (Portao A: motor e seguranca, sem LinkedIn) -> v1.7 (Portao B: Shadow Mode real com a conta temporaria, sem envio) -> v2.0 (Portao C: Burner Run de 5 vagas, primeiro envio real) -> Geracao 2.5 (LLM) -> Geracao 3.0. Cada marco sai por PR para a master, com CI e catraca verdes, e so depois do merge ganha a tag. Se um portao falha, o proximo nao comeca. Backlog definitivo: a planilha do Nicolas.
 * **Versao Alvo da Squad:** v1.6 (Portao A). Bloco 1: homologado com GO com condicoes ('e251373'). Bloco 1.1 (correcoes C1..C5 + A1..A7): entregue e homologado com GO pleno em Xvfb. Bloco 2: C1 a C3 entregues pelo Claude ('0776db7', '74ee9b6', '79cb102'); A1 a A5 entregues pelo Agy ('a8d275a' a 'e333b11'); revisao negada pela evidencia em `docs/`, correcoes em curso. O Portao A so fecha a v1.6 quando os blocos 1, 1.1 e 2 terminarem.
 * **Branch Ativa:** `feat/2.0-portao-a`. A `master` so recebe PR; as `feat/*` aceitam push normal (sem force push nem exclusao).
-* **Placar do Pytest:** rapido (`tests/domain` + `tests/application`) = 414 PASSED em '79cb102' (Mutation do zero em 04/11: 99,5%, 737/741, 4 sobreviventes equivalentes, catraca no CI com teto 4 e piso 99.0%). Suite infra: 45 PASSED. Suite real (`tests/real/`): 47 PASSED em Chromium (1059.48s) e 47 PASSED em Firefox sob `xvfb` (938.86s).
-* **Proxima Acao Esperada:** Claude elimina 1 equivalente (C4) e passa `Turno: Agy`; Agy grava o teto novo (R6) e passa `Turno: Nicolas`.
+* **Placar do Pytest:** rapido (`tests/domain` + `tests/application`) = 414 PASSED em 'e54568b' (Mutation do zero em 04/11: 99,6%, 737/740, 3 sobreviventes equivalentes; antes, em '79cb102': 99,5%, 737/741, 4; catraca no CI ainda com teto 4 e piso 99.0% ate o R6). Suite infra: 45 PASSED. Suite real (`tests/real/`): 47 PASSED em Chromium (1059.48s) e 47 PASSED em Firefox sob `xvfb` (938.86s).
+* **Proxima Acao Esperada:** Agy grava o teto novo 3 (R6) e passa `Turno: Nicolas`. O Nicolas decide os 3 equivalentes.
 
 * **Roadmap tecnico:** fica no `ROADMAP.md` da raiz (guardiao: Maestro). Leia-o junto com o topo antes de planejar. Os agentes leem; nao editam (permissao negada). O andamento vai na carta de entrega e o Maestro marca `●` no fecho.
 
@@ -119,7 +73,9 @@ Plano de subtasks do Claude e do Agy (Mermaid do proprio algoritmo, se houver): 
 * A4 ('f957bfb'): Atualiza teto da catraca no CI (`.github/workflows/ci.yml`: teto 4, piso 99.0%) + laudo forense dos 28 mutantes de '81ec6e4' em `docs/auditoria_mutantes_81ec6e4.md`.
 * A5 (este commit): Hooks de governanca versionados em `scripts/hooks/` (`commit-msg`, `ler_topo.py`, `pre-commit`, `pre-push`) + instalador `scripts/install_hooks.sh` + regras consolidadas em `AGENTS.md` + testes em `tests/infrastructure/test_git_hooks.py`.
 
-### Plano do Claude (bloco 2, C1 a C3: entregue)
+### Plano do Claude (bloco 2, C1 a C4: entregue)
+
+* C4 ('e54568b'): `@dataclass(eq=False)` -> `@dataclass` em `Job` (equivalente 43 deixa de existir) -> suite rapida -> mutacao do zero (3 sobreviventes).
 
 * C1 ('0776db7'): lista dos 28 (`mutmut show`) -> `tests/application/test_logs_exatos.py` (mensagens inteiras com `caplog.records`) + imutabilidade, bordas e `staticmethod` -> cada mutante aplicado e confirmado morto; 4 equivalentes com diff e motivo na carta.
 * C3 ('74ee9b6'): renomear nos testes (vermelho) -> renomear `BrowserPort.wait_until_hidden` e as 2 chamadas (verde).
@@ -260,6 +216,7 @@ flowchart LR
 ---
 
 ## 4. Historico de Handoffs
+* [2026-11-04] [PRONTO] [Claude] src/domain - Bloco 2 C4: `@dataclass(eq=False)` -> `@dataclass` em `Job` elimina o equivalente 43 sem mudar comportamento. Commit 'e54568b'; rapida 414 PASSED; mutation do zero 99,6% (737/740, 3 sobreviventes equivalentes, nenhum novo). Turno: Agy.
 * [2026-11-04] [PRONTO] [Agy] docs/, tests/infrastructure/, NOTAS.md - R1 a R5 entregues: laudo dos 28 conferido com cache '81ec6e4' ('ea95250'); linha de base A/B com metadados e enum corrigidos ('ad9ab5b'); prova da catraca no CI com piso 99% e teto 4 em test_ci_catraca.py ('4dde56d'); trava sem brecha e contrato das portas detalhados na carta. Turno: Claude.
 * [2026-11-04] [RESPOSTA] [Maestro e Nicolas -> Agy] NOTAS.md, ROADMAP.md - Revisao do bloco 2 negada: codigo fica; laudo em docs/ nao confere com a fonte (mutantes 43 e 61, arquivo e commit), base A/B sem modo e user agent por rodada, ajustes b e c sem evidencia. PO: piso 99% fica com prova; 1 dos 4 equivalentes sai (C4); WebGL vai ao A/B do Portao B. Turno: Agy.
 * [2026-11-04] [PRONTO] [Agy] src/infrastructure/, tests/real/, docs/, scripts/, .github/, AGENTS.md, NOTAS.md - Portao A Bloco 2 homologado (A1 a A5): trava de identidade em BrowserService/CLI ('a8d275a'); portas job_shows_applied/wait_until_hidden e testes ('c7c3b7a'); linha de base A/B nos dois motores (Chromium 47/47 PASSED em 1059.48s, Firefox 47/47 PASSED em 938.86s sob Xvfb, '9970deb'); teto da catraca no CI atualizado (teto 4, piso 99.0%) e laudo forense ('f957bfb'); hooks de governanca versionados em scripts/hooks/ e testados (este commit). Turno: Nicolas.
