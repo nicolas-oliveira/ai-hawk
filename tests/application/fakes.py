@@ -40,7 +40,7 @@ class FakeBrowser:
     def has_empty_required_inputs(self, sel): return False
     def modal_signature(self, sel): return ""
     def dismiss_overlay_if_present(self, sel, timeout): return False
-    def wait_for_loader_to_disappear(self, sel, timeout): return not self.element_exists(sel)
+    def wait_until_hidden(self, sel, timeout): return not self.element_exists(sel)
 
     def get_current_url(self):
         if self._current_url:

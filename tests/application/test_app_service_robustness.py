@@ -56,7 +56,7 @@ class FakeBrowser:
         self.dismissed.append((sel, timeout))
         return True
 
-    def wait_for_loader_to_disappear(self, sel, timeout):
+    def wait_until_hidden(self, sel, timeout):
         return True
 
 

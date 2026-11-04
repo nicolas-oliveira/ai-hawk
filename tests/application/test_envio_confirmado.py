@@ -145,7 +145,7 @@ def test_falha_ao_observar_o_envio_vira_revisao_manual():
     browser = FakeBrowser(visible=ABERTA)
     def falha(sel, timeout):
         raise RuntimeError("pagina fechou")
-    browser.wait_for_loader_to_disappear = falha
+    browser.wait_until_hidden = falha
 
     _, jobs = _rodar(browser)
 
@@ -355,6 +355,6 @@ def test_observacao_que_falha_deixa_rastro_no_log(caplog):
     browser = FakeBrowser(visible=ABERTA)
     def falha(sel, timeout):
         raise RuntimeError("pagina fechou")
-    browser.wait_for_loader_to_disappear = falha
+    browser.wait_until_hidden = falha
     _rodar(browser)
     assert "Nao foi possivel observar o envio; vaga vai para revisao manual." in _mensagens(caplog)

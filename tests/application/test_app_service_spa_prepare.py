@@ -24,8 +24,8 @@ def test_listagem_espera_loader_e_depois_dispensa_overlay_na_ordem():
     AppService(browser)._collect_jobs(_request(SELECTOR_PROFILES["linkedin_clone"]))
 
     nomes = [c[0] for c in browser.method_calls]
-    assert nomes.index("open_url") < nomes.index("wait_for_loader_to_disappear")
-    assert nomes.index("wait_for_loader_to_disappear") < nomes.index("element_exists")
+    assert nomes.index("open_url") < nomes.index("wait_until_hidden")
+    assert nomes.index("wait_until_hidden") < nomes.index("element_exists")
     assert nomes.index("element_exists") < nomes.index("dismiss_overlay_if_present")
     assert nomes.index("dismiss_overlay_if_present") < nomes.index("scroll_container_to_end")
 
@@ -34,7 +34,7 @@ def test_usa_timeouts_curtos_do_contrato_sem_pausa_fixa():
     browser = _browser()
     AppService(browser)._collect_jobs(_request(SELECTOR_PROFILES["linkedin_clone"]))
 
-    browser.wait_for_loader_to_disappear.assert_called_once_with("[role='status']", timeout=LOADER_TIMEOUT_MS)
+    browser.wait_until_hidden.assert_called_once_with("[role='status']", timeout=LOADER_TIMEOUT_MS)
     browser.dismiss_overlay_if_present.assert_called_once_with(
         "[aria-label='Dismiss overlay']", timeout=SHORT_TIMEOUT_MS
     )
@@ -53,7 +53,7 @@ def test_perfil_sem_chaves_spa_nao_chama_loader_nem_overlay():
     browser = _browser()
     AppService(browser)._collect_jobs(_request(LINKEDIN_DEFAULT_SELECTORS))
 
-    browser.wait_for_loader_to_disappear.assert_not_called()
+    browser.wait_until_hidden.assert_not_called()
     browser.dismiss_overlay_if_present.assert_not_called()
 
 
@@ -84,5 +84,5 @@ def test_ao_abrir_a_vaga_tambem_prepara_a_pagina():
     job = Job(url="http://exemplo/vaga/123456/", platform="p", title="t", company="c")
     service._process_job(job, _request(SELECTOR_PROFILES["linkedin_clone"]))
 
-    browser.wait_for_loader_to_disappear.assert_called()
+    browser.wait_until_hidden.assert_called()
     browser.dismiss_overlay_if_present.assert_called()

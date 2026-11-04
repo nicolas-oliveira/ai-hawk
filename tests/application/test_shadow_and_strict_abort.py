@@ -23,7 +23,7 @@ class Fake:
     def has_empty_required_inputs(self, sel): return False
     def modal_signature(self, sel): return ""
     def dismiss_overlay_if_present(self, sel, timeout): return False
-    def wait_for_loader_to_disappear(self, sel, timeout): return True
+    def wait_until_hidden(self, sel, timeout): return True
 
 
 def _req(**kw):

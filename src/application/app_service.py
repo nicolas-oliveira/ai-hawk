@@ -113,9 +113,9 @@ class BrowserPort(Protocol):
         True se clicou; False se nao havia nada. Nunca levanta por ausencia.
         `timeout` em ms."""
 
-    def wait_for_loader_to_disappear(self, loader_selector: str, timeout: int) -> bool:
-        """Espera DINAMICA (sem sleep) o loader sumir. True se nao existia ou
-        sumiu antes de `timeout` ms; False se continuou visivel."""
+    def wait_until_hidden(self, selector: str, timeout: int) -> bool:
+        """Espera DINAMICA (sem sleep) o elemento (loader, dialogo...) sumir. True se
+        nao existia ou sumiu antes de `timeout` ms; False se continuou visivel."""
 
 
 # Chamadas mais lentas que isto sao logadas individualmente (nivel INFO).
@@ -392,7 +392,7 @@ class AppService:
         aparecer so apos o carregamento. `element_exists` espera por visibilidade
         (prazo curto da infra); o overlay so e fechado se de fato apareceu."""
         if sel.get("loading_indicator"):
-            self._browser.wait_for_loader_to_disappear(
+            self._browser.wait_until_hidden(
                 sel["loading_indicator"], timeout=LOADER_TIMEOUT_MS
             )
         dismiss = sel.get("overlay_dismiss")
@@ -635,7 +635,7 @@ class AppService:
             return SubmissionEvidence(click_completed=True)
 
     def _observe_submission(self, sel: Dict[str, str]) -> SubmissionEvidence:
-        modal_closed = self._browser.wait_for_loader_to_disappear(
+        modal_closed = self._browser.wait_until_hidden(
             sel["modal_container"], timeout=SHORT_TIMEOUT_MS
         )
         seen = self._browser.element_exists(sel["submit_confirmation"])
