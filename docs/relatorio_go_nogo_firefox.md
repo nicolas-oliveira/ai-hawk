@@ -80,3 +80,29 @@ Ao iniciar uma sessão em modo `xvfb` (tempo de bootstrap medido: `2.8s`), o `in
 
 - **Resultado:** **GO**
 - Todos os 6 critérios técnicos foram medidos objetivamente no código final do Bloco 1.1 (`feat/2.0-portao-a`), com `100%` dos testes reais (`39` testes em `tests/real/`, incluindo a PROVA cega e todos os cenários `C1` a `C4` de envio, `SUBMITTING`, `MANUAL_REVIEW` e Parada Estrita) passando na execução em `chromium` e nas 3 execuções consecutivas em `firefox` sob `Xvfb` (`/usr/bin/Xvfb`).
+
+---
+
+## 5. Linha de Base A/B Consolidada — Portão A (Bloco 2 — 47 Testes Reais sob Xvfb)
+
+**Data da Medição:** 2026-11-04  
+**Branch:** `feat/2.0-portao-a` (Portão A, Bloco 2)  
+**Ambiente:** Ubuntu 24.04.5 LTS, Python 3.14.4, `/usr/bin/Xvfb` (:99), clone Next.js hostil em `:3000`
+
+### 5.1. Comparativo de Desempenho e Cobertura E2E (`tests/real/` Inteiro — 47 Testes)
+
+| Motor Avaliado | Modo Efetivo | Display Virtual | Testes Coletados | Passaram | Falharam | Tempo Total | Razão vs Chromium | Status Linha de Base |
+|---|---|---|---|---|---|---|---|---|
+| **Chromium** (`patchright`) | `headless=True` (`channel="chrome"`) | Xvfb (`:99`) | 47 | 47 | 0 | **1059.48s** (17m 39s) | **1.00x** | **BASELINE DEFINIDA** |
+| **Firefox** (`invisible-playwright`) | `headless=True` (`xvfb`) | Xvfb (`:99`) | 47 | 47 | 0 | **938.86s** (15m 38s) | **0.89x** (<= 2.0x) | **BASELINE DEFINIDA** |
+
+### 5.2. Novos Cenários Validados nos Dois Motores (Bloco 2)
+1. **Verificação de Estado Aplicado Instantâneo (`job_shows_applied`):** Ignora modal e marca `ALREADY_APPLIED` sem abrir candidatura em ambos os motores.
+2. **Confirmação Dupla de Envio (`C1` e `C2`):**
+   - Modal fecha com confirmação E container marca aplicado -> `APPLIED`.
+   - Confirmação emitida mas container NÃO marca aplicado -> `MANUAL_REVIEW` (`CONFIRMATION_WITHOUT_STATE`).
+   - Container marca aplicado sem confirmação do modal -> `MANUAL_REVIEW` (`STATE_WITHOUT_CONFIRMATION`).
+3. **Trava de Identidade (`A1`):** Validação real de bloqueio imediato para destinos externos em modo sem display real ou proibido.
+4. **PROVA Cega (6/6 Testes):** 100% verde em Chromium e 100% verde em Firefox.
+5. **Conclusão:** Paridade comportamental estrita mantida entre os dois motores sob Xvfb. A suíte real está homologada e pronta como linha de base A/B para o Portão B.
+

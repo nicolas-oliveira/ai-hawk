@@ -203,6 +203,7 @@ HTML_JOB_204_MULTI_STEP_DELAYED = """<!DOCTYPE html>
         <button aria-label="Dismiss" onclick="document.getElementById('modal').style.display = 'none'">X</button>
     </div>
     <div data-testid="modal-submission-success" id="submit-success" style="display: none;">Candidatura enviada com sucesso!</div>
+    <div data-testid="job-applied" id="job-applied" style="display: none;">Candidatura enviada</div>
 
     <script>
         function goToStep2WithDelay() {
@@ -214,6 +215,7 @@ HTML_JOB_204_MULTI_STEP_DELAYED = """<!DOCTYPE html>
         function submitMulti() {
             document.getElementById('modal').style.display = 'none';
             document.getElementById('submit-success').style.display = 'block';
+            document.getElementById('job-applied').style.display = 'block';
         }
     </script>
 </body>

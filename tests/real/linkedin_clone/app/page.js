@@ -337,7 +337,7 @@ export default function Home() {
       if (selectedJob?.noConfirmSubmit) {
         setIsModalOpen(false);
         setSubmitted(false);
-        setJobApplied(true);
+        setJobApplied(false);
         return;
       }
       if (selectedJob?.closeOnSubmit) {

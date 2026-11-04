@@ -157,18 +157,18 @@ class _ChromiumLauncher:
             except Exception:
                 pass
             self.context = None
-        if self.playwright:
-            try:
-                self.playwright.stop()
-            except Exception:
-                pass
-            self.playwright = None
         if self.virtual_display:
             try:
                 self.virtual_display.stop()
             except Exception:
                 pass
             self.virtual_display = None
+        if self.playwright:
+            try:
+                self.playwright.stop()
+            except Exception:
+                pass
+            self.playwright = None
 
 
 class _FirefoxLauncher:
