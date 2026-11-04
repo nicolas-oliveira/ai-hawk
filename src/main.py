@@ -130,6 +130,10 @@ def bootstrap():
     try:
         browser_service.start_session()
 
+        # Trava de Identidade (A1): valida os sinais antes de qualquer acao externa
+        for target_u in static_urls:
+            browser_service.verify_runtime_identity(target_url=target_u)
+
         # Injecao de Dependencias da Arquitetura Limpa
         try:
             from src.application.app_controller import AppController

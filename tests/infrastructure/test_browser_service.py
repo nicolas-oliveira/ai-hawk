@@ -788,6 +788,182 @@ def test_browser_service_default_channel_is_chromium(monkeypatch, tmp_path):
     assert service.channel == "chromium"
 
 
+def test_identity_guard_allows_local_targets(monkeypatch, tmp_path):
+    """
+    Passo A1: Trava de identidade em modo permissivo para clone local (localhost / 127.0.0.1).
+    """
+    service = BrowserService(session_root_dir=str(tmp_path))
+    meta1 = service.verify_runtime_identity(target_url="http://127.0.0.1:3000/jobs")
+    meta2 = service.verify_runtime_identity(target_url="http://localhost:3000")
+    meta3 = service.verify_runtime_identity(target_url="")
+    assert meta1["engine"] == "chromium"
+    assert meta2["engine"] == "chromium"
+    assert meta3["engine"] == "chromium"
+
+
+def test_identity_guard_refuses_when_not_xvfb_on_external_target(monkeypatch, tmp_path):
+    """
+    Passo A1 (Ajuste b): Bloqueia imediatamente se effective_mode != 'xvfb' em alvo externo.
+    """
+    service = BrowserService(session_root_dir=str(tmp_path))
+    monkeypatch.setattr(
+        service,
+        "get_runtime_metadata",
+        lambda: {
+            "engine": "chromium",
+            "effective_mode": "headless",
+            "xvfb_path": "/usr/bin/Xvfb",
+            "user_agent": "Mozilla/5.0 Chrome/153.0.0.0 Safari/537.36",
+            "webdriver": False,
+            "plugins_length": 5,
+        },
+    )
+    with pytest.raises(RuntimeError, match="Trava de Identidade violada: Alvo externo exige janela real dentro de Xvfb"):
+        service.verify_runtime_identity(target_url="https://www.linkedin.com/jobs")
+
+
+def test_identity_guard_refuses_when_user_agent_has_headless_chrome(monkeypatch, tmp_path):
+    """
+    Passo A1 (Ajuste b): Bloqueia se o User-Agent contiver 'HeadlessChrome' em alvo externo.
+    """
+    service = BrowserService(session_root_dir=str(tmp_path))
+    monkeypatch.setattr(
+        service,
+        "get_runtime_metadata",
+        lambda: {
+            "engine": "chromium",
+            "effective_mode": "xvfb",
+            "xvfb_path": "/usr/bin/Xvfb",
+            "user_agent": "Mozilla/5.0 HeadlessChrome/153.0.8010.12 Safari/537.36",
+            "webdriver": False,
+            "plugins_length": 5,
+        },
+    )
+    with pytest.raises(RuntimeError, match="Assinatura 'HeadlessChrome' detectada no User-Agent"):
+        service.verify_runtime_identity(target_url="https://www.linkedin.com/jobs")
+
+
+def test_identity_guard_refuses_when_webdriver_is_true(monkeypatch, tmp_path):
+    """
+    Passo A1 (Ajuste b): Bloqueia se navigator.webdriver for True em alvo externo.
+    """
+    service = BrowserService(session_root_dir=str(tmp_path))
+    monkeypatch.setattr(
+        service,
+        "get_runtime_metadata",
+        lambda: {
+            "engine": "chromium",
+            "effective_mode": "xvfb",
+            "xvfb_path": "/usr/bin/Xvfb",
+            "user_agent": "Mozilla/5.0 Chrome/153.0.0.0 Safari/537.36",
+            "webdriver": True,
+            "plugins_length": 5,
+        },
+    )
+    with pytest.raises(RuntimeError, match="navigator.webdriver verdadeiro detectado"):
+        service.verify_runtime_identity(target_url="https://www.linkedin.com/jobs")
+
+
+def test_identity_guard_refuses_when_xvfb_missing(monkeypatch, tmp_path):
+    """
+    Passo A1 (Ajuste b): Bloqueia se /usr/bin/Xvfb estiver ausente no PATH.
+    """
+    service = BrowserService(session_root_dir=str(tmp_path))
+    monkeypatch.setattr(
+        service,
+        "get_runtime_metadata",
+        lambda: {
+            "engine": "chromium",
+            "effective_mode": "xvfb",
+            "xvfb_path": None,
+            "user_agent": "Mozilla/5.0 Chrome/153.0.0.0 Safari/537.36",
+            "webdriver": False,
+            "plugins_length": 5,
+        },
+    )
+    with pytest.raises(RuntimeError, match="Executavel 'Xvfb' ausente no PATH"):
+        service.verify_runtime_identity(target_url="https://www.linkedin.com/jobs")
+
+
+def test_identity_guard_refuses_when_plugins_length_is_zero(monkeypatch, tmp_path):
+    """
+    Passo A1 (Ajuste b): Bloqueia se navigator.plugins.length == 0 em alvo externo.
+    """
+    service = BrowserService(session_root_dir=str(tmp_path))
+    monkeypatch.setattr(
+        service,
+        "get_runtime_metadata",
+        lambda: {
+            "engine": "chromium",
+            "effective_mode": "xvfb",
+            "xvfb_path": "/usr/bin/Xvfb",
+            "user_agent": "Mozilla/5.0 Chrome/153.0.0.0 Safari/537.36",
+            "webdriver": False,
+            "plugins_length": 0,
+        },
+    )
+    with pytest.raises(RuntimeError, match="navigator.plugins vazio"):
+        service.verify_runtime_identity(target_url="https://www.linkedin.com/jobs")
+
+
+def test_identity_guard_refuses_when_engine_unknown_or_mismatched(monkeypatch, tmp_path):
+    """
+    Passo A1 (Ajuste b): Bloqueia se o motor for desconhecido ou UA contradisser o motor.
+    """
+    service = BrowserService(session_root_dir=str(tmp_path))
+    monkeypatch.setattr(
+        service,
+        "get_runtime_metadata",
+        lambda: {
+            "engine": "safari",
+            "effective_mode": "xvfb",
+            "xvfb_path": "/usr/bin/Xvfb",
+            "user_agent": "Mozilla/5.0 Safari/605",
+            "webdriver": False,
+            "plugins_length": 5,
+        },
+    )
+    with pytest.raises(RuntimeError, match="Motor de navegador nao reconhecido"):
+        service.verify_runtime_identity(target_url="https://www.linkedin.com/jobs")
+
+    monkeypatch.setattr(
+        service,
+        "get_runtime_metadata",
+        lambda: {
+            "engine": "firefox",
+            "effective_mode": "xvfb",
+            "xvfb_path": "/usr/bin/Xvfb",
+            "user_agent": "Mozilla/5.0 Chrome/153.0.0.0 Safari/537.36",
+            "webdriver": False,
+            "plugins_length": 5,
+        },
+    )
+    with pytest.raises(RuntimeError, match="Motor configurado e 'firefox', mas User-Agent nao contem 'Firefox'"):
+        service.verify_runtime_identity(target_url="https://www.linkedin.com/jobs")
+
+
+def test_navigate_enforces_identity_guard_on_external_target(monkeypatch, tmp_path):
+    """
+    Passo A1: navigate() propaga a recusa da trava de identidade em URL externa.
+    """
+    service = BrowserService(session_root_dir=str(tmp_path))
+    monkeypatch.setattr(
+        service,
+        "get_runtime_metadata",
+        lambda: {
+            "engine": "chromium",
+            "effective_mode": "headless",
+            "xvfb_path": "/usr/bin/Xvfb",
+            "user_agent": "Mozilla/5.0 Chrome/153.0.0.0 Safari/537.36",
+            "webdriver": False,
+            "plugins_length": 5,
+        },
+    )
+    with pytest.raises(RuntimeError, match="Trava de Identidade violada"):
+        service.navigate("https://remote-job-portal.com/jobs/1")
+
+
+
 
 
 

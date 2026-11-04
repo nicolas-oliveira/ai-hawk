@@ -79,6 +79,9 @@ class _ChromiumLauncher:
     def __init__(self) -> None:
         self.playwright: Optional[Playwright] = None
         self.context: Optional[BrowserContext] = None
+        self.virtual_display: Any = None
+        self.effective_mode: Optional[str] = None
+        self.xvfb_path: Optional[str] = None
 
     def start(
         self,
@@ -89,6 +92,7 @@ class _ChromiumLauncher:
         viewport_height: int,
         extra_args: Optional[List[str]] = None,
     ) -> BrowserContext:
+        import sys
         self.playwright = sync_playwright().start()
         args = [
             "--disable-blink-features=AutomationControlled",
@@ -98,12 +102,48 @@ class _ChromiumLauncher:
         if extra_args:
             args.extend(extra_args)
 
+        launch_env: Optional[Dict[str, str]] = None
+        xvfb_bin = shutil.which("Xvfb")
+
+        # Em Linux: se headless=True (ou BROWSER_HEADLESS_MODE=xvfb) e Xvfb existir,
+        # roda com janela real (headless=False) dentro de um display virtual Xvfb isolado.
+        if headless and sys.platform.startswith("linux") and xvfb_bin:
+            try:
+                from invisible_core._headless import _LinuxVirtualDisplay
+                self.virtual_display = _LinuxVirtualDisplay(viewport_width, viewport_height)
+                self.virtual_display.start()
+                launch_env = os.environ.copy()
+                for k, v in self.virtual_display.launch_env().items():
+                    if v is None:
+                        launch_env.pop(k, None)
+                    else:
+                        launch_env[k] = v
+                self.effective_mode = "xvfb"
+                self.xvfb_path = xvfb_bin
+                actual_headless = False  # Janela real desenhando no display virtual Xvfb
+            except Exception as exc:
+                logger.warning("Falha ao iniciar Xvfb para Chromium (%s); caindo para headless nativo.", exc)
+                self.virtual_display = None
+                self.effective_mode = "headless"
+                self.xvfb_path = xvfb_bin
+                actual_headless = True
+        elif headless:
+            self.effective_mode = "headless"
+            self.xvfb_path = xvfb_bin
+            actual_headless = True
+        else:
+            self.effective_mode = "headed"
+            self.xvfb_path = xvfb_bin
+            actual_headless = False
+
         launch_kwargs: Dict[str, Any] = {
             "user_data_dir": user_data_dir,
-            "headless": headless,
+            "headless": actual_headless,
             "args": args,
             "viewport": {"width": viewport_width, "height": viewport_height},
         }
+        if launch_env is not None:
+            launch_kwargs["env"] = launch_env
         if channel == "chrome" and shutil.which("google-chrome"):
             launch_kwargs["channel"] = "chrome"
 
@@ -123,6 +163,12 @@ class _ChromiumLauncher:
             except Exception:
                 pass
             self.playwright = None
+        if self.virtual_display:
+            try:
+                self.virtual_display.stop()
+            except Exception:
+                pass
+            self.virtual_display = None
 
 
 class _FirefoxLauncher:
@@ -310,14 +356,16 @@ class BrowserService:
         self.context = None
         self.playwright = None
 
-    def get_runtime_metadata(self) -> Dict[str, Optional[str]]:
+    def get_runtime_metadata(self) -> Dict[str, Any]:
         """
         Retorna metadados auditaveis da sessao ativa nos dois motores (Chromium e Firefox):
         - engine: 'chromium' ou 'firefox'
-        - effective_mode: 'headless' | 'headed' (Chromium) ou 'xvfb' | 'headless-real' | 'headed' (Firefox)
+        - effective_mode: 'xvfb' | 'headless' | 'headed' (Chromium) ou 'xvfb' | 'headless-real' | 'headed' (Firefox)
         - xvfb_path: caminho do binario Xvfb se disponivel
         - browser_version: versao real do motor ou extraida do userAgent
         - user_agent: string navigator.userAgent observada na pagina ativa
+        - webdriver: valor booleano de navigator.webdriver
+        - plugins_length: contagem de navigator.plugins.length
         """
         if self.engine == "firefox":
             effective_mode = getattr(self._launcher, "effective_mode", None) or (
@@ -327,17 +375,23 @@ class BrowserService:
             )
             xvfb_path = getattr(self._launcher, "xvfb_path", None) or shutil.which("Xvfb")
         else:
-            effective_mode = "headless" if self.headless else "headed"
-            xvfb_path = shutil.which("Xvfb")
+            effective_mode = getattr(self._launcher, "effective_mode", None) or (
+                "headless" if self.headless else "headed"
+            )
+            xvfb_path = getattr(self._launcher, "xvfb_path", None) or shutil.which("Xvfb")
 
         user_agent: Optional[str] = None
         browser_version: Optional[str] = None
+        webdriver: Optional[bool] = None
+        plugins_length: Optional[int] = None
         if self.context is not None:
             try:
                 page = self.get_page()
                 user_agent = page.evaluate("() => navigator.userAgent")
+                webdriver = page.evaluate("() => navigator.webdriver")
+                plugins_length = page.evaluate("() => navigator.plugins ? navigator.plugins.length : 0")
             except Exception:
-                user_agent = None
+                pass
             try:
                 browser_obj = getattr(self.context, "browser", None)
                 if browser_obj is not None and hasattr(browser_obj, "version"):
@@ -358,17 +412,106 @@ class BrowserService:
             "xvfb_path": xvfb_path,
             "browser_version": browser_version,
             "user_agent": user_agent,
+            "webdriver": webdriver,
+            "plugins_length": plugins_length,
         }
+
+    def verify_runtime_identity(self, target_url: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Trava de Identidade antes de qualquer sessao real (A1 e Decisao 2A):
+        Para qualquer alvo que nao seja o clone local (host != 'localhost' e != '127.0.0.1'):
+        O bot so inicia com janela real dentro de Xvfb e RECUSA iniciar se qualquer sinal
+        verificavel denunciar automacao:
+        - effective_mode deve ser estritamente 'xvfb';
+        - /usr/bin/Xvfb deve estar presente;
+        - 'HeadlessChrome' e proibido no user_agent;
+        - user_agent deve ser consistente com o motor configurado;
+        - navigator.webdriver deve ser False;
+        - navigator.plugins.length deve ser maior que 0.
+        Nenhuma variavel de ambiente desliga a trava. O clone local permanece livre.
+        """
+        meta = self.get_runtime_metadata()
+        host = ""
+        if target_url:
+            from urllib.parse import urlsplit
+            host = urlsplit(target_url).netloc.split(":")[0].strip().lower()
+
+        is_local = host in ("localhost", "127.0.0.1", "")
+        if is_local:
+            logger.info(
+                "Trava de Identidade (clone local: %s): engine=%s, effective_mode=%s, xvfb=%s, ua=%s, webdriver=%s",
+                host or "default",
+                meta["engine"],
+                meta["effective_mode"],
+                meta["xvfb_path"],
+                meta["user_agent"],
+                meta["webdriver"],
+            )
+            return meta
+
+        engine = meta.get("engine")
+        if engine not in VALID_ENGINES:
+            raise RuntimeError(f"Trava de Identidade: Motor de navegador nao reconhecido: '{engine}'.")
+
+        xvfb_path = meta.get("xvfb_path")
+        if not xvfb_path or not shutil.which("Xvfb"):
+            raise RuntimeError(
+                "Trava de Identidade violada: Executavel 'Xvfb' ausente no PATH. Alvo externo exige janela real em Xvfb."
+            )
+
+        effective_mode = meta.get("effective_mode")
+        if effective_mode != "xvfb":
+            raise RuntimeError(
+                f"Trava de Identidade violada: Alvo externo exige janela real dentro de Xvfb (effective_mode='xvfb'). "
+                f"Modo detectado: '{effective_mode}'. Proibido modo headless ou janela sem Xvfb em alvos reais."
+            )
+
+        ua = meta.get("user_agent") or ""
+        if "HeadlessChrome" in ua:
+            raise RuntimeError(
+                f"Trava de Identidade violada: Assinatura 'HeadlessChrome' detectada no User-Agent: '{ua}'."
+            )
+
+        if engine == "firefox" and "Firefox" not in ua:
+            raise RuntimeError(
+                f"Trava de Identidade violada: Motor configurado e 'firefox', mas User-Agent nao contem 'Firefox': '{ua}'."
+            )
+        if engine == "chromium" and "Chrome" not in ua:
+            raise RuntimeError(
+                f"Trava de Identidade violada: Motor configurado e 'chromium', mas User-Agent nao contem 'Chrome': '{ua}'."
+            )
+
+        if meta.get("webdriver") is True:
+            raise RuntimeError("Trava de Identidade violada: navigator.webdriver verdadeiro detectado.")
+
+        if meta.get("plugins_length") == 0:
+            raise RuntimeError("Trava de Identidade violada: navigator.plugins vazio (length=0) denuncia automacao.")
+
+        logger.info(
+            "Trava de Identidade APROVADA para alvo externo (%s): engine=%s, effective_mode=%s, xvfb=%s, ua=%s, webdriver=%s, plugins=%s",
+            host,
+            meta["engine"],
+            meta["effective_mode"],
+            meta["xvfb_path"],
+            meta["user_agent"],
+            meta["webdriver"],
+            meta["plugins_length"],
+        )
+        return meta
 
     def navigate(self, url: str, timeout: int = 30000, wait_until: str = "load") -> bool:
         """
         Navega de forma sincrona para a URL especificada utilizando a pagina ativa.
+        Verifica a trava de identidade antes de qualquer navegacao externa.
         Retorna True em caso de sucesso ou False em caso de falha/timeout.
         """
         try:
+            self.verify_runtime_identity(target_url=url)
             page = self.get_page()
             page.goto(url, timeout=timeout, wait_until=wait_until)
             return True
+        except RuntimeError:
+            raise
         except Exception as e:
             print(f"[BrowserService.navigate] Falha ao navegar para {url}: {e}")
             return False
