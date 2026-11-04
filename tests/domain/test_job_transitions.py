@@ -158,3 +158,8 @@ def test_evidencia_e_imutavel():
 def test_evidencia_so_com_clique_nao_traz_confirmacao_nem_modal_aberto():
     ev = SubmissionEvidence(click_completed=False)
     assert (ev.confirmation_seen, ev.modal_still_open) == (False, False)
+
+
+def test_canonicalize_url_e_estatico_tambem_pela_instancia():
+    job = Job(url="https://x.com/jobs/1/", platform="p", title="", company="")
+    assert job.canonicalize_url("https://x.com/jobs/1234567/?a=1#f") == "https://x.com/jobs/1234567/"
