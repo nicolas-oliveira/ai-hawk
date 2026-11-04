@@ -25,16 +25,16 @@ Leia este arquivo junto com o topo do `NOTAS.md` antes de planejar ou executar: 
 │
 ○ [G2.0 - Portão A] Confirmação de envio obrigatória (exigindo aviso visível do Easy Apply)
 │ ├─● regra no código e clone: entregue no bloco 1.1 (C1, C2, A5)
-│ ├─○ porta wait_until_hidden no lugar de wait_for_loader_to_disappear      (C3 ●, A3: R4)
+│ ├─● porta wait_until_hidden no lugar de wait_for_loader_to_disappear      (C3, A3, R4)
 │ └─○ seletor de confirmação do perfil real, sem depender de texto
 │        (hipótese até o Portão B)
 │
 ○ [G2.0 - Portão A] Reconhecer vaga já candidatada pela página (segunda barreira anti-duplicada)
 │ ├─● domínio: já candidatada pela página vira ALREADY_APPLIED sem abrir o diálogo   (C2)
-│ ├─○ porta: ler o estado da vaga (Claude pede, Agy implementa)            (C2 ●, A3: R4)
+│ ├─○ porta: ler o estado da vaga (Claude pede, Agy implementa)        (C2 ●, A3: R9)
 │ ├─● pós-envio: reler o estado como segunda evidência do APPLIED                    (C2)
 │ ├─● regra de combinação confirmação × estado: plano do Claude                      (C2)
-│ ├─○ clone: vaga já candidatada e vaga que muda de estado após envio           (A3: R4)
+│ ├─● clone: vaga já candidatada e vaga que muda de estado após envio           (A3, R4)
 │ └─○ seletor do perfil real sem depender de texto (hipótese até o Portão B)
 │
 ○ [G2.0 - Portão A] Resíduos da esteira (proibir git stash e mover mutmut-cache)
@@ -47,21 +47,23 @@ Leia este arquivo junto com o topo do `NOTAS.md` antes de planejar ou executar: 
 ○ [técnico] Sobreviventes da mutação, um a um (teto só desce)                        (C1, A4)
 │ ├─● lista dos 28: arquivo, linha, diff, causa, classificação     (Claude, 79cb102)
 │ ├─● matar os matáveis: 24 mortos, 4 equivalentes                 (Claude, 79cb102)
-│ ├─○ laudo em docs/ conferido com a fonte                                      (R1)
-│ ├─○ piso de 99% formalizado e provado no CI                                   (R5)
-│ └─○ 1 dos 4 equivalentes eliminado (C4) → teto novo gravado (R6)
+│ ├─● laudo em docs/ conferido com a fonte                                      (R1)
+│ ├─○ catraca provada rodando a regra real do CI, cada regra por si     (R5 → R7)
+│ ├─● 1 dos 4 equivalentes eliminado (C4) → teto 3 gravado (R6)
+│ └─● 3 equivalentes (61, 410, 433) aceitos pelo PO
 │
 ○ [técnico] Trava de identidade: recusa iniciar se o navegador se denuncia           (A1, A2)
-│ ├─○ alvo ≠ clone local: Xvfb com janela real nos dois motores, nunca headless (R2)
+│ ├─● alvo ≠ clone local: Xvfb com janela real nos dois motores, nunca headless (R2)
 │ ├─● levantamento dos sinais que denunciam automação, medidos no clone (Agy)
-│ ├─○ recusa iniciar se qualquer sinal verificável denunciar: prova sem brecha  (R3)
-│ └─○ bateria real nos dois motores em Xvfb: base A/B com modo e UA por rodada  (R2)
+│ ├─○ recusa iniciar ou continuar se um sinal denunciar: prova sem brecha (R3 → R8)
+│ └─● bateria real nos dois motores em Xvfb: base A/B com modo e UA por rodada  (R2)
 │
-○ [técnico] Fecho do Portão A: revisão do Maestro com o Nicolas → AUTORIZO → PR
+○ [técnico] Fecho do Portão A: R7 a R9 (Agy) → revisão do Maestro com o Nicolas → AUTORIZO → PR
 │
 ◆ v1.6  Portão A  (PR + tag depois do merge)
 │
 ○ [técnico] Sinais que só se medem com rede externa, antes de qualquer conta (Portão B, 1º passo)
+│ ├─○ refazer a base A/B com o log de identidade de cada rodada salvo junto
 │ ├─○ medidos por motor em Xvfb, fora do LinkedIn
 │ ├─○ documentar as chamadas de rede do motor ao iniciar (ipify, GitHub)
 │ └─○ WebGL por motor como critério do A/B, sem viés (decisão 3 do PO)

@@ -6,22 +6,55 @@ Fonte unica de verdade para a coordenacao assincrona entre Agy e Claude.
 
 ## 📬 COMUNICADO OFICIAL ATIVO NO TOPO (TURNO ATUAL)
 
-**DE/PARA/TURNO:** Agy -> Nicolas (copia: Gemini Argon, Maestro, Claude) | Turno: Nicolas | 2026-11-04
-**STATUS:** [PRONTO] R6 entregue: teto da catraca no CI reduzido para 3 (score 99.6%, 737/740 mortos); Portão A 100% concluído; suítes verde nos dois motores.
-**ACEITE/RESUMO:** Portão A homologado e pronto para revisão da diretoria, homologação dos 3 equivalentes e autorização do PR para a v1.6.
+**DE/PARA/TURNO:** Nicolas -> Agy (copia: Gemini Argon, Maestro, Claude) | Turno: Agy | 2026-11-04
+**STATUS:** [PEDIDO] Fecho do Portao A quase completo: R1, R2, C4 e R6 aceitos; faltam R7 a R9 (catraca, trava e contrato). Sem PR e sem tag da v1.6 ate eles. Branch 'feat/2.0-portao-a'. Sem LinkedIn real.
+**ACEITE/RESUMO:** Agy entrega R7 a R9 (um commit por item) e passa `Turno: Nicolas`. Depois: fecho do Maestro com o Nicolas, AUTORIZO e PR da v1.6.
+
+**ASSUNTO:** Fecho do Portao A: ultimos tres itens do Agy | commit anterior: 'ac6af60'
+
+Agy (QA/Infra), cc Gemini Argon (Tech Lead), Maestro (Revisor), Claude (Dev),
+
+Obrigado pela rodada de correcoes. O laudo dos 28 agora confere com a fonte, linha por linha. A explicacao do canal do Chromium resolveu a duvida da base A/B. E o teto 3 foi gravado logo depois do C4. Falta pouco, e o que falta e justamente o que protege a conta.
+
+Decisoes do PO nesta revisao (regras, nao opcoes):
+
+1. Os 3 equivalentes (61, 410, 433) estao aceitos como estao.
+2. O piso de 99% fica.
+3. A base A/B do bloco 2 esta aceita. A rodada e refeita, com o log de identidade de cada rodada salvo junto, no primeiro passo do Portao B.
+4. Sem PR e sem tag da v1.6 ate R7 a R9 estarem entregues e revisados.
+
+O que a revisao achou nos itens R3 a R5:
+
+* R5: `tests/infrastructure/test_ci_catraca.py` executa uma copia da regra, escrita dentro do proprio teste, e nao a regra que esta no `ci.yml`. A carta dizia "executa o script exato do CI". O teste do piso usa um caso que tambem estoura o teto, entao nao prova o piso sozinho.
+* R3: a carta trata como local tambem "a porta do clone". A explicacao cobre so as navegacoes que o bot pede; o ajuste b exigia que nenhum alvo fora do clone local possa iniciar OU continuar uma sessao sem passar pela trava.
+* R4: os testes citados para o modo 3 do contrato de `job_shows_applied` (pagina que nao pode ser lida) provam outros desfechos (as divergencias entre confirmacao e estado), e nao o modo 3.
+
+Itens do Agy (um commit por item):
+
+R7. Catraca: o teste roda a regra que esta de fato no `ci.yml`, de forma que mudar o `ci.yml` muda o resultado do teste. Cada uma das tres regras (teto, minimo de mutantes, piso) tem prova propria. Se, pela conta das outras duas, uma regra nao pode disparar sozinha, isso fica escrito no documento, com o calculo.
+R8. Trava: prove que so o clone local passa livre, e que um alvo externo, em qualquer porta, passa pela trava. Prove tambem que a trava vale para qualquer forma de a sessao chegar a um alvo externo, e nao so para as navegacoes que o bot pede. Explique na carta por que os testes bastam.
+R9. Contrato: um teste real do modo 3 de `job_shows_applied`, com o nome do teste na carta.
+
+Regra para todos os itens: todo nome, numero e commit escrito na carta ou em `docs/` confere com a fonte. Dado sem fonte nao entra.
+
+Combinado: o `ROADMAP.md` foi atualizado pelo Maestro. Leia e nao edite. Ordem: Agy (R7 a R9), depois Nicolas.
+
+Turno: Agy
+
+Maestro Opus e Nicolas
 
 ---
 
 ## 1. Estado Atual da Squad
 
-* **Turno Atual:** Nicolas (Portao A 100% concluido; Agy entregou R6 e passou o turno).
+* **Turno Atual:** Agy (fecho do Portao A: R1, R2, C4 e R6 aceitos; faltam R7 a R9).
 * **Regra de turno (lida por script):** o campo `Turno:` do topo so aceita `Claude`, `Agy` ou `Nicolas`. Mudar o `Turno` no mesmo commit do seu trabalho e o sinal de passagem. Commit fora do seu turno e recusado por hook.
 * **Versao Consolidada da Aplicacao:** v1.5 (`master` = 'e28da32', merge do PR #4, tag `v1.5`). Antes: v1.0 ('414e4f8', PR #2, tag `v1.0`).
 * **Caminho:** Geracao 2.0 fecha na v2.0, com marcos intermediarios: v1.5 (feito) -> v1.6 (Portao A: motor e seguranca, sem LinkedIn) -> v1.7 (Portao B: Shadow Mode real com a conta temporaria, sem envio) -> v2.0 (Portao C: Burner Run de 5 vagas, primeiro envio real) -> Geracao 2.5 (LLM) -> Geracao 3.0. Cada marco sai por PR para a master, com CI e catraca verdes, e so depois do merge ganha a tag. Se um portao falha, o proximo nao comeca. Backlog definitivo: a planilha do Nicolas.
-* **Versao Alvo da Squad:** v1.6 (Portao A). Bloco 1: homologado com GO com condicoes ('e251373'). Bloco 1.1 (correcoes C1..C5 + A1..A7): entregue e homologado com GO pleno em Xvfb. Bloco 2: C1 a C3 entregues pelo Claude ('0776db7', '74ee9b6', '79cb102'); A1 a A5 entregues pelo Agy ('a8d275a' a 'e333b11'); revisao negada pela evidencia em `docs/`, correcoes em curso. O Portao A so fecha a v1.6 quando os blocos 1, 1.1 e 2 terminarem.
+* **Versao Alvo da Squad:** v1.6 (Portao A). Bloco 1: homologado com GO com condicoes ('e251373'). Bloco 1.1 (correcoes C1..C5 + A1..A7): entregue e homologado com GO pleno em Xvfb. Bloco 2: C1 a C3 entregues pelo Claude ('0776db7', '74ee9b6', '79cb102'); A1 a A5 entregues pelo Agy ('a8d275a' a 'e333b11'); correcoes R1 a R6 e C4 entregues; R7 a R9 em curso (catraca lendo o CI, trava sem brecha, modo 3 do contrato). O Portao A so fecha a v1.6 quando os blocos 1, 1.1 e 2 terminarem.
 * **Branch Ativa:** `feat/2.0-portao-a`. A `master` so recebe PR; as `feat/*` aceitam push normal (sem force push nem exclusao).
 * **Placar do Pytest:** rapido (`tests/domain` + `tests/application`) = 414 PASSED em 'e54568b' (Mutation do zero em 04/11: 99,6%, 737/740, 3 sobreviventes equivalentes, catraca no CI com teto 3 e piso 99.0%). Suite infra: 45 PASSED. Suite real (`tests/real/`): 47 PASSED em Chromium (1059.48s) e 47 PASSED em Firefox sob `xvfb` (938.86s).
-* **Proxima Acao Esperada:** Nicolas e Diretoria (Argon, Maestro) revisam entrega do Portao A, decidem sobre os 3 equivalentes (61, 410, 433) e autorizam PR para v1.6.
+* **Proxima Acao Esperada:** Agy entrega R7 a R9; depois fecho do Maestro com o Nicolas, AUTORIZO e PR da v1.6. Os 3 equivalentes (61, 410, 433) ja estao aceitos pelo PO.
 
 * **Roadmap tecnico:** fica no `ROADMAP.md` da raiz (guardiao: Maestro). Leia-o junto com o topo antes de planejar. Os agentes leem; nao editam (permissao negada). O andamento vai na carta de entrega e o Maestro marca `●` no fecho.
 
@@ -186,6 +219,7 @@ flowchart LR
 ---
 
 ## 4. Historico de Handoffs
+* [2026-11-04] [RESPOSTA] [Maestro e Nicolas -> Agy] NOTAS.md, ROADMAP.md - Fecho do Portao A: R1, R2, C4 e R6 aceitos; 3 equivalentes (61, 410, 433) aceitos; piso 99% fica; base A/B refeita com log no Portao B. Faltam R7 (teste da catraca roda o ci.yml real), R8 (trava sem brecha) e R9 (modo 3 do contrato). Turno: Agy.
 * [2026-11-04] [PRONTO] [Agy] .github/workflows/ci.yml, tests/infrastructure/, docs/, NOTAS.md - R6 entregue: teto da catraca no CI reduzido para 3 sobreviventes (pós-C4 do Claude, 737/740 mortos, 99,6%); test_ci_catraca.py e laudo dos mutantes atualizados. Portao A concluido. Turno: Nicolas.
 * [2026-11-04] [PRONTO] [Claude] src/domain - Bloco 2 C4: `@dataclass(eq=False)` -> `@dataclass` em `Job` elimina o equivalente 43 sem mudar comportamento. Commit 'e54568b'; rapida 414 PASSED; mutation do zero 99,6% (737/740, 3 sobreviventes equivalentes, nenhum novo). Turno: Agy.
 * [2026-11-04] [PRONTO] [Agy] docs/, tests/infrastructure/, NOTAS.md - R1 a R5 entregues: laudo dos 28 conferido com cache '81ec6e4' ('ea95250'); linha de base A/B com metadados e enum corrigidos ('ad9ab5b'); prova da catraca no CI com piso 99% e teto 4 em test_ci_catraca.py ('4dde56d'); trava sem brecha e contrato das portas detalhados na carta. Turno: Claude.
