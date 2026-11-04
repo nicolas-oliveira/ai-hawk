@@ -103,7 +103,7 @@ class SubmissionEvidence:
         return ReviewReason.CONFIRMATION_MISSING
 
 
-@dataclass(eq=False)
+@dataclass  # __eq__ e __hash__ explicitos abaixo: o dataclass nao os sobrescreve
 class Job:
     """Entidade pura de uma vaga (sem dependencia de navegador ou plataforma).
 
