@@ -1,0 +1,69 @@
+#!/usr/bin/env python3
+"""commit-msg: so aceita commit de agente se for o turno dele.
+
+Regra:
+  - Mensagem comeca com [Claude] ou [Agy]  -> o Turno no topo do NOTAS.md
+    do ULTIMO COMMIT (HEAD) tem de ser desse agente. Senao, recusa.
+  - Mensagem sem prefixo de agente           -> commit do Nicolas, passa sempre.
+
+Por que o HEAD e nao o arquivo em edicao: quem passa o turno faz isso no
+proprio commit. Entao o commit que entrega o turno ainda e julgado pelo
+turno antigo (o dele), e o proximo commit ja e julgado pelo turno novo.
+
+Em duvida (sem NOTAS.md no HEAD, topo ilegivel) -> avisa e NAO bloqueia; o maestro
+le o mesmo topo e para com alerta. Leitura do topo: ler_topo.py (mesma pasta).
+Escape do Nicolas: git commit --no-verify
+"""
+import re
+import subprocess
+import sys
+
+AGENTES = ("claude", "agy")
+
+
+def turno_do_head():
+    import os
+    sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+    from ler_topo import ler_turno, notas_do_head
+    return ler_turno(notas_do_head()) or None
+
+
+def main():
+    if len(sys.argv) < 2:
+        return 0
+    with open(sys.argv[1], encoding="utf-8") as f:
+        linhas = [l for l in f.read().splitlines() if l.strip() and not l.startswith("#")]
+    primeira = linhas[0] if linhas else ""
+
+    m = re.match(r"\s*\[(claude|agy)\]", primeira, re.I)
+    if not m:
+        return 0  # sem prefixo de agente: commit do Nicolas
+
+    autor = m.group(1).lower()
+    turno = turno_do_head()
+
+    if turno is None:
+        print("[hook turno] Nao consegui ler o Turno no topo do NOTAS.md do ultimo commit. "
+              "Deixando passar, mas confira o formato do topo.", file=sys.stderr)
+        return 0
+
+    if autor == turno:
+        return 0
+
+    print(
+        f"\n[hook turno] COMMIT RECUSADO: a mensagem e de [{autor.capitalize()}], "
+        f"mas o turno e de '{turno}' (topo do NOTAS.md no ultimo commit).\n"
+        f"  - Agente: nao commite fora do seu turno. Registre o que fez e aguarde.\n"
+        f"  - Nicolas: passe o turno com um commit seu, ou use git commit --no-verify.\n",
+        file=sys.stderr,
+    )
+    return 1
+
+
+try:
+    sys.exit(main())
+except SystemExit:
+    raise
+except Exception as exc:  # erro inesperado: nunca travar o trabalho
+    print(f"[hook turno] verificacao ignorada por erro: {exc}", file=sys.stderr)
+    sys.exit(0)

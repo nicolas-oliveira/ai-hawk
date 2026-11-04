@@ -1,0 +1,30 @@
+#!/usr/bin/env python3
+"""pre-push: impede push direto para as branches master e main.
+
+Regras do AIHawk (Governanca PR-only):
+  - master e main so recebem alteracoes via Pull Request aprovado e mergeado pelo Nicolas.
+  - Branches feat/* e outras branches de trabalho sao permitidas.
+  - Push de tags e permitido.
+"""
+import sys
+
+
+def main():
+    # stdin recebe linhas no formato: <local_ref> <local_sha> <remote_ref> <remote_sha>
+    for line in sys.stdin:
+        parts = line.strip().split()
+        if len(parts) >= 3:
+            remote_ref = parts[2]
+            if remote_ref in ("refs/heads/master", "refs/heads/main"):
+                print(
+                    f"\n[hook pre-push] PUSH RECUSADO: tentativa de push direto para '{remote_ref}'.\n"
+                    f"  - No AIHawk, 'master' e 'main' sao protegidas e PR-only.\n"
+                    f"  - Abra um PR da sua branch (ex: feat/*) para a master.\n",
+                    file=sys.stderr,
+                )
+                return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

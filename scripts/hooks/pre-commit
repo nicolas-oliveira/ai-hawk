@@ -1,0 +1,68 @@
+#!/usr/bin/env python3
+"""pre-commit: poda o Historico do NOTAS.md. NUNCA toca no e-mail do topo.
+
+TETO   = acima desta quantidade de entradas, a poda dispara.
+MINIMO = quantas entradas (as mais recentes) sobram depois da poda.
+Qualquer duvida ou erro => nao faz nada e NAO bloqueia o commit.
+"""
+import re
+import subprocess
+import sys
+
+FILE = "NOTAS.md"
+TETO = 15
+MINIMO = 10
+
+
+def git(*args):
+    return subprocess.check_output(["git", *args], text=True)
+
+
+def main():
+    try:
+        cached_files = git("diff", "--cached", "--name-only").split()
+    except Exception:
+        return
+    if FILE not in cached_files:
+        return  # NOTAS.md nao esta neste commit
+    try:
+        unstaged = git("diff", "--name-only", "--", FILE).strip()
+    except Exception:
+        return
+    if unstaged:
+        return  # staging parcial: nao mexe para nao misturar alteracoes
+
+    try:
+        original = open(FILE, encoding="utf-8").read()
+    except Exception:
+        return
+
+    m = re.search(r"^## [^\n]*Historico[^\n]*\n\n?", original, re.M)
+    if not m:
+        return
+    head, body = original[: m.end()], original[m.end():]
+    if re.search(r"^## ", body, re.M):
+        return  # o Historico precisa ser a ultima secao
+
+    lines = body.split("\n")
+    starts = [i for i, ln in enumerate(lines) if ln.startswith("* [")]
+    if len(starts) <= TETO:
+        return
+
+    kept = "\n".join(lines[: starts[MINIMO]]).rstrip("\n") + "\n"
+    novo = head + kept
+
+    # Trava: o e-mail do topo (tudo antes do Historico) tem de ficar identico.
+    if novo[: len(head)] != original[: len(head)] or not novo.startswith(head):
+        return
+    open(FILE, "w", encoding="utf-8").write(novo)
+    git("add", FILE)
+    print(f"[hook] NOTAS.md: historico podado de {len(starts)} para {MINIMO} entradas "
+          f"(o git guarda as removidas).", file=sys.stderr)
+
+
+try:
+    main()
+except Exception as exc:  # nunca bloquear o commit
+    print(f"[hook] poda do NOTAS.md ignorada: {exc}", file=sys.stderr)
+sys.exit(0)

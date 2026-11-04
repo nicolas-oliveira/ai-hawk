@@ -86,28 +86,35 @@ O Antigravity e o responsavel por validar a execucao no Ubuntu (QA). A tag Git d
 
 ## 7. Protocolo de Comunicacao, Git e Handoff (Definitivo)
 
-1. **Branch Compartilhada Unica por Versao:**
-   * Padrao oficial de nome: `feat/v0.1-stealth-engine` (e `feat/v0.2-contracts`, etc. nas proximas).
-   * PROIBIDO criar branches por agente (`claude/*` ou `agy/*`). Como ambos operam no mesmo diretorio fisico (`/home/nicolas/Projects/github/2026/aihalk`), apenas o Agy executa `git checkout -b feat/v0.x-...` a partir da `master`. O Claude trabalha diretamente nessa mesma branch ativa.
-2. **Proibicao Estrita de `git add .`:**
-   * Agy so pode executar `git add` em: `.gitignore`, `.env.example` (nunca `.env`), `requirements.txt`, `src/main.py`, `src/infrastructure/` e `NOTAS.md`.
-   * Claude so pode executar `git add` em: `src/domain/`, `src/application/` e `NOTAS.md`.
-   * NUNCA use `git add .` ou `git commit -a`. Sempre rode `git status` antes de commitar.
-   * Prefixo obrigatorio de commit: `[Agy] v0.x: <descricao>` ou `[Claude] v0.x: <descricao>`.
-3. **Esteira de Trabalho da Squad (TDD/QA-First: QA -> Dev -> QA -> PR):**
-   * **Passo 1 (Inicio e Planejamento - Agy):** O Agy SEMPRE recebe a demanda da versao primeiro. Ele cria a branch a partir da `master` (`git checkout -b feat/v0.x-...`) e planeja os testes esperados/ideais, registrando o plano de testes no `NOTAS.md` ou nos scripts de infraestrutura.
-   * **Passo 2 (Desenvolvimento - Claude):** O Claude le o plano de testes do Agy e cria a primeira versao do codigo (camadas de `domain/` e `application/`) estritamente para fazer os testes passarem. (Na v0.1, por ser infra pura, o passo de codigo e executado pelo Agy).
-   * **Passo 3 (Execucao de Testes - Agy):** O Agy executa o codigo no ambiente real (Ubuntu/Patchright).
-   * **Passo 4 (Resolucao de Conflitos - Loop QA vs Dev):**
-     - Se houver erro, o Agy relata o traceback no `NOTAS.md`.
-     - O Agy verifica: o erro esta no design do teste ou na infraestrutura? Se sim, o **Agy** corrige.
-     - Se o teste esta correto e o erro e de logica de negocio, o **Claude** corrige o codigo.
-     - O Agy testa novamente ate a aprovacao tecnica de 100%.
-   * **Passo 5 (Revisao Humana):** Nicolas e Argon (Humanos) verificam os arquivos e realizam testes manuais.
-   * **Passo 6 (Entrega Final - Claude):** SOMENTE APOS a aprovacao de Nicolas e Argon, o **Claude** assume o Git para fechamento: cria o Pull Request para a `master` (ex: via `gh pr create` ou instrucoes passo a passo), aguarda o merge manual pelo Nicolas, atualiza a `master` local (`git checkout master && git pull`) e cria a tag estavel (`git tag -a v0.x -m "Release v0.x"`).
-4. **Decisao de Infraestrutura v0.1 Aprovada:**
-   * Fica aprovado o uso do Chromium stealth nativo do Patchright (`patchright install chromium` / `BROWSER_CHANNEL=chromium` com fallback para `chrome`) conforme diagnosticado pelo Agy no Ubuntu 24.04.
+1. **Branch Compartilhada Unica:**
+   * Ambos os agentes trabalham na branch ativa criada pelo Nicolas (hoje `feat/2.0-portao-a`).
+   * PROIBIDO aos agentes trocar de branch (`git switch`, `git checkout <outra-branch>`). Apenas o Nicolas troca de branch.
+   * PROIBIDO o uso de `git stash` para ambos os agentes.
+2. **Proibicao Estrita de `git add .` e Commits Nominais:**
+   * Agy so pode commitar arquivos em seu feudo: `.gitignore`, `.env.example`, `requirements.txt`, `src/main.py`, `src/infrastructure/`, `tests/infrastructure/`, `tests/real/`, `scripts/`, `docs/` e `NOTAS.md`.
+   * Claude so pode commitar arquivos em seu feudo: `src/domain/`, `src/application/`, `tests/domain/`, `tests/application/` e `NOTAS.md`.
+   * NUNCA use `git add .` ou `git commit -a`. Sempre use: `git commit -m "..." -- <seus arquivos> NOTAS.md`.
+   * Formato de commit:
+     - Claude: `[Claude] <descricao>`
+     - Agy: `[Agy] <descricao>` (PROIBIDO citar versoes como v0.x, v1.5, v1.6 nos commits do Agy).
+3. **Passagem de Turno e Hooks de Governanca:**
+   * O topo do `NOTAS.md` mantem 3 linhas fixas: `**DE/PARA/TURNO:**`, `**STATUS:**`, `**ACEITE/RESUMO:**`.
+   * O campo `Turno:` aceita apenas: `Claude`, `Agy` ou `Nicolas`.
+   * O hook `.git/hooks/commit-msg` valida o turno do commit contra o HEAD anterior do `NOTAS.md`.
+   * O hook `.git/hooks/pre-commit` poda automaticamente o historico de `NOTAS.md` quando ultrapassar 15 entradas, reduzindo para as 10 mais recentes sem alterar o cabecalho.
+   * O hook `.git/hooks/pre-push` impede push direto para as branches protegidas `master` e `main` (fluxo PR-only).
+   * Scripts versionados em `scripts/hooks/` e instalaveis via `scripts/install_hooks.sh`.
+4. **Regra de Gestao do Cache de Mutacao (`.mutmut-cache`):**
+   * NUNCA deletar o `.mutmut-cache` com `rm -rf`. Para reiniciar ou arquivar o estado de mutacao, sempre mover com `mv .mutmut-cache .mutmut-cache.<tag-ou-data>`.
+5. **Esteira de Trabalho da Squad (TDD/QA-First: QA -> Dev -> QA -> PR):**
+   * **Passo 1 (Inicio e Planejamento - Agy):** Agy recebe a demanda, escreve os testes na Red Phase e registra o handoff no `NOTAS.md`.
+   * **Passo 2 (Desenvolvimento - Claude):** Claude executa os testes e implementa em `domain/` e `application/` para torna-los verdes.
+   * **Passo 3 (Execucao de Testes e Homologacao Real - Agy):** Agy executa a suite completa no Ubuntu (Patchright Chromium e Firefox em Xvfb).
+   * **Passo 4 (Resolucao de Conflitos):** Claude corrige regras de negocio; Agy ajusta testes e infraestrutura.
+   * **Passo 5 (Revisao Humana):** Nicolas (PO) e Gemini Argon (Tech Lead) revisam codigo e auditoria.
+   * **Passo 6 (Entrega Final e PR):** Concluida a versao, o turno passa para `Turno: Nicolas` para autorizacao do PR e merge. Agy NUNCA faz push, PR ou cria tags.
 
 ## 8. Ambiente
 
-* Ubuntu 24.04.5 LTS (noble), Python 3.14.4 (informado pelo Antigravity). Priorizar libs puras ou com wheels estaveis; o Antigravity garante o venv.
+* Ubuntu 24.04.5 LTS (noble), Python 3.14.4.
+* Motores suportados: Chromium stealth (Patchright) e Firefox stealth (`invisible-playwright` sob Xvfb).
