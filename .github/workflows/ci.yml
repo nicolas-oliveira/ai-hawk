@@ -46,10 +46,10 @@ jobs:
           if total < 500:
               print(f'ERRO: Menos mutantes testados do que o esperado ({total} < 500)!')
               sys.exit(1)
-          if survived > 29:
-              print(f'ERRO: Catraca violada! {survived} sobreviventes > teto de 29.')
+          if survived > 4:
+              print(f'ERRO: Catraca violada! {survived} sobreviventes > teto de 4.')
               sys.exit(1)
-          if score < 95.0:
-              print(f'ERRO: Score {score:.1f}% abaixo do piso homologado de 95.0%!')
+          if score < 99.0:
+              print(f'ERRO: Score {score:.1f}% abaixo do piso homologado de 99.0%!')
               sys.exit(1)
           "
