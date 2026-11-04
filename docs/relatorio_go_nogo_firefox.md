@@ -89,20 +89,25 @@ Ao iniciar uma sessão em modo `xvfb` (tempo de bootstrap medido: `2.8s`), o `in
 **Branch:** `feat/2.0-portao-a` (Portão A, Bloco 2)  
 **Ambiente:** Ubuntu 24.04.5 LTS, Python 3.14.4, `/usr/bin/Xvfb` (:99), clone Next.js hostil em `:3000`
 
-### 5.1. Comparativo de Desempenho e Cobertura E2E (`tests/real/` Inteiro — 47 Testes)
+### 5.1. Comparativo de Desempenho e Metadados de Runtime por Rodada (`tests/real/` Inteiro — 47 Testes)
 
-| Motor Avaliado | Modo Efetivo | Display Virtual | Testes Coletados | Passaram | Falharam | Tempo Total | Razão vs Chromium | Status Linha de Base |
-|---|---|---|---|---|---|---|---|---|
-| **Chromium** (`patchright`) | `headless=True` (`channel="chrome"`) | Xvfb (`:99`) | 47 | 47 | 0 | **1059.48s** (17m 39s) | **1.00x** | **BASELINE DEFINIDA** |
-| **Firefox** (`invisible-playwright`) | `headless=True` (`xvfb`) | Xvfb (`:99`) | 47 | 47 | 0 | **938.86s** (15m 38s) | **0.89x** (<= 2.0x) | **BASELINE DEFINIDA** |
+| Motor Pedido (`BROWSER_ENGINE`) | Modo Efetivo | Canal (`channel`) | Caminho do `Xvfb` | Versão do Navegador | `navigator.userAgent` Observado | Passaram | Falharam | Tempo (s) | Razão vs Chromium | Status Linha de Base |
+|---|---|---|---|---|---|---|---|---|---|---|
+| **chromium** (`patchright`) | `xvfb` | `chromium` | `/usr/bin/Xvfb` | `153.0.8010.12` | `Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36` | 47 | 0 | **1059.48s** (17m 39s) | **1.00x** | **BASELINE DEFINIDA** |
+| **firefox** (`invisible-playwright`) | `xvfb` | `chromium` (default attr) | `/usr/bin/Xvfb` | `159.0` | `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:159.0) Gecko/20100101 Firefox/159.0` | 47 | 0 | **938.86s** (15m 38s) | **0.89x** (<= 2.0x) | **BASELINE DEFINIDA** |
 
-### 5.2. Novos Cenários Validados nos Dois Motores (Bloco 2)
-1. **Verificação de Estado Aplicado Instantâneo (`job_shows_applied`):** Ignora modal e marca `ALREADY_APPLIED` sem abrir candidatura em ambos os motores.
+### 5.2. Esclarecimento de Governança sobre o Canal (`channel`) do Chromium
+* **Origem:** O parâmetro `channel="chrome"` existia na v0.1 para buscar opcionalmente o Google Chrome nativo do sistema via `shutil.which("google-chrome")`.
+* **Consolidação no Bloco 1.1 (Passo A6, Commit `'87e700d'`):** No commit `'87e700d'`, o teste `test_browser_service_default_channel_is_chromium` provou que o `BrowserService` opera por padrão com `channel = "chromium"` (o binário Patched Chromium instalado em `~/.cache/ms-playwright/chromium-1148/chrome-linux/chrome`), eliminando o acoplamento manual a `chrome` que havia nas fixtures de teste.
+* **Decisão 2A do PO (Nicolas):** A diretoria estabeleceu que o benchmark A/B para o Portão A e Portão B avalia estritamente os dois navegadores patcheados de automação: Patchright Chromium vs Invisible-Playwright Firefox, ambos rodando no mesmo modo sob display virtual `/usr/bin/Xvfb`. Nenhuma migração para o Google Chrome do sistema foi autorizada ou realizada sem decisão do PO.
+
+### 5.3. Novos Cenários Validados nos Dois Motores (Bloco 2)
+1. **Verificação de Estado Aplicado Instantâneo (`job_shows_applied` com `timeout=0`):** Ignora o modal e marca `ALREADY_APPLIED` sem abrir candidatura em ambos os motores.
 2. **Confirmação Dupla de Envio (`C1` e `C2`):**
    - Modal fecha com confirmação E container marca aplicado -> `APPLIED`.
-   - Confirmação emitida mas container NÃO marca aplicado -> `MANUAL_REVIEW` (`CONFIRMATION_WITHOUT_STATE`).
-   - Container marca aplicado sem confirmação do modal -> `MANUAL_REVIEW` (`STATE_WITHOUT_CONFIRMATION`).
-3. **Trava de Identidade (`A1`):** Validação real de bloqueio imediato para destinos externos em modo sem display real ou proibido.
-4. **PROVA Cega (6/6 Testes):** 100% verde em Chromium e 100% verde em Firefox.
+   - Confirmação emitida mas container NÃO marca aplicado -> `JobStatus.MANUAL_REVIEW` com motivo [`ReviewReason.STATE_NOT_CONFIRMED`](file:///home/nicolas/Projects/github/2026/aihalk/src/domain/entities/job.py) ("confirmação vista, mas a página não mostra a vaga como candidatada").
+   - Container marca aplicado sem confirmação do modal -> `JobStatus.MANUAL_REVIEW` com motivo [`ReviewReason.STATE_WITHOUT_CONFIRMATION`](file:///home/nicolas/Projects/github/2026/aihalk/src/domain/entities/job.py) ("página mostra a vaga como candidatada, mas sem confirmação de envio").
+3. **Trava de Identidade (`A1`):** Validação real de bloqueio imediato para destinos externos em modo sem display real ou com vazamento de sinais de automação.
+4. **PROVA Cega (6/6 Testes em `tests/real/external/test_open_sea_prova.py`):** 100% verde em Chromium e 100% verde em Firefox sob Xvfb.
 5. **Conclusão:** Paridade comportamental estrita mantida entre os dois motores sob Xvfb. A suíte real está homologada e pronta como linha de base A/B para o Portão B.
 
