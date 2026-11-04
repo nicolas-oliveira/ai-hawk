@@ -3,6 +3,11 @@ from src.application.app_service import AppService, JsonJobCache
 from src.application.dtos.search_request import SearchRequest, LINKEDIN_DEFAULT_SELECTORS
 from src.domain.entities.job import Job, JobStatus
 
+SANCTUARY_SELECTORS = {
+    **LINKEDIN_DEFAULT_SELECTORS,
+    "submit_confirmation": "[data-testid='modal-submission-success']",
+}
+
 
 def test_real_lazy_loading_scroll_physical_trigger(real_browser_service, stress_http_server):
     """
@@ -14,7 +19,7 @@ def test_real_lazy_loading_scroll_physical_trigger(real_browser_service, stress_
     request = SearchRequest(
         platform="linkedin",
         static_urls=[search_url],
-        selectors=LINKEDIN_DEFAULT_SELECTORS,
+        selectors=SANCTUARY_SELECTORS,
     )
 
     app_service = AppService(real_browser_service)
@@ -44,7 +49,7 @@ def test_real_job_201_async_modal_transition(real_browser_service, stress_http_s
     request = SearchRequest(
         platform="linkedin",
         static_urls=[job_url],
-        selectors=LINKEDIN_DEFAULT_SELECTORS,
+        selectors=SANCTUARY_SELECTORS,
     )
 
     cache = JsonJobCache(str(tmp_path / "cache.json"))
@@ -66,7 +71,7 @@ def test_real_job_202_advanced_css_trap_honeypot(real_browser_service, stress_ht
     request = SearchRequest(
         platform="linkedin",
         static_urls=[job_url],
-        selectors=LINKEDIN_DEFAULT_SELECTORS,
+        selectors=SANCTUARY_SELECTORS,
     )
 
     cache = JsonJobCache(str(tmp_path / "cache.json"))
@@ -88,7 +93,7 @@ def test_real_job_203_complex_modal_delayed_discard_popup(real_browser_service, 
     request = SearchRequest(
         platform="linkedin",
         static_urls=[job_url],
-        selectors=LINKEDIN_DEFAULT_SELECTORS,
+        selectors=SANCTUARY_SELECTORS,
     )
 
     app_service = AppService(real_browser_service)
@@ -107,7 +112,7 @@ def test_real_job_204_multi_step_delayed_transition(real_browser_service, stress
     request = SearchRequest(
         platform="linkedin",
         static_urls=[job_url],
-        selectors=LINKEDIN_DEFAULT_SELECTORS,
+        selectors=SANCTUARY_SELECTORS,
     )
 
     cache = JsonJobCache(str(tmp_path / "cache.json"))
@@ -127,7 +132,7 @@ def test_real_job_205_external_redirect_skipped_complex(real_browser_service, st
     request = SearchRequest(
         platform="linkedin",
         static_urls=[job_url],
-        selectors=LINKEDIN_DEFAULT_SELECTORS,
+        selectors=SANCTUARY_SELECTORS,
     )
 
     app_service = AppService(real_browser_service)
@@ -145,7 +150,7 @@ def test_real_full_orchestration_with_max_applications_ceiling(real_browser_serv
     request = SearchRequest(
         platform="linkedin",
         static_urls=[search_url],
-        selectors=LINKEDIN_DEFAULT_SELECTORS,
+        selectors=SANCTUARY_SELECTORS,
         max_applications=2,
     )
 
@@ -177,7 +182,7 @@ def test_real_job_206_overlay_stuck_clicks_anti_bot_trap(real_browser_service, s
     request = SearchRequest(
         platform="linkedin",
         static_urls=[job_url],
-        selectors=LINKEDIN_DEFAULT_SELECTORS,
+        selectors=SANCTUARY_SELECTORS,
     )
 
     app_service = AppService(real_browser_service)
@@ -213,7 +218,7 @@ def test_real_full_orchestration_with_telemetry_export(real_browser_service, str
     request = SearchRequest(
         platform="linkedin",
         static_urls=[search_url],
-        selectors=LINKEDIN_DEFAULT_SELECTORS,
+        selectors=SANCTUARY_SELECTORS,
         max_applications=2,
     )
 

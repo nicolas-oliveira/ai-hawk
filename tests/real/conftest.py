@@ -86,6 +86,7 @@ HTML_JOB_201_ASYNC_MODAL = """<!DOCTYPE html>
         <button aria-label="Submit application" id="submit-btn" onclick="submitApp()">Enviar Candidatura</button>
         <button aria-label="Dismiss" id="close-btn" onclick="closeModal()">X</button>
     </div>
+    <div data-testid="modal-submission-success" id="submit-success" style="display: none;">Candidatura enviada com sucesso!</div>
 
     <script>
         // ARMADILHA REAL: O modal tem animacao/delay de renderizacao de 300ms!
@@ -96,6 +97,7 @@ HTML_JOB_201_ASYNC_MODAL = """<!DOCTYPE html>
         }
         function submitApp() {
             document.getElementById('modal').style.display = 'none';
+            document.getElementById('submit-success').style.display = 'block';
         }
         function closeModal() {
             document.getElementById('modal').style.display = 'none';
@@ -130,9 +132,10 @@ HTML_JOB_202_ADVANCED_CSS_TRAP = """<!DOCTYPE html>
             <select required><option value=""></option></select>
         </div>
 
-        <button aria-label="Submit application" onclick="document.getElementById('modal').style.display = 'none'">Enviar Candidatura</button>
+        <button aria-label="Submit application" onclick="document.getElementById('modal').style.display = 'none'; document.getElementById('submit-success').style.display = 'block'">Enviar Candidatura</button>
         <button aria-label="Dismiss" onclick="document.getElementById('modal').style.display = 'none'">X</button>
     </div>
+    <div data-testid="modal-submission-success" id="submit-success" style="display: none;">Candidatura enviada com sucesso!</div>
 </body>
 </html>
 """
@@ -196,6 +199,7 @@ HTML_JOB_204_MULTI_STEP_DELAYED = """<!DOCTYPE html>
 
         <button aria-label="Dismiss" onclick="document.getElementById('modal').style.display = 'none'">X</button>
     </div>
+    <div data-testid="modal-submission-success" id="submit-success" style="display: none;">Candidatura enviada com sucesso!</div>
 
     <script>
         function goToStep2WithDelay() {
@@ -206,6 +210,7 @@ HTML_JOB_204_MULTI_STEP_DELAYED = """<!DOCTYPE html>
         }
         function submitMulti() {
             document.getElementById('modal').style.display = 'none';
+            document.getElementById('submit-success').style.display = 'block';
         }
     </script>
 </body>

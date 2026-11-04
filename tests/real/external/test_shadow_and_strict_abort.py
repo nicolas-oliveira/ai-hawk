@@ -240,15 +240,12 @@ def test_slow_modal_exceeding_injected_timeout_triggers_strict_abort(
 ):
     """
     Passo A1: Com visibility_timeout_ms=1000 injetado no motor (folgado para o restante
-    da navegacao) e modal lento configurado com delayMs=2500 no clone, o element_exists
-    estoura o prazo de abertura do modal e aciona parada estrita (MODAL_NOT_OPENED)
-    mantendo a vaga PENDING.
+    da navegacao) e modal muito lento (?scenario=very-slow-modal, 2500ms) no clone,
+    o element_exists estoura o prazo de abertura do modal e aciona parada estrita
+    (MODAL_NOT_OPENED) mantendo as vagas PENDING.
     """
-    selectors = {
-        **_clone_selectors(),
-        "submit_confirmation": "[data-testid='modal-submission-success']",
-    }
-    scenario_url = f"{hostile_clone_server}/?scenario=slow-modal&delayMs=2500"
+    selectors = _clone_selectors()
+    scenario_url = f"{hostile_clone_server}/?scenario=very-slow-modal"
 
     prev_timeout = hostile_browser.visibility_timeout_ms
     hostile_browser.visibility_timeout_ms = 1000
@@ -265,10 +262,11 @@ def test_slow_modal_exceeding_injected_timeout_triggers_strict_abort(
     finally:
         hostile_browser.visibility_timeout_ms = prev_timeout
 
-    assert len(jobs) == 1
-    assert jobs[0].status == JobStatus.PENDING
+    assert len(jobs) == 2
+    assert all(j.status == JobStatus.PENDING for j in jobs)
     assert app_service.last_abort_reason is not None
     assert "modal nao abriu" in app_service.last_abort_reason.lower()
+    assert "job-very-slow-modal" in app_service.last_abort_reason
 
 
 def test_base_flow_confirmation_inside_open_modal_applies_and_closes_dialog(
@@ -347,7 +345,7 @@ def test_no_confirm_scenario_marks_manual_review_and_halts_batch_in_strict_mode(
     assert jobs[1].status == JobStatus.PENDING
     assert app_service.last_abort_reason == AbortReason.MANUAL_REVIEW_STOP.format(url=jobs[0].url)
     reloaded = JsonJobCache(str(tmp_path / "cache_no_confirm.json"))
-    assert reloaded.get(jobs[0].url) == JobStatus.MANUAL_REVIEW
+    assert reloaded.get(jobs[0]) == JobStatus.MANUAL_REVIEW
 
 
 def test_stuck_submit_scenario_marks_manual_review_and_halts_batch_in_strict_mode(
@@ -376,7 +374,7 @@ def test_stuck_submit_scenario_marks_manual_review_and_halts_batch_in_strict_mod
     assert jobs[1].status == JobStatus.PENDING
     assert app_service.last_abort_reason == AbortReason.MANUAL_REVIEW_STOP.format(url=jobs[0].url)
     reloaded = JsonJobCache(str(tmp_path / "cache_stuck_submit.json"))
-    assert reloaded.get(jobs[0].url) == JobStatus.MANUAL_REVIEW
+    assert reloaded.get(jobs[0]) == JobStatus.MANUAL_REVIEW
 
 
 def test_real_submission_without_submit_confirmation_refuses_before_opening_any_url(
@@ -434,7 +432,7 @@ def test_history_write_failure_on_submitting_discards_modal_without_submit_click
     page = hostile_browser.get_page()
     assert len(jobs) == 2
     assert all(j.status == JobStatus.PENDING for j in jobs)
-    assert cache.get(jobs[0].url) is None
+    assert cache.get(jobs[0]) is None
     assert app_service.last_abort_reason == AbortReason.HISTORY_WRITE_FAILED.format(url=jobs[0].url)
     assert page.evaluate("() => window.sessionStorage.getItem('modal_submission_success')") is None
 
@@ -466,7 +464,7 @@ def test_submission_evidence_and_submitting_crash_recovery(
     jobs_crash = svc_crash.run(req_crash)
     by_url = {j.url: j for j in jobs_crash}
     assert by_url[job_1_url].status == JobStatus.MANUAL_REVIEW
-    assert by_url[job_1_url].review_reason == ReviewReason.INTERRUPTED_SUBMISSION
+    assert by_url[job_1_url].review_reason == ReviewReason.INTERRUPTED_BEFORE_RESULT
 
     # 2. Regra 1A: envio real sem cache para no Submit e mantem vaga PENDING
     req_no_cache = SearchRequest(

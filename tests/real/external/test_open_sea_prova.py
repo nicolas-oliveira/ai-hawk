@@ -77,6 +77,7 @@ def test_prova_app_service_e2e_alvo_cego(open_sea_browser):
         static_urls=[target_url],
         selectors=blind_selectors,
         max_applications=10,
+        shadow_mode=True,
     )
 
     app_service = AppService(open_sea_browser)

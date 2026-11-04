@@ -1,33 +1,46 @@
-# Relatório Go / No-Go — Spike do Motor Firefox (`invisible-playwright`)
+# Relatório Go / No-Go — Spike do Motor Firefox (`invisible-playwright`) — Portão A (Bloco 1.1)
 
-**Data da Medição:** 2026-11-03 14:11:05
-**Branch:** `feat/2.0-portao-a` (Portão A, Bloco 1)
+**Data da Medição:** 2026-11-03 21:07:01
+**Branch:** `feat/2.0-portao-a` (Portão A, Bloco 1.1 — Correções do GO com Condições)
 **Pacotes Avaliados:** `invisible-playwright==0.44.1` e `invisible-core==54.49.0` (em `requirements-firefox.txt`)
+**Proveniencia do Mutation Score:** `96,1% (689/717, 28 sobreviventes, 0 novos, mutante 140 morto) — medido do zero pelo Claude no commit '81ec6e4'`
 **Veredito Final:** **GO**
 
 ---
 
 ## 1. Tabela dos 6 Critérios Inegociáveis
 
-| # | Critério | Valor Medido | Status |
+| # | Critério | Valor Medido (Código Final Bloco 1.1) | Status |
 |---|---|---|---|
-| 1 | Todos os testes reais (`tests/real/` inteiro) que passam em Chromium passam em Firefox | Chromium: `32/32` PASSED; Firefox: `32/32`, `32/32`, `32/32` PASSED | **VERDADEIRO** |
-| 2 | A PROVA cega (`test_open_sea_prova.py`) passa nos dois motores | Chromium: `6/6 PASSED`; Firefox: `6/6 PASSED` nas 3 rodadas | **VERDADEIRO** |
-| 3 | Suíte rápida e catraca de mutação mantidas (`>= 95,0%` e `<= 29` sobreviventes) | Rápida: `341 PASSED` (0.44s); Mutation: `95.8%` (`664/693`, `29` sobreviventes) | **VERDADEIRO** |
-| 4 | Em 3 execuções seguidas da suíte real em Firefox, zero falha intermitente | Rodada 1: `32 PASSED / 0 FAILED`; Rodada 2: `32 PASSED / 0 FAILED`; Rodada 3: `32 PASSED / 0 FAILED` | **VERDADEIRO** |
-| 5 | Tempo da suíte real em Firefox de até `2x` o de Chromium | Chromium: `352.82s` (limite `2x` = `705.64s`); Firefox médio: `370.97s` (`1.05x`), máximo: `372.18s` (`1.05x`) | **VERDADEIRO** |
-| 6 | `src/domain` e `src/application` intocados pela chave de motor, e Chromium segue padrão e verde | `src/domain` e `src/application` sem qualquer acoplamento ao motor; `tests/infrastructure`: `19 PASSED`; Chromium padrão verde | **VERDADEIRO** |
+| 1 | Todos os testes reais (`tests/real/` inteiro) que passam em Chromium passam em Firefox | Chromium: `39/39` PASSED; Firefox (`xvfb`): `39/39`, `39/39`, `39/39` PASSED | **VERDADEIRO** |
+| 2 | A PROVA cega (`test_open_sea_prova.py`) passa nos dois motores | Chromium: `6/6 PASSED`; Firefox (`xvfb`): `6/6 PASSED` nas 3 rodadas | **VERDADEIRO** |
+| 3 | Suíte rápida e catraca de mutação mantidas (`>= 95,0%` e `<= 29` sobreviventes) | Rápida: `355 PASSED` (0.48s); Mutation: `96,1% (689/717, 28 sobreviventes, 0 novos, mutante 140 morto) — medido do zero pelo Claude no commit '81ec6e4'` | **VERDADEIRO** |
+| 4 | Em 3 execuções seguidas da suíte real em Firefox (modo `xvfb`), zero falha intermitente | Rodada 1: `39 PASSED / 0 FAILED`; Rodada 2: `39 PASSED / 0 FAILED`; Rodada 3: `39 PASSED / 0 FAILED` | **VERDADEIRO** |
+| 5 | Tempo da suíte real em Firefox de até `2x` o de Chromium | Chromium: `743.37s` (limite `2x` = `1486.74s`); Firefox (`xvfb`) médio: `769.10s` (`1.03x`), máximo: `772.95s` (`1.04x`) | **VERDADEIRO** |
+| 6 | `src/domain` e `src/application` intocados pela chave de motor, e Chromium segue padrão e verde | `src/domain` e `src/application` sem acoplamento ao motor; `tests/infrastructure`: `27 PASSED` (7.51s); Chromium padrão (`DEFAULT_VISIBILITY_TIMEOUT_MS = 3000`) verde | **VERDADEIRO** |
 
 ---
 
-## 2. Detalhamento das Execuções (`tests/real/` Inteiro)
+## 2. Detalhamento das Execuções e Metadados de Runtime por Modo (`tests/real/` Inteiro)
 
-| Execução | Motor (`BROWSER_ENGINE`) | Passaram | Falharam | Tempo Total (s) | Razão vs Chromium |
-|---|---|---|---|---|---|
-| Base | `chromium` (Patchright) | 32 | 0 | 352.82s | 1.00x |
-| Rodada 1 | `firefox` (invisible-playwright) | 32 | 0 | 372.02s | 1.05x |
-| Rodada 2 | `firefox` (invisible-playwright) | 32 | 0 | 372.18s | 1.05x |
-| Rodada 3 | `firefox` (invisible-playwright) | 32 | 0 | 368.72s | 1.05x |
+### 2.1. Execuções no Código Final do Bloco 1.1 (`DEFAULT_VISIBILITY_TIMEOUT_MS = 3000`)
+
+| Execução | Motor Pedido (`BROWSER_ENGINE`) | Modo Efetivo | Caminho do `Xvfb` | Versão do Navegador | `navigator.userAgent` Observado | Passaram | Falharam | Tempo (s) | Razão vs Chromium |
+|---|---|---|---|---|---|---|---|---|---|
+| Base Chromium | `chromium` | `headless` | `/usr/bin/Xvfb` | `153.0.8010.12` | `Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.12 Safari/537.36` | 39 | 0 | 743.37s | 1.00x |
+| Firefox Rodada 1 | `firefox` | `xvfb` | `/usr/bin/Xvfb` | `159.0` | `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:159.0) Gecko/20100101 Firefox/159.0` | 39 | 0 | 772.95s | 1.04x |
+| Firefox Rodada 2 | `firefox` | `xvfb` | `/usr/bin/Xvfb` | `159.0` | `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:159.0) Gecko/20100101 Firefox/159.0` | 39 | 0 | 769.52s | 1.04x |
+| Firefox Rodada 3 | `firefox` | `xvfb` | `/usr/bin/Xvfb` | `159.0` | `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:159.0) Gecko/20100101 Firefox/159.0` | 39 | 0 | 764.84s | 1.03x |
+
+### 2.2. Comparativo por Modo do Firefox (`xvfb` vs `headless-real` do Bloco 1)
+
+| Métrica | Chromium (`headless`) — Bloco 1.1 | Firefox (`xvfb`) — Bloco 1.1 | Firefox (`headless-real`, ref. Bloco 1) |
+|---|---|---|---|
+| Modo Efetivo | `headless` | `xvfb` | `headless-real` (`INVPW_TRUE_HEADLESS=1`) |
+| Binário `Xvfb` | `/usr/bin/Xvfb` | `/usr/bin/Xvfb` | Ausente na medição do Bloco 1 |
+| Versão do Motor | `153.0.8010.12` | `159.0` | `159.0` |
+| Testes Passando (`tests/real/`) | `39/39` | `39/39` (3/3 rodadas) | `32/32` (3/3 rodadas no Bloco 1) |
+| Tempo Médio (`tests/real/`) | `743.37s` | `769.10s` (`1.03x`) | `370.97s` (`1.05x` no Bloco 1) |
 
 ---
 
@@ -42,10 +55,10 @@
 ### 3.2. Tempo e Tamanho Estimados no CI (Medição sem Alterar o Workflow)
 - **Download a frio no runner GitHub Actions (sem cache):** ~`11.3s` adicionais (`9.35s` binário Firefox + `1.95s` GeoIP MMDB) e `658.6 MB` de armazenamento em `~/.cache/invisible-playwright`.
 - **Com `actions/cache` em `~/.cache/invisible-playwright`:** overhead de restauração estimado em `~3s a 5s`.
-- **Dependência de sistema operacional no Linux:** `invisible-playwright` com `headless=True` exige `Xvfb` instalado (`sudo apt-get install -y xvfb`) para usar display virtual X11 oculto, ou a variável `INVPW_TRUE_HEADLESS=1` para usar o modo headless nativo sem servidor Xvfb.
+- **Dependência de sistema operacional no Linux:** `invisible-playwright` com `headless=True` exige `Xvfb` instalado (`sudo apt-get install -y xvfb`, presente em `/usr/bin/Xvfb`) para usar display virtual X11 oculto. Sem `Xvfb`, o `BrowserService` recusa iniciar em modo silencioso e exige `firefox_headless_mode='true_headless'` explícito com aviso no log.
 
 ### 3.3. Chamadas de Rede Feitas pelo Motor ao Iniciar (`InvisiblePlaywright.__enter__`)
-Ao iniciar uma sessão (tempo de bootstrap medido: `2.97s`), o `invisible_core.prepare_session_geo()` executa chamadas de rede externas antes mesmo de abrir a primeira página:
+Ao iniciar uma sessão em modo `xvfb` (tempo de bootstrap medido: `2.8s`), o `invisible_core.prepare_session_geo()` executa chamadas de rede externas antes mesmo de abrir a primeira página:
   - `GET https://api.ipify.org`
   - `HEAD https://github.com/daijro/geoip-all-in-one/releases/latest/download/geoip-aio-all.mmdb.zip`
   - `HEAD https://github.com/daijro/geoip-all-in-one/releases/latest/download/geoip-aio-all.mmdb.zip`
@@ -56,13 +69,14 @@ Ao iniciar uma sessão (tempo de bootstrap medido: `2.97s`), o `invisible_core.p
   2. `HEAD https://github.com/daijro/geoip-all-in-one/releases/latest/download/geoip-aio-all.mmdb.zip` é disparado **3 vezes por abertura de sessão** por `ensure_geoip_mmdb()` (exceto quando a variável `STEALTHFOX_GEOIP_MMDB` aponta para um arquivo `.mmdb` local).
   3. Em contraste, o motor `chromium` (`patchright`) realiza **zero** chamadas HTTP via Python no arranque da sessão.
 
-### 3.4. Falhas e Atritos Observados Durante o Spike
-1. **Exigência de `Xvfb` no Linux quando `headless=True`:** Por padrão, `InvisiblePlaywright(headless=True)` no Linux tenta invocar o binário `Xvfb` para criar um display virtual X11 e manter o Firefox em modo *headed* (preservando o pipeline gráfico). Na ausência do pacote `xvfb` no host, `InvisiblePlaywright` lança `RuntimeError("invisible_playwright headless=True requires Xvfb")`, a menos que `INVPW_TRUE_HEADLESS=1` esteja definido. O `_FirefoxLauncher` em `BrowserService` aplica fallback automático para `INVPW_TRUE_HEADLESS=1` quando `shutil.which("Xvfb")` é `None`.
-2. **Chamadas de rede obrigatórias no startup (`api.ipify.org` + `github.com`):** A descoberta de IP público a cada `start_session()` adiciona ~`0.4s a 0.8s` de latência de rede em todo início de sessão e cria dependência de conectividade externa mesmo para testes contra `localhost`.
+### 3.4. Falhas e Atritos Observados e Endurecimentos Aplicados no Bloco 1.1
+1. **Exigência Estrita de `Xvfb` no Linux quando `headless=True` (Passo A4):** O fallback silencioso para `INVPW_TRUE_HEADLESS=1` foi removido. Agora, se `headless=True` no Firefox e `/usr/bin/Xvfb` não estiver instalado, o `BrowserService` falha imediatamente com `RuntimeError` instruindo a instalar `xvfb` ou habilitar `firefox_headless_mode='true_headless'` explicitamente (que emite `WARNING` e restaura `os.environ` ao fechar).
+2. **Isolamento de Perfil por Motor (Passo A3) e Ancoragem na Raiz (Passo A2):** Perfis de sessão de `chromium` (`<root>/<platform>`) e `firefox` (`<root>/<platform>-firefox`) ficam em diretórios irmãos ancorados em `get_project_root()`, impedindo colisão de artefatos SQLite/LevelDB entre motores.
+3. **Guarda de Identidade do Motor nas Fixtures Reais (Passo A6):** As fixtures reais leem `navigator.userAgent` na abertura da sessão e falham alto se `BROWSER_ENGINE` não corresponder ao motor efetivamente carregado (`"Firefox"` vs `"Chrome"`).
 
 ---
 
 ## 4. Parecer Final da Squad (QA / Runtime)
 
 - **Resultado:** **GO**
-- Todos os 6 critérios técnicos foram medidos objetivamente no commit da branch `feat/2.0-portao-a`, com `100%` dos testes reais (`32` testes em `tests/real/`, incluindo a PROVA cega e todos os novos cenários de Parada Estrita e `SUBMITTING`) passando nas 3 execuções consecutivas do Firefox e na execução base do Chromium.
+- Todos os 6 critérios técnicos foram medidos objetivamente no código final do Bloco 1.1 (`feat/2.0-portao-a`), com `100%` dos testes reais (`39` testes em `tests/real/`, incluindo a PROVA cega e todos os cenários `C1` a `C4` de envio, `SUBMITTING`, `MANUAL_REVIEW` e Parada Estrita) passando na execução em `chromium` e nas 3 execuções consecutivas em `firefox` sob `Xvfb` (`/usr/bin/Xvfb`).

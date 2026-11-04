@@ -50,6 +50,17 @@ const SCENARIO_JOBS = {
     description: "Vaga cujo modal abre com atraso dentro do prazo da porta.",
     complex: false,
     slowModal: true,
+    slowModalDelayMs: 600,
+  },
+  "job-very-slow-modal": {
+    id: "job-very-slow-modal",
+    title: "Vaga Modal Muito Lento",
+    company: "Timeout Corp",
+    location: "Remoto",
+    description: "Vaga cujo modal demora 2500ms para abrir, estourando prazos curtos.",
+    complex: false,
+    slowModal: true,
+    slowModalDelayMs: 2500,
   },
   "job-stuck-submit": {
     id: "job-stuck-submit",
@@ -91,6 +102,9 @@ function resolveScenarioJobs(scenario) {
   }
   if (scenario === "slow-modal") {
     return [SCENARIO_JOBS["job-slow-modal"]];
+  }
+  if (scenario === "very-slow-modal") {
+    return [SCENARIO_JOBS["job-very-slow-modal"], INITIAL_JOBS[0]];
   }
   if (scenario === "stuck-submit") {
     return [SCENARIO_JOBS["job-stuck-submit"], INITIAL_JOBS[0]];
@@ -212,9 +226,7 @@ export default function Home() {
     setSubmitted(false);
     setWrapperVariant((prev) => (prev + 1) % 3);
     if (selectedJob?.slowModal) {
-      const params = new URLSearchParams(window.location.search);
-      const rawDelay = parseInt(params.get("delayMs") || "600", 10);
-      const modalDelayMs = Number.isFinite(rawDelay) && rawDelay > 0 ? rawDelay : 600;
+      const modalDelayMs = selectedJob?.slowModalDelayMs || 600;
       setTimeout(() => {
         setStepLoading(true);
         setIsModalOpen(true);

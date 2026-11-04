@@ -13,6 +13,7 @@ def _run(browser, platform, url):
         static_urls=[url],
         selectors=SELECTOR_PROFILES[platform],
         max_applications=3,
+        shadow_mode=True,
     )
     return AppService(browser).run(request)
 
