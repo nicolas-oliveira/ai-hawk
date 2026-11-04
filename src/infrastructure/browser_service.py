@@ -914,17 +914,16 @@ class BrowserService:
         except Exception:
             return False
 
-    def wait_for_loader_to_disappear(
-        self, loader_selector: str = '[role="status"]', timeout: int = 15000
+    def wait_until_hidden(
+        self, selector: str = '[role="status"]', timeout: int = 15000
     ) -> bool:
         """
-        Espera deterministica por descarte/sumico de loaders e transicoes assincronas.
-        Elimina 'Flaky Tests' causados por variacoes de latencia ou carga de CPU sem usar time.sleep().
-        Retorna True se o loader nao existir ou sumir antes do timeout; False se continuar visivel.
+        Espera deterministica (sem sleep) pelo sumico/descarte de um elemento ou transicao assincrona.
+        True se o elemento nao existia ou sumiu antes de `timeout` ms; False se continuou visivel.
         """
         try:
             page = self.get_page()
-            locator = page.locator(loader_selector).first
+            locator = page.locator(selector).first
             if locator.count() == 0 or not locator.is_visible():
                 return True
             locator.wait_for(state="detached", timeout=timeout)
@@ -932,10 +931,64 @@ class BrowserService:
         except Exception:
             # Fallback caso fique hidden em vez de detached
             try:
-                locator.wait_for(state="hidden", timeout=1000)
+                locator.wait_for(state="hidden", timeout=min(timeout, 1000))
                 return True
             except Exception:
                 return False
+
+    wait_for_loader_to_disappear = wait_until_hidden
+
+    def job_shows_applied(self, selector: str, timeout: int = 0) -> bool:
+        """
+        Porta para inspecionar se a pagina mostra a vaga como JA CANDIDATADA (C2/A3).
+        - timeout <= 0: leitura instantanea sem espera por visibilidade (usado ao abrir a vaga).
+        - timeout > 0: espera pela visibilidade ate o prazo (usado apos envio ou sem apply button).
+        - Falha de protocolo/pagina fechada/navegacao propaga excecao (nao devolve False).
+        """
+        if not selector or not str(selector).strip():
+            return False
+
+        page = self.get_page()
+        locator = page.locator(selector).first
+
+        if timeout <= 0:
+            if locator.count() == 0:
+                return False
+            try:
+                return bool(
+                    locator.evaluate(
+                        """(el) => {
+                            if (!el) return false;
+                            if (el.checkVisibility) {
+                                return el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true });
+                            }
+                            const style = window.getComputedStyle(el);
+                            return (
+                                el.offsetParent !== null &&
+                                style.display !== 'none' &&
+                                style.visibility !== 'hidden' &&
+                                parseFloat(style.opacity) !== 0
+                            );
+                        }"""
+                    )
+                )
+            except Exception as exc:
+                err_msg = str(exc).lower()
+                if "target page" in err_msg or "closed" in err_msg or "destroyed" in err_msg or "navigation" in err_msg:
+                    raise
+                return False
+
+        # timeout > 0: espera dinamica pelo surgimento/visibilidade do seletor
+        try:
+            locator.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception as exc:
+            err_msg = str(exc).lower()
+            if "timeout" in err_msg:
+                return False
+            if "target page" in err_msg or "closed" in err_msg or "destroyed" in err_msg or "navigation" in err_msg:
+                raise
+            return False
 
     def dismiss_overlay_if_present(
         self, dismiss_selector: str = '[aria-label="Dismiss overlay"]', timeout: int = 2000

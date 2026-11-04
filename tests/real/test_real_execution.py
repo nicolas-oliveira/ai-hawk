@@ -6,6 +6,7 @@ from src.domain.entities.job import Job, JobStatus
 SANCTUARY_SELECTORS = {
     **LINKEDIN_DEFAULT_SELECTORS,
     "submit_confirmation": "[data-testid='modal-submission-success']",
+    "applied_state": "[data-testid='job-applied']",
 }
 
 

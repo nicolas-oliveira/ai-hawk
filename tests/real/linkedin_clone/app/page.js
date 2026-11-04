@@ -89,11 +89,59 @@ const SCENARIO_JOBS = {
     complex: false,
     closeOnSubmit: true,
   },
+  "job-already-applied": {
+    id: "job-already-applied",
+    title: "Vaga Já Candidatada",
+    company: "Already Corp",
+    location: "Remoto",
+    description: "Vaga que o portal já mostra como candidatada ao abrir.",
+    complex: false,
+    alreadyApplied: true,
+  },
+  "job-late-applied": {
+    id: "job-late-applied",
+    title: "Vaga Candidatada com Atraso",
+    company: "LateState Corp",
+    location: "Remoto",
+    description: "Vaga sem botão de candidatura cujo selo de candidatada pinta com 400ms de atraso.",
+    complex: false,
+    lateApplied: true,
+  },
+  "job-confirm-no-state": {
+    id: "job-confirm-no-state",
+    title: "Vaga Confirmação Sem Estado",
+    company: "NoState Corp",
+    location: "Remoto",
+    description: "Vaga onde a confirmação aparece no modal mas o estado na página não muda.",
+    complex: false,
+    confirmNoState: true,
+  },
+  "job-state-no-confirm": {
+    id: "job-state-no-confirm",
+    title: "Vaga Estado Sem Confirmação",
+    company: "NoConfirmState Corp",
+    location: "Remoto",
+    description: "Vaga onde o estado na página muda para candidatada mas a confirmação no modal não aparece.",
+    complex: false,
+    stateNoConfirm: true,
+  },
 };
 
 const ALL_JOBS = [...INITIAL_JOBS, ...Object.values(SCENARIO_JOBS)];
 
 function resolveScenarioJobs(scenario) {
+  if (scenario === "already-applied") {
+    return [SCENARIO_JOBS["job-already-applied"]];
+  }
+  if (scenario === "late-applied") {
+    return [SCENARIO_JOBS["job-late-applied"]];
+  }
+  if (scenario === "confirm-without-state") {
+    return [SCENARIO_JOBS["job-confirm-no-state"], INITIAL_JOBS[0]];
+  }
+  if (scenario === "state-without-confirm") {
+    return [SCENARIO_JOBS["job-state-no-confirm"], INITIAL_JOBS[0]];
+  }
   if (scenario === "job-challenge") {
     return [SCENARIO_JOBS["job-challenge"], INITIAL_JOBS[0]];
   }
@@ -133,6 +181,7 @@ export default function Home() {
   const [modalStep, setModalStep] = useState(1);
   const [stepLoading, setStepLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [jobApplied, setJobApplied] = useState(false);
 
   // 2. Intrusive Overlay / Cookie / Promo Banner state
   const [overlayVisible, setOverlayVisible] = useState(false);
@@ -171,6 +220,12 @@ export default function Home() {
           const matched = ALL_JOBS.find((j) => j.id === jobIdParam);
           if (matched) {
             setSelectedJob(matched);
+            if (matched.alreadyApplied) {
+              setJobApplied(true);
+            }
+            if (matched.lateApplied) {
+              setTimeout(() => setJobApplied(true), 400);
+            }
           }
         }
       }
@@ -207,10 +262,18 @@ export default function Home() {
     }
     setDetailLoading(true);
     setSelectedJob(null);
+    setJobApplied(Boolean(job.alreadyApplied));
     setWrapperVariant((prev) => (prev + 1) % 3);
     setTimeout(() => {
       setSelectedJob(job);
       setDetailLoading(false);
+      if (job.alreadyApplied) {
+        setJobApplied(true);
+      }
+      if (job.lateApplied) {
+        setJobApplied(false);
+        setTimeout(() => setJobApplied(true), 400);
+      }
     }, 1000);
   };
 
@@ -260,14 +323,27 @@ export default function Home() {
       if (selectedJob?.stuckSubmit) {
         return;
       }
+      if (selectedJob?.confirmNoState) {
+        setSubmitted(true);
+        setJobApplied(false);
+        return;
+      }
+      if (selectedJob?.stateNoConfirm) {
+        setIsModalOpen(false);
+        setSubmitted(false);
+        setJobApplied(true);
+        return;
+      }
       if (selectedJob?.noConfirmSubmit) {
         setIsModalOpen(false);
         setSubmitted(false);
+        setJobApplied(true);
         return;
       }
       if (selectedJob?.closeOnSubmit) {
         setIsModalOpen(false);
         setSubmitted(true);
+        setJobApplied(true);
         window.sessionStorage.setItem(
           "modal_submission_success",
           "Candidatura enviada com sucesso!"
@@ -275,8 +351,9 @@ export default function Home() {
         return;
       }
       // Fluxo base da v1.5 (sem ?scenario=): modal permanece aberto com
-      // [data-testid="modal-submission-success"] dentro do dialogo ate a aplicacao fecha-lo.
+      // [data-testid="modal-submission-success"] dentro do dialogo e pagina ganha [data-testid="job-applied"].
       setSubmitted(true);
+      setJobApplied(true);
       window.sessionStorage.setItem(
         "modal_submission_success",
         "Candidatura enviada com sucesso!"
@@ -506,38 +583,49 @@ export default function Home() {
                     <p className={"text-md text-gray-600 font-medium"}>{selectedJob.company}</p>
                     <p className={"text-sm text-gray-500"}>{selectedJob.location}</p>
 
-                    <div className={"mt-4 flex gap-3 relative action-bar-" + seed}>
-                      {/* 3. HONEYPOT: Botão de candidatura falso fora da tela */}
-                      <button
-                        type="button"
-                        style={{
-                          opacity: 0,
-                          position: "absolute",
-                          left: "-9999px",
-                          pointerEvents: "none",
-                        }}
-                        tabIndex={-1}
-                        aria-hidden="true"
-                        onClick={() =>
-                          triggerHoneypot("Clicou no botão Candidatura Simplificada oculto (left: -9999px)")
-                        }
-                        className={"btn-apply-trap-" + seed}
-                      >
-                        Candidatura Simplificada
-                      </button>
+                    <div className={"mt-4 flex gap-3 items-center relative action-bar-" + seed}>
+                      {jobApplied ? (
+                        <div
+                          data-testid="job-applied"
+                          className="px-4 py-2 bg-emerald-50 border border-emerald-300 text-emerald-800 rounded-full font-semibold text-sm flex items-center gap-2"
+                        >
+                          <span aria-hidden="true">✓</span> Candidatura enviada
+                        </div>
+                      ) : selectedJob.lateApplied && !jobApplied ? null : (
+                        <>
+                          {/* 3. HONEYPOT: Botão de candidatura falso fora da tela */}
+                          <button
+                            type="button"
+                            style={{
+                              opacity: 0,
+                              position: "absolute",
+                              left: "-9999px",
+                              pointerEvents: "none",
+                            }}
+                            tabIndex={-1}
+                            aria-hidden="true"
+                            onClick={() =>
+                              triggerHoneypot("Clicou no botão Candidatura Simplificada oculto (left: -9999px)")
+                            }
+                            className={"btn-apply-trap-" + seed}
+                          >
+                            Candidatura Simplificada
+                          </button>
 
-                      {/* Botão Real */}
-                      <button
-                        type="button"
-                        id={`btn-apply-${seed}`}
-                        onClick={handleOpenModal}
-                        className={
-                          "bg-blue-600 text-white px-5 py-2 rounded-full font-semibold hover:bg-blue-700 transition btn-apply-" +
-                          seed
-                        }
-                      >
-                        Candidatura Simplificada
-                      </button>
+                          {/* Botão Real */}
+                          <button
+                            type="button"
+                            id={`btn-apply-${seed}`}
+                            onClick={handleOpenModal}
+                            className={
+                              "bg-blue-600 text-white px-5 py-2 rounded-full font-semibold hover:bg-blue-700 transition btn-apply-" +
+                              seed
+                            }
+                          >
+                            Candidatura Simplificada
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
 

@@ -87,6 +87,7 @@ HTML_JOB_201_ASYNC_MODAL = """<!DOCTYPE html>
         <button aria-label="Dismiss" id="close-btn" onclick="closeModal()">X</button>
     </div>
     <div data-testid="modal-submission-success" id="submit-success" style="display: none;">Candidatura enviada com sucesso!</div>
+    <div data-testid="job-applied" id="job-applied" style="display: none;">Candidatura enviada</div>
 
     <script>
         // ARMADILHA REAL: O modal tem animacao/delay de renderizacao de 300ms!
@@ -98,6 +99,7 @@ HTML_JOB_201_ASYNC_MODAL = """<!DOCTYPE html>
         function submitApp() {
             document.getElementById('modal').style.display = 'none';
             document.getElementById('submit-success').style.display = 'block';
+            document.getElementById('job-applied').style.display = 'block';
         }
         function closeModal() {
             document.getElementById('modal').style.display = 'none';
@@ -132,10 +134,11 @@ HTML_JOB_202_ADVANCED_CSS_TRAP = """<!DOCTYPE html>
             <select required><option value=""></option></select>
         </div>
 
-        <button aria-label="Submit application" onclick="document.getElementById('modal').style.display = 'none'; document.getElementById('submit-success').style.display = 'block'">Enviar Candidatura</button>
+        <button aria-label="Submit application" onclick="document.getElementById('modal').style.display = 'none'; document.getElementById('submit-success').style.display = 'block'; document.getElementById('job-applied').style.display = 'block';">Enviar Candidatura</button>
         <button aria-label="Dismiss" onclick="document.getElementById('modal').style.display = 'none'">X</button>
     </div>
     <div data-testid="modal-submission-success" id="submit-success" style="display: none;">Candidatura enviada com sucesso!</div>
+    <div data-testid="job-applied" id="job-applied" style="display: none;">Candidatura enviada</div>
 </body>
 </html>
 """
